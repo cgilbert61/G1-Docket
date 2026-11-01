@@ -82,59 +82,93 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <link rel="icon" type="image/png" href="/assets/g1-logo.png" />
   <title>G1 Docket by G1163RT Security Labs | Cryptographic Data Attestation &amp; AI Prevalidator</title>
   <style>
-    :root { --bg: #0b1120; --panel: #1e293b; --panel2: #0f172a; --border: #334155; --text: #f8fafc; --muted: #94a3b8; --accent: #10b981; --warn: #f59e0b; --danger: #ef4444; --info: #3b82f6; }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px 28px; display: flex; flex-direction: column; min-height: 100vh; }
-    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
-    .brand-lockup { display: flex; align-items: center; gap: 16px; }
-    .brand-logo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid #475569; box-shadow: 0 0 14px rgba(59,130,246,0.35); background: #ffffff; }
-    h1 { margin: 0; font-size: 24px; letter-spacing: 0.3px; display: flex; align-items: center; gap: 12px; }
-    .brand-lab-tag { font-size: 12px; font-weight: 600; color: #93c5fd; letter-spacing: 0.6px; text-transform: uppercase; }
-    footer { margin-top: auto; padding-top: 18px; padding-bottom: 8px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12.5px; }
-    .footer-brand { display: flex; align-items: center; gap: 10px; }
-    .footer-logo { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 1px solid #475569; background: #ffffff; }
-    .badge { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
-    .badge-Public, .badge-PASS { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.4); }
-    .badge-Internal { background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.4); }
-    .badge-Confidential, .badge-STRIP { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); }
-    .badge-Restricted, .badge-FAIL { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.4); }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 20px; }
-    .card h2 { margin-top: 0; font-size: 16px; color: #e2e8f0; border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    :root {
+      --bg: #F8FAFC;
+      --bg-subtle: #F1F5F9;
+      --panel: #FFFFFF;
+      --panel2: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #475569;
+      --primary: #1E293B;
+      --link: #2563EB;
+      --accent: #15803D;
+      --warn: #B45309;
+      --danger: #B91C1C;
+      --info: #1E293B;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 24px 32px; display: flex; flex-direction: column; min-height: 100vh; line-height: 1.6; text-align: left; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 0; gap: 20px; flex-wrap: wrap; }
+    .brand-lockup { display: flex; align-items: center; gap: 14px; }
+    .brand-logo { width: 44px; height: 44px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); background: #FFFFFF; }
+    h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); display: flex; align-items: center; gap: 10px; line-height: 1.25; }
+    h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.025em; color: var(--text); text-align: left; }
+    .brand-lab-tag { font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; border-left: 1px solid var(--border); padding-left: 10px; }
+    .hero-sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; max-width: 65ch; line-height: 1.6; }
+    footer { margin-top: auto; padding-top: 20px; padding-bottom: 8px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12.5px; }
+    .footer-brand { display: flex; align-items: center; gap: 10px; color: var(--text); }
+    .footer-logo { width: 24px; height: 24px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); background: #FFFFFF; }
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; display: inline-block; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+    .badge-Public, .badge-PASS { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .badge-Internal { background: #F1F5F9; color: #1E293B; border: 1px solid #CBD5E1; }
+    .badge-Confidential, .badge-STRIP { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .badge-Restricted, .badge-FAIL { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .section-band { border-bottom: 1px solid var(--border); padding: 24px 0; }
+    .section-band-subtle { background: var(--bg-subtle); border-bottom: 1px solid var(--border); margin: 0 -32px; padding: 24px 32px; }
+    .asymmetric-layout { display: grid; grid-template-columns: 280px 1fr; gap: 28px; align-items: start; }
+    .section-aside { position: sticky; top: 20px; text-align: left; }
+    .section-aside .eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+    .section-aside h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin-bottom: 8px; line-height: 1.35; }
+    .section-aside p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 65ch; margin: 0 0 12px 0; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 18px; margin-bottom: 16px; }
+    .card:last-child { margin-bottom: 0; }
+    .card h2 { margin-top: 0; margin-bottom: 12px; font-size: 15px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 14px 0; }
-    .score-box { background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; text-align: center; }
-    .score-box .num { font-size: 26px; font-weight: 800; margin-top: 4px; }
-    .score-box .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .english-verdict { background: #0f172a; border: 1px solid #475569; border-left: 5px solid var(--accent); border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; font-size: 14.5px; line-height: 1.5; color: #f1f5f9; }
-    .english-verdict.has-failures { border-left-color: var(--danger); background: rgba(239,68,68,0.08); }
-    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-weight: 600; }
-    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11.5px; color: #cbd5e1; }
-    .btn { background: var(--info); color: white; border: none; padding: 9px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
-    .btn:hover { opacity: 0.92; }
-    .btn-green { background: var(--accent); color: #052e16; }
-    .btn-amber { background: var(--warn); color: #451a03; }
-    .btn-dark { background: #334155; color: #f8fafc; }
-    textarea, select, input[type="text"] { width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 13px; margin-bottom: 10px; font-family: ui-monospace, monospace; }
-    pre { background: #090d16; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 12px; border: 1px solid var(--border); margin: 0; white-space: pre-wrap; }
-    .links a { color: #60a5fa; text-decoration: none; margin-left: 14px; font-size: 13px; }
-    .folder-browser { display: none; background: #090d16; border: 1px solid #3b82f6; border-radius: 8px; padding: 14px; margin-top: 12px; }
-    .folder-item { display: inline-block; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 12px; margin: 4px; cursor: pointer; font-size: 12.5px; color: #93c5fd; }
-    .folder-item:hover { background: #334155; color: #ffffff; }
-    .file-link { color: #38bdf8; cursor: pointer; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 5px; transition: background 0.15s, color 0.15s, border-color 0.15s; border: 1px solid rgba(56, 189, 248, 0.25); background: rgba(15, 23, 42, 0.6); }
-    .file-link:hover { background: rgba(56, 189, 248, 0.18); border-color: #38bdf8; color: #bae6fd; text-decoration: underline; }
-    .inspector-overlay { display: none; position: fixed; inset: 0; background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
-    .inspector-modal { background: #0f172a; border: 2px solid #0284c7; border-radius: 12px; width: 100%; max-width: 1060px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85); overflow: hidden; }
-    .inspector-header { padding: 16px 22px; background: linear-gradient(90deg, #091526 0%, #1e293b 100%); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-    .inspector-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 12px 0; }
+    .score-box { background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; text-align: left; font-variant-numeric: tabular-nums; }
+    .score-box .num { font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .score-box .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+    .english-verdict { background: var(--bg-subtle); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 4px; padding: 12px 16px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text); max-width: 100%; font-variant-numeric: tabular-nums; }
+    .english-verdict.has-failures { border-left-color: var(--danger); background: #FEF2F2; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { color: var(--muted); font-weight: 600; background: var(--bg); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+    .btn { background: var(--primary); color: #FFFFFF; border: 1px solid var(--primary); padding: 7px 13px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; line-height: 1.3; }
+    .btn:hover { background: #334155; border-color: #334155; }
+    .btn-green { background: var(--primary); color: #FFFFFF; border-color: var(--primary); }
+    .btn-amber { background: #FFFFFF; color: var(--text); border: 1px solid var(--border); }
+    .btn-amber:hover { background: var(--bg-subtle); border-color: #CBD5E1; }
+    .btn-dark { background: #FFFFFF; color: var(--text); border: 1px solid var(--border); }
+    .btn-dark:hover { background: var(--bg-subtle); border-color: #CBD5E1; }
+    .btn-danger { background: #FFFFFF; color: var(--danger); border: 1px solid #FECACA; }
+    .btn-danger:hover { background: #FEF2F2; border-color: var(--danger); }
+    textarea, select, input[type="text"], input[type="password"] { width: 100%; background: #FFFFFF; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 7px 10px; font-size: 12.5px; margin-bottom: 10px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    pre { background: var(--bg); color: var(--text); padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid var(--border); margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
+    .links a { color: var(--link); text-decoration: none; margin-left: 10px; font-size: 12.5px; font-weight: 500; }
+    .links a:hover { text-decoration: underline; }
+    .folder-browser { display: none; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px; margin-top: 12px; }
+    .folder-item { display: inline-block; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px; padding: 5px 10px; margin: 4px; cursor: pointer; font-size: 12px; color: var(--link); font-weight: 500; }
+    .folder-item:hover { background: var(--bg-subtle); text-decoration: underline; }
+    .file-link { color: var(--link); cursor: pointer; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+    .file-link:hover { background: var(--bg-subtle); border-color: #CBD5E1; text-decoration: underline; }
+    .inspector-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+    .inspector-modal { background: #FFFFFF; border: 1px solid var(--border); border-radius: 6px; width: 100%; max-width: 1060px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+    .inspector-header { padding: 16px 22px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+    .inspector-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; background: #FFFFFF; }
     .inspector-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .inspector-section { background: #090d16; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
-    .inspector-section h3 { margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; color: #38bdf8; border-bottom: 1px solid #1e293b; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-    .kv-row { display: grid; grid-template-columns: 155px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px dashed rgba(51, 65, 85, 0.55); font-size: 12.5px; align-items: baseline; }
+    .inspector-section { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+    .inspector-section h3 { margin: 0 0 10px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .kv-row { display: grid; grid-template-columns: 155px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; align-items: baseline; font-variant-numeric: tabular-nums; }
     .kv-row:last-child { border-bottom: none; }
     .kv-label { color: var(--muted); font-weight: 600; font-size: 11.5px; }
-    .kv-val { color: #f8fafc; word-break: break-all; }
+    .kv-val { color: var(--text); word-break: break-all; }
+    @media (max-width: 1100px) {
+      .asymmetric-layout { grid-template-columns: 1fr; }
+      .section-aside { position: static; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -147,7 +181,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <span class="brand-lab-tag">by G1163RT Security Labs</span>
           <span id="modeBadge" class="badge badge-Public">ENFORCE MODE</span>
         </h1>
-        <div style="color: var(--muted); font-size: 13px; margin-top: 4px;">
+        <div class="hero-sub">
           Cryptographic Data Attestation Engine &amp; Zero-DB-Call AI Gateway Prevalidator
         </div>
       </div>
@@ -156,14 +190,14 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <span id="activeLlmBadge" class="badge badge-Internal" style="font-size: 11.5px; text-transform: none; padding: 5px 10px;">
         LLM: Built-in Gateway (:4000)
       </span>
-      <span id="headerLatencyPill" class="badge badge-Public" style="font-size: 11.5px; text-transform: none; padding: 5px 10px; font-family: ui-monospace, monospace;">
-        &#9201; Gate Latency: -- ms
+      <span id="headerLatencyPill" class="badge badge-Public" style="font-size: 11.5px; text-transform: none; padding: 5px 10px; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;">
+        Gate Latency: -- ms
       </span>
-      <a href="/dlp" class="btn" style="background: #7c3aed; color: #ffffff; text-decoration: none; margin-left: 0;">&#9729; DLP Connectors (Purview / Cloud)</a>
-      <button class="btn" style="background: #0d9488; color: #ffffff;" onclick="toggleEnterpriseScannerDrawer()">&#128640; Enterprise Continuous Scanner</button>
-      <button class="btn" style="background: #0284c7;" onclick="toggleEnterpriseStoresDrawer()">&#128452; Enterprise Data Stores (S3 / Lakes / Warehouses)</button>
-      <button class="btn" style="background: #2563eb;" onclick="toggleLlmConfig()">&#9881; LLM Provider Config</button>
-      <button id="toggleModeBtn" class="btn" style="background: #059669; color: #ffffff;" onclick="toggleMode()">&#128737; Mode: ENFORCE (Click &rarr; Observe)</button>
+      <a href="/dlp" class="btn btn-dark" style="margin-left: 0; color: var(--text);">DLP Connectors (Purview / Cloud)</a>
+      <button class="btn btn-dark" onclick="toggleEnterpriseScannerDrawer()">Continuous Scanner Config</button>
+      <button class="btn btn-dark" onclick="toggleEnterpriseStoresDrawer()">Enterprise Data Stores</button>
+      <button class="btn btn-dark" onclick="toggleLlmConfig()">LLM Provider Config</button>
+      <button id="toggleModeBtn" class="btn" onclick="toggleMode()">Mode: ENFORCE (Switch to Observe)</button>
       <a href="/docs" target="_blank">Prevalidator API</a>
       <a href="http://localhost:18083/docs" target="_blank">Engine API (:18083)</a>
       <a href="http://localhost:18080/docs" target="_blank">Registry API (:18080)</a>
@@ -172,40 +206,40 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   </header>
 
   <!-- ENTERPRISE CONTINUOUS DELTA SCANNER CONFIGURATION DRAWER -->
-  <div id="enterpriseScannerDrawer" class="card" style="display: none; border: 2px solid #0d9488; background: #0f172a;">
+  <div id="enterpriseScannerDrawer" class="card" style="display: none; margin-top: 18px;">
     <h2>
-      <span>&#128640; Enterprise Continuous Background Delta Crawler — Configure What Is Scanned &amp; Rolling Micro-Snapshot Policy</span>
-      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleEnterpriseScannerDrawer()">&#10005; Close Menu</button>
+      <span>Enterprise Continuous Background Delta Crawler — Target Scope &amp; Micro-Snapshot Policy</span>
+      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleEnterpriseScannerDrawer()">Close</button>
     </h2>
     <div style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px;">
       <!-- LEFT: CONFIGURE TARGET DRIVES, FOLDERS, S3 BUCKETS & WAREHOUSES -->
-      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 8px; padding: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: #2dd4bf; margin-bottom: 8px;">
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: -0.025em;">
           1. Configure Continuous Scan Targets (Drives, Folders, S3 Buckets, Data Lakes &amp; Warehouses)
         </div>
-        <div style="font-size: 11.5px; color: var(--muted); margin-bottom: 10px;">
-          Check which estates are included in the zero-limit background delta loop, or click <strong>Sweep Only This</strong> to focus the scanner head on a single drive or cloud store:
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 10px; max-width: 65ch; line-height: 1.6;">
+          Select which estates are included in the zero-limit background delta loop, or click <strong>Sweep Only This</strong> to focus the scanner head on a single drive or cloud store:
         </div>
-        <div id="crawlerTargetCheckboxes" style="max-height: 220px; overflow-y: auto; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; margin-bottom: 10px;"></div>
+        <div id="crawlerTargetCheckboxes" style="max-height: 220px; overflow-y: auto; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px; padding: 8px; margin-bottom: 10px;"></div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <input type="text" id="newCrawlerTargetUri" placeholder="Add drive, folder, or URI (e.g. C:\Users\chuck\Documents or s3://bucket/prefix)" style="margin-bottom: 0; flex: 1;" />
-          <button class="btn btn-green" style="white-space: nowrap;" onclick="addCrawlerTarget()">+ Add Scan Target</button>
+          <button class="btn" style="white-space: nowrap;" onclick="addCrawlerTarget()">+ Add Scan Target</button>
         </div>
       </div>
 
       <!-- RIGHT: PASS 1 / PASS 2 DELTA FILTER & ROLLING MICRO-SNAPSHOT SETTINGS -->
-      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 8px; padding: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: #38bdf8; margin-bottom: 8px;">
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: -0.025em;">
           2. Two-Pass Delta Engine &amp; Rolling Micro-Snapshot Settings
         </div>
-        <div style="font-size: 11.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.45;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 10px; max-width: 65ch; line-height: 1.6;">
           &bull; <strong>Pass 1 (mtime / size / ETag Watermark):</strong> Skips unchanged files in microseconds with 0 disk bytes read.<br/>
           &bull; <strong>Pass 2 (Deep Hash + Presidio + Chunk Digests):</strong> Runs only on new or modified files.<br/>
           &bull; <strong>Rolling Micro-Snapshots:</strong> Flushes &amp; signs a new DSSE Snapshot every <em>N</em> deltas while scanning.
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Micro-Snapshot Flush Threshold</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Micro-Snapshot Flush Threshold</label>
             <select id="crawlerMicroBatchSelect" onchange="saveCrawlerPolicySettings()" style="margin-bottom: 0;">
               <option value="5">Flush Snapshot Every 5 Deltas</option>
               <option value="15" selected>Flush Snapshot Every 15 Deltas</option>
@@ -214,7 +248,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
           </div>
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Scanner Head Pacing</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Scanner Head Pacing</label>
             <select id="crawlerThrottleSelect" onchange="saveCrawlerPolicySettings()" style="margin-bottom: 0;">
               <option value="0">Max Speed (0 ms delay — Full I/O Rate)</option>
               <option value="3.5" selected>Fast Live Ticker (~250+ files/sec)</option>
@@ -222,7 +256,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
           </div>
         </div>
-        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px; font-size: 12.5px;">
+        <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px; font-size: 12.5px; color: var(--text);">
           <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
             <input type="checkbox" id="crawlerIncludeCodeChk" checked onchange="saveCrawlerPolicySettings()" />
             Include Code &amp; Hidden Folders
@@ -233,30 +267,30 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           </label>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn btn-green" onclick="controlContinuousCrawler({ running: true })">&#9654; Start Enterprise Scan</button>
-          <button class="btn" style="background: #dc2626;" onclick="stopContinuousCrawler()">&#9209; Stop Enterprise Scan</button>
-          <button class="btn btn-dark" onclick="saveCrawlerTargetsSelection()">&#10004; Save Target Selection</button>
-          <button class="btn btn-amber" onclick="resetCrawlerWatermarks()">&#128260; Clear Watermarks (Force Full Deep Re-Scan)</button>
+          <button class="btn" onclick="controlContinuousCrawler({ running: true })">Start Enterprise Scan</button>
+          <button class="btn btn-danger" onclick="stopContinuousCrawler()">Stop Enterprise Scan</button>
+          <button class="btn btn-dark" onclick="saveCrawlerTargetsSelection()">Save Target Selection</button>
+          <button class="btn btn-dark" onclick="resetCrawlerWatermarks()">Clear Watermarks (Force Full Deep Re-Scan)</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- ENTERPRISE DATA STORES & REAL-TIME STORAGE EVENT WEBHOOK DRAWER -->
-  <div id="enterpriseStoresDrawer" class="card" style="display: none; border: 2px solid #0284c7; background: #0f172a;">
+  <div id="enterpriseStoresDrawer" class="card" style="display: none; margin-top: 18px;">
     <h2>
-      <span>&#128452; Enterprise Data Store Connectors (AWS S3, Azure ADLS Gen2 / Blob, GCP GCS, Snowflake, BigQuery, PostgreSQL) &amp; Event Webhooks</span>
-      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleEnterpriseStoresDrawer()">&#10005; Close Menu</button>
+      <span>Enterprise Data Store Connectors (AWS S3, Azure ADLS Gen2 / Blob, GCP GCS, Snowflake, BigQuery, PostgreSQL) &amp; Event Webhooks</span>
+      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleEnterpriseStoresDrawer()">Close</button>
     </h2>
     <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; margin-bottom: 12px;">
       <!-- LEFT: REGISTER OR SELECT AN ENTERPRISE DATA STORE -->
-      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 8px; padding: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: #38bdf8; margin-bottom: 10px;">
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; letter-spacing: -0.025em;">
           1. Register New Enterprise Data Store or Select Pre-Configured Estate
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; margin-bottom: 8px;">
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Cloud / Warehouse Provider</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Cloud / Warehouse Provider</label>
             <select id="dsProviderSelect" onchange="applyDsTemplate()" style="margin-bottom: 0;">
               <option value="AWS S3">AWS S3 / S3-Compatible Data Lake (s3://)</option>
               <option value="Azure ADLS Gen2 / Blob">Azure ADLS Gen2 / Blob Storage (azblob://)</option>
@@ -268,17 +302,17 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
           </div>
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Store URI (Bucket/Prefix or Warehouse Dataset/Schema)</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Store URI (Bucket/Prefix or Warehouse Dataset/Schema)</label>
             <input type="text" id="dsUriInput" value="s3://acme-corp-datalake-prod/rag-knowledge" style="margin-bottom: 0;" />
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Display Name</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Display Name</label>
             <input type="text" id="dsNameInput" value="Acme Corp S3 RAG Knowledge Lake" style="margin-bottom: 0;" />
           </div>
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Auth Mode (Zero-Secret First)</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Auth Mode (Zero-Secret First)</label>
             <select id="dsAuthSelect" style="margin-bottom: 0;">
               <option value="iam_role">AWS IAM Role / IRSA</option>
               <option value="managed_identity">Azure Managed Identity</option>
@@ -289,27 +323,27 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
           </div>
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Region / Endpoint</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Region / Endpoint</label>
             <input type="text" id="dsRegionInput" value="us-east-1" style="margin-bottom: 0;" />
           </div>
         </div>
         <div style="display: flex; gap: 10px; align-items: center;">
-          <button class="btn btn-green" onclick="registerAndSelectStore()">+ Register &amp; Scan Enterprise Store</button>
-          <span id="dsStatusMsg" style="font-size: 12px; color: #34d399;">ETag Fast-Path &amp; Bounded Parquet/Table Sampling Enabled</span>
+          <button class="btn" onclick="registerAndSelectStore()">+ Register &amp; Scan Enterprise Store</button>
+          <span id="dsStatusMsg" style="font-size: 12px; color: var(--muted);">ETag Fast-Path &amp; Bounded Parquet/Table Sampling Enabled</span>
         </div>
       </div>
 
       <!-- RIGHT: REAL-TIME CLOUD STORAGE EVENT WEBHOOK (S3 EventBridge / Azure Event Grid / GCS PubSub) -->
-      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 8px; padding: 14px;">
-        <div style="font-size: 13px; font-weight: 700; color: #fbbf24; margin-bottom: 8px;">
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: -0.025em;">
           2. Real-Time Storage Event Webhook (<code>POST /v1/events/storage</code>)
         </div>
-        <div style="font-size: 11.5px; color: var(--muted); margin-bottom: 10px;">
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 10px; max-width: 65ch; line-height: 1.6;">
           Instead of rescanning petabytes, S3 EventBridge, Azure Event Grid, and GCS Pub/Sub push object change notifications here to auto-attest new uploads or auto-revoke deleted objects in real time.
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Event Type</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Event Type</label>
             <select id="evtTypeSelect" style="margin-bottom: 0;">
               <option value="ObjectCreated:Put">AWS S3 — ObjectCreated:Put (Auto-Attest)</option>
               <option value="Microsoft.Storage.BlobCreated">Azure Event Grid — BlobCreated (Auto-Attest)</option>
@@ -318,17 +352,17 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
           </div>
           <div>
-            <label style="font-size: 11.5px; color: var(--muted);">Object Key / Table Name</label>
+            <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Object Key / Table Name</label>
             <input type="text" id="evtKeyInput" value="live_ingest/q4_board_forecast.parquet" style="margin-bottom: 0;" />
           </div>
         </div>
         <div style="margin-bottom: 8px;">
-          <label style="font-size: 11.5px; color: var(--muted);">Sample Payload Content (Presidio Classified on Ingest)</label>
+          <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Sample Payload Content (Presidio Classified on Ingest)</label>
           <input type="text" id="evtSampleInput" value="vp_finance: clark.kent@contoso.com | phone: 212-555-0199 | salary: $210,000" style="margin-bottom: 0;" />
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button class="btn" style="background: #d97706; color: #fff;" onclick="sendStorageWebhookEvent()">&#9889; Fire Storage Webhook Event Now</button>
-          <span id="evtWebhookStatus" style="font-size: 12px; color: #93c5fd;">Ready</span>
+          <button class="btn btn-dark" onclick="sendStorageWebhookEvent()">Fire Storage Webhook Event Now</button>
+          <span id="evtWebhookStatus" style="font-size: 12px; color: var(--muted);">Ready</span>
         </div>
       </div>
     </div>
@@ -341,10 +375,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   </div>
 
   <!-- CONFIGURATION MENU DRAWER: POINT AT ANY LLM PROVIDER -->
-  <div id="llmConfigDrawer" class="card" style="display: none; border: 2px solid #3b82f6; background: #0f172a;">
+  <div id="llmConfigDrawer" class="card" style="display: none; margin-top: 18px;">
     <h2>
-      <span>&#9881; LLM Provider Configuration — Point G1 Docket Prevalidator at Any Local or Cloud LLM</span>
-      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleLlmConfig()">&#10005; Close Menu</button>
+      <span>LLM Provider Configuration — Point G1 Docket Prevalidator at Any Local or Cloud LLM</span>
+      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleLlmConfig()">Close</button>
     </h2>
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 10px;">
       <div>
@@ -403,408 +437,434 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
           <strong>6. Upstream API Key</strong> (Optional for Local LLMs)
         </label>
-        <input type="password" id="llmApiKey" value="" placeholder="Leave blank for local, or sk-... / anthropic key" style="width: 100%; background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 13px; margin-bottom: 0; font-family: ui-monospace, monospace;" />
+        <input type="password" id="llmApiKey" value="" placeholder="Leave blank for local, or sk-... / anthropic key" style="margin-bottom: 0;" />
       </div>
     </div>
 
     <div style="display: flex; gap: 12px; align-items: center; padding-top: 10px; border-top: 1px solid var(--border);">
-      <button class="btn btn-green" onclick="saveLlmConfig()">&#10004; Save &amp; Activate LLM Provider</button>
-      <button class="btn" onclick="testLlmConfig()">&#9889; Test Connection &amp; Discover Models</button>
-      <div id="llmConfigStatus" style="font-size: 13px; color: #34d399; margin-left: 8px;">
+      <button class="btn" onclick="saveLlmConfig()">Save &amp; Activate LLM Provider</button>
+      <button class="btn btn-dark" onclick="testLlmConfig()">Test Connection &amp; Discover Models</button>
+      <div id="llmConfigStatus" style="font-size: 12.5px; color: var(--muted); margin-left: 8px;">
         Active Provider: Built-in G1 Gateway (http://litellm-gateway:4000)
       </div>
     </div>
   </div>
 
-  <!-- REAL-TIME PREVALIDATOR ZERO-DB LATENCY CLOCK & TELEMETRY -->
-  <div class="card" style="border-color: #10b981; background: linear-gradient(180deg, #0f172a 0%, #111827 100%); margin-bottom: 18px;">
-    <h2 style="border-bottom-color: #1e293b;">
-      <span style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 18px;">&#9201;</span>
-        <span>Prevalidator Zero-DB Latency Clock (Sub-Millisecond In-Memory Cryptographic Gate)</span>
-        <span id="latSlaBadge" class="badge badge-Public">SLA &le; 5.0 ms: 100% PASS</span>
-      </span>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <button id="benchBtn" class="btn btn-green" style="padding: 6px 12px; font-size: 12px;" onclick="runLatencyBenchmark()">&#9889; Benchmark 100 Live Evaluations</button>
-      </div>
-    </h2>
-
-    <div style="display: grid; grid-template-columns: 1.35fr repeat(5, 1fr); gap: 12px; align-items: stretch; margin-top: 10px;">
-      <!-- DIGITAL CLOCK READOUT -->
-      <div style="background: #050811; border: 1px solid #10b981; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: center; box-shadow: inset 0 0 18px rgba(16,185,129,0.12);">
-        <div style="font-size: 10.5px; color: #6ee7b7; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700;">Live Gate Decision Clock</div>
-        <div id="latClockDigital" style="font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 26px; font-weight: 800; color: #34d399; margin-top: 4px; letter-spacing: 0.5px;">0.000 ms</div>
-        <div id="latClockMicro" style="font-family: ui-monospace, monospace; font-size: 11.5px; color: #94a3b8; margin-top: 2px;">0.0 &mu;s &bull; 0 DB Calls</div>
-      </div>
-
-      <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
-        <div class="lbl">P50 (Median)</div>
-        <div id="latP50" class="num" style="font-size: 21px; color: #38bdf8; font-family: ui-monospace, monospace;">-</div>
-        <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Avg: <span id="latAvg">-</span></div>
-      </div>
-
-      <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
-        <div class="lbl">P95 / P99 Tail</div>
-        <div id="latP95" class="num" style="font-size: 21px; color: #a78bfa; font-family: ui-monospace, monospace;">-</div>
-        <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">P99: <span id="latP99">-</span></div>
-      </div>
-
-      <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
-        <div class="lbl">Dir Batch Enforcer</div>
-        <div id="latDirEnforcer" class="num" style="font-size: 21px; color: #34d399; font-family: ui-monospace, monospace;">-</div>
-        <div id="latDirPerFile" style="font-size: 11px; color: var(--muted); margin-top: 2px;">- &mu;s / file</div>
-      </div>
-
-      <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
-        <div class="lbl">Batch Throughput</div>
-        <div id="latThroughput" class="num" style="font-size: 21px; color: #fbbf24; font-family: ui-monospace, monospace;">-</div>
-        <div id="latDirWall" style="font-size: 11px; color: var(--muted); margin-top: 2px;">Disk+Hash: - ms</div>
-      </div>
-
-      <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
-        <div class="lbl">Total Gate Checks</div>
-        <div id="latTotalChecks" class="num" style="font-size: 21px; color: #f8fafc; font-family: ui-monospace, monospace;">0</div>
-        <div style="font-size: 11px; color: #34d399; margin-top: 2px;">In-Memory Snapshot</div>
-      </div>
-    </div>
-
-    <!-- SPARKLINE BAR CHART OF RECENT GATE DECISIONS -->
-    <div style="margin-top: 12px; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 14px;">
-      <div style="font-size: 11px; color: var(--muted); white-space: nowrap;">
-        <strong>Recent Gate Decisions (ms):</strong><br/>
-        <span style="font-size: 10px; color: #64748b;">Green &lt; 1.0 ms &bull; SLA Budget = 5.0 ms</span>
-      </div>
-      <div id="latSparkline" style="flex: 1; display: flex; align-items: flex-end; gap: 4px; height: 34px; padding-top: 4px;"></div>
-    </div>
-  </div>
-
-  <!-- LIVE CONTINUOUS ENTERPRISE DELTA SCANNER TELEMETRY BAR ("WHAT IS BEING SCANNED FLASHING BY") -->
-  <div class="card" style="border-color: #0d9488; background: linear-gradient(180deg, #091520 0%, #0f172a 100%); margin-bottom: 18px;">
-    <h2 style="border-bottom-color: #1e293b;">
-      <span style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 18px;">&#128640;</span>
-        <span>Enterprise Continuous Background Delta Crawler (Zero File Limits &bull; 2-Pass mtime/ETag Filter &bull; Rolling Micro-Snapshots)</span>
-        <span id="crawlerStateBadge" class="badge badge-Public">SWEEPING LIVE</span>
-      </span>
-      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-        <button id="crawlerToggleBtn" class="btn btn-green" style="padding: 6px 12px; font-size: 12px;" onclick="toggleContinuousCrawlerRun()">&#9654; Start Enterprise Scan</button>
-        <button id="crawlerStopBtn" class="btn" style="background: #dc2626; padding: 6px 12px; font-size: 12px;" onclick="stopContinuousCrawler()">&#9209; Stop Enterprise Scan</button>
-        <button class="btn" style="background: #0d9488; padding: 6px 12px; font-size: 12px;" onclick="sweepSelectedTargetUnbounded()">&#127919; Sweep Selected Drive/Store Unbounded</button>
-        <button class="btn btn-dark" style="padding: 6px 12px; font-size: 12px;" onclick="resetCrawlerWatermarks()">&#128260; Force Deep Re-Scan</button>
-        <button class="btn btn-dark" style="padding: 6px 12px; font-size: 12px;" onclick="toggleEnterpriseScannerDrawer()">&#9881; Configure What Is Scanned</button>
-      </div>
-    </h2>
-
-    <!-- ROLLING COUNTERS -->
-    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 10px 0;">
-      <div class="score-box" style="margin: 0; padding: 10px;">
-        <div class="lbl">Files Swept (Zero Cap)</div>
-        <div id="crFilesSwept" class="num" style="font-size: 22px; color: #f8fafc; font-family: ui-monospace, monospace;">0</div>
-        <div id="crPassNum" style="font-size: 11px; color: var(--muted);">Pass #1 &bull; Watermarks: 0</div>
-      </div>
-      <div class="score-box" style="margin: 0; padding: 10px;">
-        <div class="lbl">Unchanged (Delta Skipped)</div>
-        <div id="crSkipped" class="num" style="font-size: 22px; color: #38bdf8; font-family: ui-monospace, monospace;">0</div>
-        <div style="font-size: 11px; color: var(--muted);">Pass 1: mtime / size / ETag match</div>
-      </div>
-      <div class="score-box" style="margin: 0; padding: 10px;">
-        <div class="lbl">New / Modified Attested</div>
-        <div id="crDeltas" class="num" style="font-size: 22px; color: #34d399; font-family: ui-monospace, monospace;">0</div>
-        <div id="crRevoked" style="font-size: 11px; color: var(--muted);">Pass 2 Deep Scan &bull; Revoked: 0</div>
-      </div>
-      <div class="score-box" style="margin: 0; padding: 10px;">
-        <div class="lbl">Live Scan Rate</div>
-        <div id="crRate" class="num" style="font-size: 22px; color: #fbbf24; font-family: ui-monospace, monospace;">0 /s</div>
-        <div id="crTargetNow" style="font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Target: -</div>
-      </div>
-      <div class="score-box" style="margin: 0; padding: 10px;">
-        <div class="lbl">Rolling Micro-Snapshots</div>
-        <div id="crSnapshots" class="num" style="font-size: 22px; color: #a78bfa; font-family: ui-monospace, monospace;">0</div>
-        <div id="crPendingDeltas" style="font-size: 11px; color: var(--muted);">Pending flush: 0 deltas</div>
-      </div>
-    </div>
-
-    <!-- REAL-TIME FLASHING FILE TICKER ("WHAT IS BEING SCANNED FLASHING BY") -->
-    <div style="background: #04070e; border: 1px solid #0d9488; border-radius: 8px; padding: 10px 14px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace;">
-      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-size: 12px; color: #2dd4bf; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-          &#9889; ACTIVE SCANNER HEAD: <span id="crCurrentHeadFile" style="color: #f8fafc;">Initializing continuous delta crawler...</span>
+  <!-- SECTION 01: REAL-TIME PREVALIDATOR ZERO-DB LATENCY CLOCK & TELEMETRY -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">01 / Gate Telemetry</div>
+        <h2>Zero-DB Cryptographic Gate Latency</h2>
+        <p>
+          Sub-millisecond in-memory evaluation against the active DSSE-signed snapshot contract. Zero database round-trips on the inference hot path.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+          <span id="latSlaBadge" class="badge badge-Public">SLA &le; 5.0 ms: 100% PASS</span>
+          <button id="benchBtn" class="btn btn-dark" onclick="runLatencyBenchmark()">Benchmark 100 Live Evaluations</button>
         </div>
-        <span style="font-size: 10.5px; color: #64748b; white-space: nowrap; margin-left: 10px;">Live Stream (Pass 1 Skip vs Pass 2 Delta)</span>
-      </div>
-      <div id="crTickerStream" style="height: 112px; overflow-y: auto; font-size: 11.5px; line-height: 1.55; color: #cbd5e1;"></div>
-    </div>
-  </div>
-
-  <!-- TOP WORKFLOW: ENTERPRISE DATA STORE OR PC DIRECTORY SELECTION + ATTESTATION + PREVALIDATOR SCAN -->
-  <div class="card" style="border-color: #3b82f6;">
-    <h2>
-      <span>Point System at Any Enterprise Data Store (<code>s3://</code>, <code>azblob://</code>, <code>gs://</code>, <code>snowflake://</code>, <code>bigquery://</code>, <code>postgres://</code>) or PC Directory</span>
-      <span id="folderSourceBadge" class="badge badge-Internal">Direct PC Disk Path</span>
-    </h2>
-
-    <div style="display: grid; grid-template-columns: 1.45fr 0.95fr auto; gap: 14px; align-items: end; margin-bottom: 12px;">
-      <div>
-        <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
-          <strong>Select Enterprise Data Store (S3, Azure ADLS, GCS, Snowflake, BigQuery, Postgres) or Local PC Drive/Folder:</strong>
-        </label>
-        <select id="pcFolderSelect" style="margin-bottom: 0; font-size: 14px; font-weight: 600;" onchange="selectPresetFolder()">
-          <option value="C:\Users\chuck\pc_demo_folder">📁 C:\Users\chuck\pc_demo_folder — Sample Disparate Files</option>
-          <option value="s3://contoso-ai-datalake-prod/rag-corpus">☁️ [AWS S3] s3://contoso-ai-datalake-prod/rag-corpus — Production AI &amp; RAG Data Lake</option>
-          <option value="azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge">☁️ [Azure ADLS Gen2 / Blob] azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge</option>
-          <option value="gs://contoso-vertex-lake-us/curated-zones">☁️ [GCP Cloud Storage] gs://contoso-vertex-lake-us/curated-zones — Vertex AI Data Lake</option>
-          <option value="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC">☁️ [Snowflake] snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC</option>
-          <option value="bigquery://contoso-gcp-analytics/enterprise_mart">☁️ [Google BigQuery] bigquery://contoso-gcp-analytics/enterprise_mart</option>
-          <option value="postgres://estate-db:5432/estate">☁️ [PostgreSQL] postgres://estate-db:5432/estate — Operational DB (Live SQL)</option>
-          <option value="C:\">🖴 C:\ — Entire C: Drive (Recursive Data Scan)</option>
-          <option value="D:\">🖴 D:\ — Entire D: Drive (Recursive Data Scan)</option>
-        </select>
-        <input type="hidden" id="pcPathInput" value="C:\Users\chuck\pc_demo_folder" />
-      </div>
-
-      <div>
-        <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
-          <strong>Drill Into Subdirectory / Or Enter Custom Store URI</strong> (<code>s3://...</code>, <code>gs://...</code>, <code>D:\...</code>):
-        </label>
-        <div style="display: flex; gap: 6px;">
-          <select id="subDirSelect" style="margin-bottom: 0; font-size: 13px;" onchange="selectSubdirectory()">
-            <option value="">-- Current Selected Store / Directory --</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 8px;">
-        <button class="btn" style="background: #0284c7; white-space: nowrap;" onclick="toggleEnterpriseStoresDrawer()">&#128452; + Connect Cloud Store / S3</button>
-        <input type="file" id="winFolderPicker" webkitdirectory directory multiple style="display: none;" onchange="onWinFolderPicked(event)" />
-        <button class="btn" style="white-space: nowrap;" onclick="document.getElementById('winFolderPicker').click()">📂 Or Pick PC Folder</button>
-      </div>
-    </div>
-
-    <!-- INTERACTIVE PC DRIVE & FOLDER NAVIGATOR -->
-    <div id="pcBrowserBox" class="folder-browser">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <div>
-          <strong>Browsing PC Path:</strong> <code id="browserCurrentPath" style="font-size: 13px; color: #34d399;">D:\attestation</code>
-          <span id="browserFileCount" class="badge badge-Public" style="margin-left: 8px;">0 files in this folder</span>
-        </div>
-        <div style="display: flex; gap: 6px;">
-          <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseTo('D:\\\\')">D:\ Drive</button>
-          <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseTo('C:\\\\Users\\\\chuck')">C:\Users\chuck</button>
-          <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseUp()">⬆ Up One Level</button>
-          <button class="btn btn-green" style="padding: 5px 12px; font-size: 12px;" onclick="useBrowsedFolder()">✔ Select This Folder &amp; Run Attestation</button>
-          <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="togglePcBrowser()">Close</button>
-        </div>
-      </div>
-      <div id="browserSampleFiles" style="font-size: 12px; color: var(--muted); margin-bottom: 8px;"></div>
-      <div id="browserSubdirs"></div>
-    </div>
-
-    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border);">
-      <button id="runAttestBtn" class="btn btn-green" onclick="attestSelectedDirectory()">1. Run Attestation on Directory (Engine)</button>
-      <div style="display: flex; align-items: center; gap: 6px; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px;">
-        <span style="font-size: 11.5px; color: var(--muted);">Demo File Cap:</span>
-        <select id="demoMaxFilesSelect" style="width: 155px; margin-bottom: 0; padding: 4px 6px; font-size: 12px;">
-          <option value="120" selected>120 Files (Fast Demo)</option>
-          <option value="500">500 Files (Medium)</option>
-          <option value="2500">2,500 Files (Deep)</option>
-          <option value="0">Unbounded (All Files)</option>
-        </select>
-        <label style="font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;">
-          <input type="checkbox" id="demoIncludeCodeChk" /> +Code Dirs
-        </label>
-      </div>
-      <button class="btn" style="background: #0d9488;" onclick="sweepSelectedTargetUnbounded()">&#128640; Enterprise Continuous Sweep This Target</button>
-      <button class="btn btn-amber" onclick="dropUnattestedFile()">+ Add Unattested File</button>
-      <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-        <span style="font-size: 12px; color: var(--muted);">Caller Clearance:</span>
-        <select id="dirCallerKey" style="width: 185px; margin-bottom: 0;">
-          <option value="pod-key-confidential" selected>Confidential Clearance</option>
-          <option value="pod-key-public">Public Clearance</option>
-          <option value="pod-key-internal">Internal Clearance</option>
-          <option value="pod-key-restricted">Restricted Clearance</option>
-        </select>
-        <span style="font-size: 12px; color: var(--muted);">Target Egress:</span>
-        <select id="dirModelSelect" style="width: 170px; margin-bottom: 0;">
-          <option value="local-model" selected>local-model (local_only)</option>
-          <option value="vpc-model">vpc-model (private_cloud)</option>
-          <option value="gpt-4o">gpt-4o (public_api)</option>
-        </select>
-        <button id="runPrevalBtn" class="btn" onclick="prevalidateSelectedDirectory()">2. Run Prevalidator Scan on Directory</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SIDE-BY-SIDE RESULTS: ENGINE ATTESTATION REPORT vs PREVALIDATOR DIRECTORY SCANNER -->
-  <div class="grid-2">
-    <!-- LEFT: ENGINE DIRECTORY ATTESTATION RESULTS -->
-    <div class="card">
-      <h2>
-        <span>Step 1 — Attestation Engine Directory Report</span>
-        <span id="attestStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
-      </h2>
-
-      <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (ENGINE) -->
-      <div id="attestEnglishBanner" class="english-verdict">
-        Loading verifiable file count from Attestation Engine...
-      </div>
-
-      <div class="score-grid" style="grid-template-columns: repeat(3, 1fr);">
-        <div class="score-box">
-          <div class="lbl">Files Discovered</div>
-          <div id="attTotal" class="num">-</div>
-        </div>
-        <div class="score-box">
-          <div class="lbl">Signed Active Records</div>
-          <div id="attActive" class="num" style="color: #34d399;">-</div>
-        </div>
-        <div class="score-box">
-          <div class="lbl">Held in Review Queue</div>
-          <div id="attHeld" class="num" style="color: #fbbf24;">-</div>
-        </div>
-      </div>
-      <table id="attestedFilesTable">
-        <thead>
-          <tr>
-            <th>File Name (Click to Inspect)</th>
-            <th>Owner</th>
-            <th>Type</th>
-            <th>Classified Tier</th>
-            <th>AI Policy</th>
-            <th>Content SHA-256</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <!-- RIGHT: PREVALIDATOR DIRECTORY BATCH SCANNER RESULTS -->
-    <div class="card">
-      <h2>
-        <span>Step 2 — Prevalidator Directory Verification Scorecard</span>
-        <span id="prevalStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
-      </h2>
-
-      <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (PREVALIDATOR) -->
-      <div id="prevalEnglishBanner" class="english-verdict">
-        Loading verifiable Prevalidator pass/fail file count...
-      </div>
-
-      <div class="score-grid">
-        <div class="score-box">
-          <div class="lbl">Total Files in Dir</div>
-          <div id="pvTotal" class="num">-</div>
-        </div>
-        <div class="score-box">
-          <div class="lbl">Files Passed</div>
-          <div id="pvPassed" class="num" style="color: #34d399;">-</div>
-        </div>
-        <div class="score-box">
-          <div class="lbl">Files Did Not Pass</div>
-          <div id="pvFailed" class="num" style="color: #f87171;">-</div>
-        </div>
-        <div class="score-box">
-          <div class="lbl">Unattested Files</div>
-          <div id="pvUnattested" class="num" style="color: #ef4444;">-</div>
-        </div>
-      </div>
-      <table id="prevalidatedFilesTable">
-        <thead>
-          <tr>
-            <th>File Name (Click to Inspect)</th>
-            <th>Attestation State</th>
-            <th>Tier</th>
-            <th>Prevalidator Verdict</th>
-            <th>Reason / Detail</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- BOTTOM SECTION: SNAPSHOT TABLE + SINGLE PROMPT PLAYGROUND -->
-  <div class="grid-2">
-    <div>
-      <div class="card">
-        <h2>Active Signed Snapshot Entries (In-Memory Contract)</h2>
-        <div id="snapMeta" style="font-size: 12px; color: var(--muted); margin-bottom: 10px;">Loading snapshot...</div>
-        <table id="entriesTable">
-          <thead>
-            <tr>
-              <th>Locator (Click to Inspect)</th>
-              <th>Tier</th>
-              <th>Clearance</th>
-              <th>Egress</th>
-              <th>AI Rule</th>
-              <th>SHA-256</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      </aside>
 
       <div class="card">
-        <h2>Operator Audit Log (Internal Reason Codes)</h2>
-        <table id="auditTable">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Mode</th>
-              <th>Decision</th>
-              <th>Gate Latency</th>
-              <th>Reason Codes</th>
-              <th>Clearance / Egress</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div style="display: grid; grid-template-columns: 1.35fr repeat(5, 1fr); gap: 12px; align-items: stretch;">
+          <!-- DIGITAL CLOCK READOUT -->
+          <div class="score-box" style="margin: 0; background: var(--bg-subtle); display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">Live Gate Decision Clock</div>
+            <div id="latClockDigital" class="num" style="font-size: 24px; color: var(--text);">0.000 ms</div>
+            <div id="latClockMicro" style="font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums;">0.0 &mu;s &bull; 0 DB Calls</div>
+          </div>
+
+          <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">P50 (Median)</div>
+            <div id="latP50" class="num" style="font-size: 20px;">-</div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">Avg: <span id="latAvg">-</span></div>
+          </div>
+
+          <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">P95 / P99 Tail</div>
+            <div id="latP95" class="num" style="font-size: 20px;">-</div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">P99: <span id="latP99">-</span></div>
+          </div>
+
+          <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">Dir Batch Enforcer</div>
+            <div id="latDirEnforcer" class="num" style="font-size: 20px;">-</div>
+            <div id="latDirPerFile" style="font-size: 11px; color: var(--muted); margin-top: 2px;">- &mu;s / file</div>
+          </div>
+
+          <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">Batch Throughput</div>
+            <div id="latThroughput" class="num" style="font-size: 20px;">-</div>
+            <div id="latDirWall" style="font-size: 11px; color: var(--muted); margin-top: 2px;">Disk+Hash: - ms</div>
+          </div>
+
+          <div class="score-box" style="margin: 0; display: flex; flex-direction: column; justify-content: center;">
+            <div class="lbl">Total Gate Checks</div>
+            <div id="latTotalChecks" class="num" style="font-size: 20px;">0</div>
+            <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">In-Memory Snapshot</div>
+          </div>
+        </div>
+
+        <!-- SPARKLINE BAR CHART OF RECENT GATE DECISIONS -->
+        <div style="margin-top: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; display: flex; align-items: center; gap: 14px;">
+          <div style="font-size: 11px; color: var(--muted); white-space: nowrap;">
+            <strong style="color: var(--text);">Recent Gate Decisions (ms):</strong><br/>
+            <span style="font-size: 10.5px; color: var(--muted);">Target &lt; 1.0 ms &bull; SLA Budget = 5.0 ms</span>
+          </div>
+          <div id="latSparkline" style="flex: 1; display: flex; align-items: flex-end; gap: 4px; height: 32px; padding-top: 4px;"></div>
+        </div>
       </div>
     </div>
+  </section>
 
-    <div>
-      <div class="card">
-        <h2>Single LLM Prompt Playground (OpenAI &amp; Anthropic Proxy)</h2>
+  <!-- SECTION 02: LIVE CONTINUOUS ENTERPRISE DELTA SCANNER TELEMETRY BAR -->
+  <section class="section-band-subtle">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">02 / Continuous Delta Crawler</div>
+        <h2>Unbounded Estate Delta Scanner</h2>
+        <p>
+          Two-pass mtime, size, and ETag watermark filter skips unchanged files in microseconds and streams rolling micro-snapshots on detected deltas.
+        </p>
         <div style="margin-bottom: 10px;">
-          <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('allow')">1. Allow (Public)</button>
-          <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('strip')">2. Strip (Confidential)</button>
-          <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('restricted')">3. Refuse (Restricted)</button>
-          <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('unattested')">4. Refuse (Unattested)</button>
+          <span id="crawlerStateBadge" class="badge badge-Public">SWEEPING LIVE</span>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button id="crawlerToggleBtn" class="btn" style="padding: 6px 11px; font-size: 12px;" onclick="toggleContinuousCrawlerRun()">Start Enterprise Scan</button>
+          <button id="crawlerStopBtn" class="btn btn-danger" style="padding: 6px 11px; font-size: 12px;" onclick="stopContinuousCrawler()">Stop Enterprise Scan</button>
+          <button class="btn btn-dark" style="padding: 6px 11px; font-size: 12px;" onclick="sweepSelectedTargetUnbounded()">Sweep Selected Target</button>
+          <button class="btn btn-dark" style="padding: 6px 11px; font-size: 12px;" onclick="resetCrawlerWatermarks()">Force Deep Re-Scan</button>
+          <button class="btn btn-dark" style="padding: 6px 11px; font-size: 12px;" onclick="toggleEnterpriseScannerDrawer()">Configure Targets</button>
+        </div>
+      </aside>
+
+      <div class="card">
+        <!-- ROLLING COUNTERS -->
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px;">
+          <div class="score-box" style="margin: 0; padding: 10px 12px;">
+            <div class="lbl">Files Swept (Zero Cap)</div>
+            <div id="crFilesSwept" class="num" style="font-size: 20px;">0</div>
+            <div id="crPassNum" style="font-size: 11px; color: var(--muted);">Pass #1 &bull; Watermarks: 0</div>
+          </div>
+          <div class="score-box" style="margin: 0; padding: 10px 12px;">
+            <div class="lbl">Unchanged (Delta Skipped)</div>
+            <div id="crSkipped" class="num" style="font-size: 20px;">0</div>
+            <div style="font-size: 11px; color: var(--muted);">Pass 1: mtime / size / ETag match</div>
+          </div>
+          <div class="score-box" style="margin: 0; padding: 10px 12px;">
+            <div class="lbl">New / Modified Attested</div>
+            <div id="crDeltas" class="num" style="font-size: 20px; color: var(--accent);">0</div>
+            <div id="crRevoked" style="font-size: 11px; color: var(--muted);">Pass 2 Deep Scan &bull; Revoked: 0</div>
+          </div>
+          <div class="score-box" style="margin: 0; padding: 10px 12px;">
+            <div class="lbl">Live Scan Rate</div>
+            <div id="crRate" class="num" style="font-size: 20px;">0 /s</div>
+            <div id="crTargetNow" style="font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Target: -</div>
+          </div>
+          <div class="score-box" style="margin: 0; padding: 10px 12px;">
+            <div class="lbl">Rolling Micro-Snapshots</div>
+            <div id="crSnapshots" class="num" style="font-size: 20px;">0</div>
+            <div id="crPendingDeltas" style="font-size: 11px; color: var(--muted);">Pending flush: 0 deltas</div>
+          </div>
         </div>
 
-        <label style="font-size: 12px; color: var(--muted);">Protocol Endpoint</label>
-        <select id="endpointSelect">
-          <option value="/v1/chat/completions">OpenAI — POST /v1/chat/completions</option>
-          <option value="/v1/messages">Anthropic — POST /v1/messages</option>
-        </select>
-
-        <div class="grid-2" style="gap: 10px;">
-          <div>
-            <label style="font-size: 12px; color: var(--muted);">Caller Clearance Key</label>
-            <select id="callerKey">
-              <option value="pod-key-public">pod-key-public (Public)</option>
-              <option value="pod-key-internal">pod-key-internal (Internal)</option>
-              <option value="pod-key-confidential">pod-key-confidential (Confidential)</option>
-              <option value="pod-key-restricted">pod-key-restricted (Restricted)</option>
-            </select>
+        <!-- REAL-TIME FLASHING FILE TICKER ("WHAT IS BEING SCANNED FLASHING BY") -->
+        <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 6px;">
+            <div style="font-size: 12px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ACTIVE SCANNER HEAD: <span id="crCurrentHeadFile" style="color: var(--muted); font-weight: 500;">Initializing continuous delta crawler...</span>
+            </div>
+            <span style="font-size: 10.5px; color: var(--muted); white-space: nowrap; margin-left: 10px;">Live Stream (Pass 1 Skip vs Pass 2 Delta)</span>
           </div>
-          <div>
-            <label style="font-size: 12px; color: var(--muted);">Target Gateway Model</label>
-            <select id="modelSelect">
-              <option value="gpt-4o">gpt-4o (public_api)</option>
-              <option value="vpc-model">vpc-model (private_cloud)</option>
-              <option value="local-model">local-model (local_only)</option>
-            </select>
-          </div>
+          <div id="crTickerStream" style="height: 112px; overflow-y: auto; font-size: 11.5px; line-height: 1.55; color: var(--text);"></div>
         </div>
-
-        <textarea id="promptInput" rows="4"></textarea>
-        <button class="btn" style="width: 100%; justify-content: center;" onclick="sendRequest()">Send Prompt Through Prevalidator</button>
-
-        <h2 style="margin-top: 16px;">Gateway / Prevalidator Response (<span id="statusSpan">-</span>)</h2>
-        <pre id="responseBox">Ready.</pre>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- SECTION 03: TARGET DATA STORE / DIRECTORY SELECTION & ATTESTATION WORKFLOW -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">03 / Estate Target &amp; Policy</div>
+        <h2>Target Store &amp; Verification Scope</h2>
+        <p>
+          Point the Attestation Engine and Prevalidator at any cloud data lake, data warehouse, or local file system directory to issue and verify Ed25519 DSSE records.
+        </p>
+        <div>
+          <span id="folderSourceBadge" class="badge badge-Internal">Direct PC Disk Path</span>
+        </div>
+      </aside>
+
+      <div class="card">
+        <div style="display: grid; grid-template-columns: 1.45fr 0.95fr auto; gap: 14px; align-items: end; margin-bottom: 12px;">
+          <div>
+            <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
+              <strong>Select Enterprise Data Store (S3, Azure ADLS, GCS, Snowflake, BigQuery, Postgres) or Local PC Drive/Folder:</strong>
+            </label>
+            <select id="pcFolderSelect" style="margin-bottom: 0; font-size: 13px; font-weight: 600;" onchange="selectPresetFolder()">
+              <option value="C:\Users\chuck\pc_demo_folder">C:\Users\chuck\pc_demo_folder — Sample Disparate Files</option>
+              <option value="s3://contoso-ai-datalake-prod/rag-corpus">[AWS S3] s3://contoso-ai-datalake-prod/rag-corpus — Production AI &amp; RAG Data Lake</option>
+              <option value="azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge">[Azure ADLS Gen2 / Blob] azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge</option>
+              <option value="gs://contoso-vertex-lake-us/curated-zones">[GCP Cloud Storage] gs://contoso-vertex-lake-us/curated-zones — Vertex AI Data Lake</option>
+              <option value="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC">[Snowflake] snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC</option>
+              <option value="bigquery://contoso-gcp-analytics/enterprise_mart">[Google BigQuery] bigquery://contoso-gcp-analytics/enterprise_mart</option>
+              <option value="postgres://estate-db:5432/estate">[PostgreSQL] postgres://estate-db:5432/estate — Operational DB (Live SQL)</option>
+              <option value="C:\">C:\ — Entire C: Drive (Recursive Data Scan)</option>
+              <option value="D:\">D:\ — Entire D: Drive (Recursive Data Scan)</option>
+            </select>
+            <input type="hidden" id="pcPathInput" value="C:\Users\chuck\pc_demo_folder" />
+          </div>
+
+          <div>
+            <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">
+              <strong>Drill Into Subdirectory / Or Enter Custom Store URI</strong> (<code>s3://...</code>, <code>gs://...</code>, <code>D:\...</code>):
+            </label>
+            <div style="display: flex; gap: 6px;">
+              <select id="subDirSelect" style="margin-bottom: 0; font-size: 12.5px;" onchange="selectSubdirectory()">
+                <option value="">-- Current Selected Store / Directory --</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-dark" style="white-space: nowrap;" onclick="toggleEnterpriseStoresDrawer()">+ Connect Cloud Store / S3</button>
+            <input type="file" id="winFolderPicker" webkitdirectory directory multiple style="display: none;" onchange="onWinFolderPicked(event)" />
+            <button class="btn btn-dark" style="white-space: nowrap;" onclick="document.getElementById('winFolderPicker').click()">Pick Local Folder</button>
+          </div>
+        </div>
+
+        <!-- INTERACTIVE PC DRIVE & FOLDER NAVIGATOR -->
+        <div id="pcBrowserBox" class="folder-browser">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <strong>Browsing PC Path:</strong> <code id="browserCurrentPath" style="font-size: 13px; color: var(--text);">D:\attestation</code>
+              <span id="browserFileCount" class="badge badge-Public" style="margin-left: 8px;">0 files in this folder</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseTo('D:\\\\')">D:\ Drive</button>
+              <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseTo('C:\\\\Users\\\\chuck')">C:\Users\chuck</button>
+              <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="browseUp()">Up One Level</button>
+              <button class="btn" style="padding: 5px 12px; font-size: 12px;" onclick="useBrowsedFolder()">Select This Folder &amp; Run Attestation</button>
+              <button class="btn btn-dark" style="padding: 5px 10px; font-size: 12px;" onclick="togglePcBrowser()">Close</button>
+            </div>
+          </div>
+          <div id="browserSampleFiles" style="font-size: 12px; color: var(--muted); margin-bottom: 8px;"></div>
+          <div id="browserSubdirs"></div>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border);">
+          <button id="runAttestBtn" class="btn" onclick="attestSelectedDirectory()">1. Run Attestation on Directory (Engine)</button>
+          <div style="display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;">
+            <span style="font-size: 11.5px; color: var(--muted);">Demo File Cap:</span>
+            <select id="demoMaxFilesSelect" style="width: 155px; margin-bottom: 0; padding: 4px 6px; font-size: 12px;">
+              <option value="120" selected>120 Files (Fast Demo)</option>
+              <option value="500">500 Files (Medium)</option>
+              <option value="2500">2,500 Files (Deep)</option>
+              <option value="0">Unbounded (All Files)</option>
+            </select>
+            <label style="font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;">
+              <input type="checkbox" id="demoIncludeCodeChk" /> +Code Dirs
+            </label>
+          </div>
+          <button class="btn btn-dark" onclick="sweepSelectedTargetUnbounded()">Continuous Sweep This Target</button>
+          <button class="btn btn-amber" onclick="dropUnattestedFile()">+ Add Unattested File</button>
+          <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <span style="font-size: 12px; color: var(--muted);">Caller Clearance:</span>
+            <select id="dirCallerKey" style="width: 185px; margin-bottom: 0;">
+              <option value="pod-key-confidential" selected>Confidential Clearance</option>
+              <option value="pod-key-public">Public Clearance</option>
+              <option value="pod-key-internal">Internal Clearance</option>
+              <option value="pod-key-restricted">Restricted Clearance</option>
+            </select>
+            <span style="font-size: 12px; color: var(--muted);">Target Egress:</span>
+            <select id="dirModelSelect" style="width: 170px; margin-bottom: 0;">
+              <option value="local-model" selected>local-model (local_only)</option>
+              <option value="vpc-model">vpc-model (private_cloud)</option>
+              <option value="gpt-4o">gpt-4o (public_api)</option>
+            </select>
+            <button id="runPrevalBtn" class="btn" onclick="prevalidateSelectedDirectory()">2. Run Prevalidator Scan on Directory</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 04: SIDE-BY-SIDE ENGINE ATTESTATION REPORT vs PREVALIDATOR SCORECARD -->
+  <section class="section-band">
+    <div class="grid-2">
+      <!-- LEFT: ENGINE DIRECTORY ATTESTATION RESULTS -->
+      <div class="card">
+        <h2>
+          <span>Step 1 — Attestation Engine Directory Report</span>
+          <span id="attestStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
+        </h2>
+
+        <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (ENGINE) -->
+        <div id="attestEnglishBanner" class="english-verdict">
+          Loading verifiable file count from Attestation Engine...
+        </div>
+
+        <div class="score-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="score-box">
+            <div class="lbl">Files Discovered</div>
+            <div id="attTotal" class="num">-</div>
+          </div>
+          <div class="score-box">
+            <div class="lbl">Signed Active Records</div>
+            <div id="attActive" class="num" style="color: var(--accent);">-</div>
+          </div>
+          <div class="score-box">
+            <div class="lbl">Held in Review Queue</div>
+            <div id="attHeld" class="num" style="color: var(--warn);">-</div>
+          </div>
+        </div>
+        <table id="attestedFilesTable">
+          <thead>
+            <tr>
+              <th>File Name (Click to Inspect)</th>
+              <th>Owner</th>
+              <th>Type</th>
+              <th>Classified Tier</th>
+              <th>AI Policy</th>
+              <th>Content SHA-256</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT: PREVALIDATOR DIRECTORY BATCH SCANNER RESULTS -->
+      <div class="card">
+        <h2>
+          <span>Step 2 — Prevalidator Directory Verification Scorecard</span>
+          <span id="prevalStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
+        </h2>
+
+        <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (PREVALIDATOR) -->
+        <div id="prevalEnglishBanner" class="english-verdict">
+          Loading verifiable Prevalidator pass/fail file count...
+        </div>
+
+        <div class="score-grid">
+          <div class="score-box">
+            <div class="lbl">Total Files in Dir</div>
+            <div id="pvTotal" class="num">-</div>
+          </div>
+          <div class="score-box">
+            <div class="lbl">Files Passed</div>
+            <div id="pvPassed" class="num" style="color: var(--accent);">-</div>
+          </div>
+          <div class="score-box">
+            <div class="lbl">Files Did Not Pass</div>
+            <div id="pvFailed" class="num" style="color: var(--danger);">-</div>
+          </div>
+          <div class="score-box">
+            <div class="lbl">Unattested Files</div>
+            <div id="pvUnattested" class="num" style="color: var(--danger);">-</div>
+          </div>
+        </div>
+        <table id="prevalidatedFilesTable">
+          <thead>
+            <tr>
+              <th>File Name (Click to Inspect)</th>
+              <th>Attestation State</th>
+              <th>Tier</th>
+              <th>Prevalidator Verdict</th>
+              <th>Reason / Detail</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 05: ACTIVE SNAPSHOT CONTRACT, AUDIT LOG & SINGLE PROMPT PLAYGROUND -->
+  <section class="section-band-subtle" style="border-bottom: none;">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2>Active Signed Snapshot Entries (In-Memory Contract)</h2>
+          <div id="snapMeta" style="font-size: 12px; color: var(--muted); margin-bottom: 10px; font-variant-numeric: tabular-nums;">Loading snapshot...</div>
+          <table id="entriesTable">
+            <thead>
+              <tr>
+                <th>Locator (Click to Inspect)</th>
+                <th>Tier</th>
+                <th>Clearance</th>
+                <th>Egress</th>
+                <th>AI Rule</th>
+                <th>SHA-256</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Operator Audit Log (Internal Reason Codes)</h2>
+          <table id="auditTable">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Mode</th>
+                <th>Decision</th>
+                <th>Gate Latency</th>
+                <th>Reason Codes</th>
+                <th>Clearance / Egress</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Single LLM Prompt Playground (OpenAI &amp; Anthropic Proxy)</h2>
+          <div style="margin-bottom: 10px;">
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('allow')">1. Allow (Public)</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('strip')">2. Strip (Confidential)</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('restricted')">3. Refuse (Restricted)</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('unattested')">4. Refuse (Unattested)</button>
+          </div>
+
+          <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
+          <select id="endpointSelect">
+            <option value="/v1/chat/completions">OpenAI — POST /v1/chat/completions</option>
+            <option value="/v1/messages">Anthropic — POST /v1/messages</option>
+          </select>
+
+          <div class="grid-2" style="gap: 10px;">
+            <div>
+              <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Caller Clearance Key</label>
+              <select id="callerKey">
+                <option value="pod-key-public">pod-key-public (Public)</option>
+                <option value="pod-key-internal">pod-key-internal (Internal)</option>
+                <option value="pod-key-confidential">pod-key-confidential (Confidential)</option>
+                <option value="pod-key-restricted">pod-key-restricted (Restricted)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Target Gateway Model</label>
+              <select id="modelSelect">
+                <option value="gpt-4o">gpt-4o (public_api)</option>
+                <option value="vpc-model">vpc-model (private_cloud)</option>
+                <option value="local-model">local-model (local_only)</option>
+              </select>
+            </div>
+          </div>
+
+          <textarea id="promptInput" rows="4"></textarea>
+          <button class="btn" style="width: 100%; justify-content: center;" onclick="sendRequest()">Send Prompt Through Prevalidator</button>
+
+          <h2 style="margin-top: 16px;">Gateway / Prevalidator Response (<span id="statusSpan">-</span>)</h2>
+          <pre id="responseBox">Ready.</pre>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- FILE / OBJECT CLASSIFICATION, OWNERSHIP & ATTESTATION INSPECTOR MODAL DRAWER -->
   <div id="fileInspectorModal" class="inspector-overlay" onclick="if(event.target === this) closeFileInspector()">
@@ -812,20 +872,19 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <div class="inspector-header">
         <div style="flex: 1; min-width: 0;">
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="font-size: 20px;">&#128269;</span>
-            <span id="inspTitle" style="font-size: 18px; font-weight: 800; color: #f8fafc;">Object Attestation Inspector</span>
+            <span id="inspTitle" style="font-size: 17px; font-weight: 600; letter-spacing: -0.025em; color: var(--text);">Object Attestation Inspector</span>
             <span id="inspTierBadge" class="badge badge-Public">PUBLIC</span>
             <span id="inspStatusBadge" class="badge badge-Internal">ISSUED</span>
             <span id="inspPrevalBadge" class="badge badge-PASS" style="display: none;">PASS</span>
           </div>
-          <div style="margin-top: 6px; font-size: 12px; color: #93c5fd; font-family: ui-monospace, monospace; word-break: break-all;">
-            Canonical Locator: <strong id="inspLocator">-</strong>
+          <div style="margin-top: 6px; font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; word-break: break-all;">
+            Canonical Locator: <strong id="inspLocator" style="color: var(--text);">-</strong>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-          <button class="btn btn-green" style="padding: 6px 12px; font-size: 12px;" onclick="loadInspectedFileIntoPlayground()">&#129514; Load in Prompt Playground</button>
-          <button class="btn btn-dark" style="padding: 6px 12px; font-size: 12px;" onclick="copyInspectedJson()">&#128203; Copy Signed DSSE JSON</button>
-          <button class="btn" style="background: #dc2626; padding: 6px 12px; font-size: 12px;" onclick="closeFileInspector()">&#10005; Close</button>
+          <button class="btn" style="padding: 6px 12px; font-size: 12px;" onclick="loadInspectedFileIntoPlayground()">Load in Prompt Playground</button>
+          <button class="btn btn-dark" style="padding: 6px 12px; font-size: 12px;" onclick="copyInspectedJson()">Copy Signed DSSE JSON</button>
+          <button class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="closeFileInspector()">Close</button>
         </div>
       </div>
 
@@ -838,10 +897,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 1 & 2: OWNERSHIP, STEWARDSHIP & ASSET IDENTITY -->
           <div class="inspector-section">
             <h3>
-              <span>&#128100; Ownership, Governance &amp; Asset Identity</span>
+              <span>Ownership, Governance &amp; Asset Identity</span>
               <span style="font-size: 10.5px; color: var(--muted);">Groups 1 &amp; 2</span>
             </h3>
-            <div class="kv-row"><div class="kv-label">Accountable Owner</div><div id="inspOwner" class="kv-val" style="color: #38bdf8; font-weight: 700;">-</div></div>
+            <div class="kv-row"><div class="kv-label">Accountable Owner</div><div id="inspOwner" class="kv-val" style="color: var(--text); font-weight: 600;">-</div></div>
             <div class="kv-row"><div class="kv-label">Data Steward</div><div id="inspSteward" class="kv-val">-</div></div>
             <div class="kv-row"><div class="kv-label">Organizational Unit</div><div id="inspOrgUnit" class="kv-val">-</div></div>
             <div class="kv-row"><div class="kv-label">Jurisdiction</div><div id="inspJurisdiction" class="kv-val">-</div></div>
@@ -852,15 +911,15 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 5: CLASSIFICATION & DETECTED SENSITIVE ENTITIES -->
           <div class="inspector-section">
             <h3>
-              <span>&#128270; Classification &amp; Sensitive Entity Findings</span>
+              <span>Classification &amp; Sensitive Entity Findings</span>
               <span style="font-size: 10.5px; color: var(--muted);">Group 5</span>
             </h3>
             <div class="kv-row"><div class="kv-label">Classified Tier</div><div id="inspClassTier" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Confidence Score</div><div id="inspConfidence" class="kv-val" style="font-weight: 700; color: #34d399;">-</div></div>
+            <div class="kv-row"><div class="kv-label">Confidence Score</div><div id="inspConfidence" class="kv-val" style="font-weight: 600; color: var(--accent);">-</div></div>
             <div class="kv-row"><div class="kv-label">Classifier Engine</div><div class="kv-val"><code id="inspClassifierEngine">-</code></div></div>
             <div style="margin-top: 8px;">
               <div class="kv-label" style="margin-bottom: 6px;">Detected Sensitive Entity Categories (PII / PHI / PCI / Labels):</div>
-              <div id="inspSensitiveCats" style="background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; max-height: 115px; overflow-y: auto; font-size: 12px;">
+              <div id="inspSensitiveCats" style="background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px; padding: 8px; max-height: 115px; overflow-y: auto; font-size: 12px;">
                 -
               </div>
             </div>
@@ -869,7 +928,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 6: AI HANDLING & ZERO-TRUST ENFORCEMENT POLICY -->
           <div class="inspector-section">
             <h3>
-              <span>&#128737; AI Handling &amp; Zero-Trust Gate Policy</span>
+              <span>AI Handling &amp; Zero-Trust Gate Policy</span>
               <span style="font-size: 10.5px; color: var(--muted);">Group 6</span>
             </h3>
             <div class="kv-row"><div class="kv-label">AI Eligibility Rule</div><div id="inspAiRule" class="kv-val">-</div></div>
@@ -883,10 +942,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 4: CRYPTOGRAPHIC INTEGRITY & CHUNK DIGESTS -->
           <div class="inspector-section">
             <h3>
-              <span>&#128272; Cryptographic Integrity &amp; RAG Chunk Digests</span>
+              <span>Cryptographic Integrity &amp; RAG Chunk Digests</span>
               <span style="font-size: 10.5px; color: var(--muted);">Group 4</span>
             </h3>
-            <div class="kv-row"><div class="kv-label">Attested SHA-256</div><div class="kv-val"><code id="inspContentSha" style="color: #34d399;">-</code></div></div>
+            <div class="kv-row"><div class="kv-label">Attested SHA-256</div><div class="kv-val"><code id="inspContentSha" style="color: var(--accent);">-</code></div></div>
             <div class="kv-row"><div class="kv-label">Observed Disk SHA-256</div><div class="kv-val"><code id="inspObservedSha">-</code></div></div>
             <div class="kv-row"><div class="kv-label">Extracted Text SHA-256</div><div class="kv-val"><code id="inspTextSha">-</code></div></div>
             <div class="kv-row"><div class="kv-label">Schema SHA-256</div><div class="kv-val"><code id="inspSchemaSha">-</code></div></div>
@@ -898,7 +957,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 3: PROVENANCE, SCANNER & OPENLINEAGE -->
           <div class="inspector-section">
             <h3>
-              <span>&#129517; Provenance, Discovery &amp; OpenLineage</span>
+              <span>Provenance, Discovery &amp; OpenLineage</span>
               <span style="font-size: 10.5px; color: var(--muted);">Group 3</span>
             </h3>
             <div class="kv-row"><div class="kv-label">Attested By Engine</div><div class="kv-val"><code id="inspAttestedBy">-</code></div></div>
@@ -911,7 +970,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <!-- GROUP 7: LIFECYCLE, VALIDITY & DSSE SIGNATURE -->
           <div class="inspector-section">
             <h3>
-              <span>&#9201; Lifecycle, Validity &amp; Ed25519 DSSE Signature</span>
+              <span>Lifecycle, Validity &amp; Ed25519 DSSE Signature</span>
               <span style="font-size: 10.5px; color: var(--muted);">Group 7</span>
             </h3>
             <div class="kv-row"><div class="kv-label">Lifecycle Status</div><div id="inspLifeStatus" class="kv-val">-</div></div>
@@ -919,16 +978,16 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             <div class="kv-row"><div class="kv-label">Expires At &amp; TTL</div><div class="kv-val"><code id="inspExpiresAt">-</code></div></div>
             <div class="kv-row"><div class="kv-label">Previous Record ID</div><div class="kv-val"><code id="inspPrevRecId">-</code></div></div>
             <div class="kv-row"><div class="kv-label">Active Snapshot Status</div><div id="inspSnapStatus" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">DSSE Signing Key ID</div><div class="kv-val"><code id="inspDsseKeyId" style="color: #a78bfa;">-</code></div></div>
+            <div class="kv-row"><div class="kv-label">DSSE Signing Key ID</div><div class="kv-val"><code id="inspDsseKeyId" style="color: var(--text);">-</code></div></div>
           </div>
         </div>
 
         <!-- EXPANDABLE CHUNK HASHES & RAW IN-TOTO / DSSE ENVELOPE JSON -->
-        <details style="background: #090d16; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px;">
-          <summary style="cursor: pointer; font-size: 12.5px; font-weight: 700; color: #93c5fd;">
-            &#128196; View Raw In-Toto v1 Attestation Statement, DSSE Signature Envelope &amp; Canonical Chunk Hashes JSON
+        <details style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px;">
+          <summary style="cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--link);">
+            View Raw In-Toto v1 Attestation Statement, DSSE Signature Envelope &amp; Canonical Chunk Hashes JSON
           </summary>
-          <pre id="inspRawJson" style="margin-top: 10px; max-height: 240px; overflow-y: auto; font-size: 11.5px; color: #cbd5e1;">-</pre>
+          <pre id="inspRawJson" style="margin-top: 10px; max-height: 240px; overflow-y: auto; font-size: 11.5px; color: var(--text);">-</pre>
         </details>
       </div>
     </div>
@@ -1053,9 +1112,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           const btn = document.createElement('button');
           btn.className = 'btn btn-dark';
           btn.style.fontSize = '12px';
-          btn.style.padding = '6px 11px';
-          btn.style.border = '1px solid #0284c7';
-          btn.textContent = `☁️ ${s.provider}: ${s.uri}`;
+          btn.style.padding = '5px 10px';
+          btn.textContent = `${s.provider}: ${s.uri}`;
           btn.onclick = async () => {
             await pointAtEnterpriseStore(s.uri, s.label);
           };
@@ -1070,7 +1128,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       if (!exists) {
         const opt = document.createElement('option');
         opt.value = uri;
-        opt.textContent = labelText || `☁️ ${uri}`;
+        opt.textContent = labelText || uri;
         sel.insertBefore(opt, sel.firstChild);
       }
       sel.value = uri;
@@ -1100,7 +1158,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           statusEl.textContent = 'Error: ' + (data.detail || resp.status);
           return;
         }
-        statusEl.textContent = `✔ Registered & activated ${data.store.uri}`;
+        statusEl.textContent = `Registered & activated ${data.store.uri}`;
         await loadEnterpriseStoresPills();
         await pointAtEnterpriseStore(data.store.uri, data.store.label);
       } catch (e) {
@@ -1129,7 +1187,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           return;
         }
         const ev = data.event;
-        st.textContent = `✔ ${ev.action}: ${ev.locator} (Tier: ${ev.tier})`;
+        st.textContent = `${ev.action}: ${ev.locator} (Tier: ${ev.tier})`;
         await pointAtEnterpriseStore(curStore);
       } catch (e) {
         st.textContent = 'Error: ' + e;
@@ -1182,7 +1240,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       if (!exists) {
         const opt = document.createElement('option');
         opt.value = subVal;
-        opt.textContent = '📁 ' + subVal;
+        opt.textContent = subVal;
         mainSel.insertBefore(opt, mainSel.firstChild);
       }
       mainSel.value = subVal;
@@ -1208,14 +1266,14 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         if (data.parent_path) {
           const upOpt = document.createElement('option');
           upOpt.value = data.parent_path;
-          upOpt.textContent = `⬆ Up to Parent (${data.parent_path})`;
+          upOpt.textContent = `Up to Parent (${data.parent_path})`;
           subSel.appendChild(upOpt);
         }
 
         (data.subdirectories || []).forEach(sub => {
           const opt = document.createElement('option');
           opt.value = sub.path;
-          opt.textContent = `📁 ${sub.name} (${sub.path})`;
+          opt.textContent = `${sub.name} (${sub.path})`;
           subSel.appendChild(opt);
         });
       } catch (e) {}
@@ -1254,7 +1312,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         (data.subdirectories || []).forEach(sub => {
           const btn = document.createElement('span');
           btn.className = 'folder-item';
-          btn.textContent = '📁 ' + sub.name;
+          btn.textContent = sub.name;
           btn.onclick = () => browseTo(sub.path);
           subDiv.appendChild(btn);
         });
@@ -1283,7 +1341,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         (data.folders || []).forEach(f => {
           const opt = document.createElement('option');
           opt.value = f.path;
-          opt.textContent = f.label;
+          opt.textContent = String(f.label || f.path).replace(/^[^\w\[A-Za-z0-9]+/, '');
           sel.appendChild(opt);
         });
         if (sel.value) {
@@ -1301,7 +1359,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const btn = document.getElementById('runAttestBtn');
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ Running Attestation on Directory...';
+        btn.textContent = 'Running Attestation on Directory...';
       }
       document.getElementById('attestStatusText').textContent = 'Scanning & signing files...';
       document.getElementById('attestEnglishBanner').innerHTML = '<strong>Scanning &amp; signing files in directory...</strong>';
@@ -1334,7 +1392,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           return;
         }
         const stamp = new Date().toLocaleTimeString();
-        document.getElementById('attestStatusText').textContent = `✔ Attested ${data.attested_active_count} of ${data.total_files_found} file(s) at ${stamp}`;
+        document.getElementById('attestStatusText').textContent = `Attested ${data.attested_active_count} of ${data.total_files_found} file(s) at ${stamp}`;
         document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${stamp}):</strong> ${data.english_summary}`;
         document.getElementById('attTotal').textContent = data.total_files_found;
         document.getElementById('attActive').textContent = data.attested_active_count;
@@ -1349,8 +1407,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           const tr = document.createElement('tr');
           const safeLoc = String(f.locator || '').replace(/'/g, "\\'");
           const ownerShort = f.owner || 'fileshare-owners@example.org';
-          tr.innerHTML = `<td><a class="file-link" title="Click to inspect all 32 classification, ownership, policy & DSSE fields" onclick="openFileInspector('${safeLoc}')">&#128269; ${f.file_name}</a></td>
-            <td><code style="color:#93c5fd;">${ownerShort}</code></td>
+          tr.innerHTML = `<td><a class="file-link" title="Click to inspect all 32 classification, ownership, policy & DSSE fields" onclick="openFileInspector('${safeLoc}')">${f.file_name}</a></td>
+            <td><code style="color:var(--muted);">${ownerShort}</code></td>
             <td><code>${f.object_type}</code></td>
             <td><span class="badge badge-${f.tier}">${f.tier}</span></td>
             <td><code>${f.ai_eligibility} / ${f.egress_class}</code></td>
@@ -1358,7 +1416,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `✔ Attested (${data.attested_active_count}/${data.total_files_found}) — 1. Run Attestation on Directory`;
+          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found}) — 1. Run Attestation on Directory`;
         }
         await prevalidateSelectedDirectory();
       } catch (err) {
@@ -1436,7 +1494,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         const verdictBadge = f.verdict.startsWith('OBSERVED') ? 'badge-Confidential' : (f.passed ? 'badge-PASS' : 'badge-FAIL');
         const tierBadge = f.tier && f.tier !== 'NONE' ? `badge-${f.tier}` : 'badge-FAIL';
         const safeLoc = String(f.locator || '').replace(/'/g, "\\'");
-        tr.innerHTML = `<td><a class="file-link" title="Click to inspect full classification, ownership & Prevalidator verdict" onclick="openFileInspector('${safeLoc}')">&#128269; ${f.file_name}</a></td>
+        tr.innerHTML = `<td><a class="file-link" title="Click to inspect full classification, ownership & Prevalidator verdict" onclick="openFileInspector('${safeLoc}')">${f.file_name}</a></td>
           <td><code>${f.attestation_state}</code></td>
           <td><span class="badge ${tierBadge}">${f.tier || 'UNATTESTED'}</span></td>
           <td><span class="badge ${verdictBadge}">${f.verdict}</span></td>
@@ -1482,13 +1540,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const modeBtn = document.getElementById('toggleModeBtn');
       if (modeBtn) {
         if (currentMode === 'enforce') {
-          modeBtn.style.background = '#059669';
-          modeBtn.style.color = '#ffffff';
-          modeBtn.innerHTML = '&#128737; Mode: ENFORCE (Click &rarr; Observe)';
+          modeBtn.className = 'btn';
+          modeBtn.textContent = 'Mode: ENFORCE (Switch to Observe)';
         } else {
-          modeBtn.style.background = '#d97706';
-          modeBtn.style.color = '#ffffff';
-          modeBtn.innerHTML = '&#128065; Mode: OBSERVE (Click &rarr; Enforce)';
+          modeBtn.className = 'btn btn-amber';
+          modeBtn.textContent = 'Mode: OBSERVE (Switch to Enforce)';
         }
       }
 
@@ -1504,7 +1560,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           }
           const tr = document.createElement('tr');
           const safeLoc = String(e.locator || '').replace(/'/g, "\\'");
-          tr.innerHTML = `<td><a class="file-link" title="Click to inspect full attestation statement & ownership" onclick="openFileInspector('${safeLoc}')">&#128269; <code>${e.locator}</code></a></td>
+          tr.innerHTML = `<td><a class="file-link" title="Click to inspect full attestation statement & ownership" onclick="openFileInspector('${safeLoc}')"><code>${e.locator}</code></a></td>
             <td><span class="badge badge-${e.tier}">${e.tier}</span></td>
             <td>${e.minimum_clearance}</td>
             <td><code>${e.egress_class}</code></td>
@@ -1524,7 +1580,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         tr.innerHTML = `<td><code>${a.timestamp.slice(11, 19)}</code></td>
           <td>${a.mode}</td>
           <td><strong>${a.decision}</strong></td>
-          <td><code style="color:#34d399; font-weight:700;">${latMs}${latUs}</code></td>
+          <td><code style="color:var(--accent); font-weight:600;">${latMs}${latUs}</code></td>
           <td><code>${(a.reason_codes || []).join(', ') || 'NONE'}</code></td>
           <td>${a.caller_clearance} / <code>${a.target_egress}</code></td>`;
         atbody.appendChild(tr);
@@ -1545,7 +1601,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
       const headerPill = document.getElementById('headerLatencyPill');
       if (headerPill) {
-        headerPill.innerHTML = `&#9201; Gate: ${lastMs.toFixed(3)} ms (P95: ${Number(lat.p95_ms || 0).toFixed(2)} ms)`;
+        headerPill.textContent = `Gate: ${lastMs.toFixed(3)} ms (P95: ${Number(lat.p95_ms || 0).toFixed(2)} ms)`;
       }
 
       const slaBadge = document.getElementById('latSlaBadge');
@@ -1570,10 +1626,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         const maxVal = Math.max(1.0, ...samples);
         samples.forEach((val, idx) => {
           const pctHeight = Math.max(14, Math.min(100, Math.round((val / maxVal) * 100)));
-          const color = val <= 1.0 ? '#10b981' : (val <= 5.0 ? '#f59e0b' : '#ef4444');
+          const color = val <= 1.0 ? '#1E293B' : (val <= 5.0 ? '#B45309' : '#B91C1C');
           const bar = document.createElement('div');
           bar.title = `Eval #${idx + 1}: ${val.toFixed(3)} ms (${(val * 1000).toFixed(1)} µs)`;
-          bar.style.cssText = `flex:1; max-width:22px; height:${pctHeight}%; background:${color}; border-radius:3px 3px 0 0; position:relative; cursor:pointer;`;
+          bar.style.cssText = `flex:1; max-width:22px; height:${pctHeight}%; background:${color}; border-radius:2px 2px 0 0; position:relative; cursor:pointer;`;
           spark.appendChild(bar);
         });
       }
@@ -1583,7 +1639,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const btn = document.getElementById('benchBtn');
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ Benchmarking 100 Evaluations...';
+        btn.textContent = 'Benchmarking 100 Evaluations...';
       }
       try {
         const resp = await fetch('/v1/admin/latency-benchmark', {
@@ -1597,7 +1653,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           await refreshState();
         }
         if (btn && data.benchmark_wall_ms !== undefined) {
-          btn.textContent = `✔ 100 Evals in ${Number(data.benchmark_wall_ms).toFixed(2)} ms (${Number(data.avg_eval_us).toFixed(1)} µs/eval)`;
+          btn.textContent = `100 Evals in ${Number(data.benchmark_wall_ms).toFixed(2)} ms (${Number(data.avg_eval_us).toFixed(1)} µs/eval)`;
         }
       } finally {
         if (btn) btn.disabled = false;
@@ -1632,12 +1688,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           const auditResp = await (await fetch('/v1/admin/audit-log', { headers: { 'X-POD-Admin-Key': ADMIN_KEY } })).json();
           const lastAudit = (auditResp.entries || []).slice(-1)[0];
           const reasons = lastAudit && lastAudit.reason_codes ? lastAudit.reason_codes.join(', ') : 'POLICY_DENIED';
-          document.getElementById('statusSpan').innerHTML = `<span style="color:#f87171;">HTTP 403 — Blocked (${reasons})</span>`;
+          document.getElementById('statusSpan').innerHTML = `<span style="color:var(--danger);">HTTP 403 — Blocked (${reasons})</span>`;
         } catch (e) {
           document.getElementById('statusSpan').textContent = `HTTP ${resp.status}`;
         }
       } else {
-        document.getElementById('statusSpan').innerHTML = `<span style="color:#34d399;">HTTP ${resp.status} OK</span>`;
+        document.getElementById('statusSpan').innerHTML = `<span style="color:var(--accent);">HTTP ${resp.status} OK</span>`;
       }
       document.getElementById('responseBox').textContent = JSON.stringify(data, null, 2);
     }
@@ -1715,7 +1771,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         api_key: document.getElementById('llmApiKey').value.trim()
       };
       const statusEl = document.getElementById('llmConfigStatus');
-      statusEl.style.color = '#93c5fd';
+      statusEl.style.color = 'var(--muted)';
       statusEl.textContent = 'Saving LLM provider configuration...';
       const resp = await fetch('/v1/admin/llm-config', {
         method: 'POST',
@@ -1724,12 +1780,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       });
       const data = await resp.json();
       if (!resp.ok) {
-        statusEl.style.color = '#f87171';
+        statusEl.style.color = 'var(--danger)';
         statusEl.textContent = 'Error saving config: ' + (data.detail || resp.status);
         return;
       }
-      statusEl.style.color = '#34d399';
-      statusEl.textContent = `✔ Saved & Activated: ${data.provider_name} (${data.base_url}) — Model '${data.default_model}' mapped to egress '${data.egress_class}'`;
+      statusEl.style.color = 'var(--accent)';
+      statusEl.textContent = `Saved & Activated: ${data.provider_name} (${data.base_url}) — Model '${data.default_model}' mapped to egress '${data.egress_class}'`;
       document.getElementById('activeLlmBadge').textContent = `LLM: ${data.provider_name} (${data.default_model} • ${data.egress_class})`;
       ensureModelInDropdowns(data.default_model, data.egress_class);
       if (data.protocol === 'anthropic') {
@@ -1749,7 +1805,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         api_key: document.getElementById('llmApiKey').value.trim()
       };
       const statusEl = document.getElementById('llmConfigStatus');
-      statusEl.style.color = '#fbbf24';
+      statusEl.style.color = 'var(--warn)';
       statusEl.textContent = `Testing connection to ${payload.base_url}...`;
       const resp = await fetch('/v1/admin/llm-config/test', {
         method: 'POST',
@@ -1758,15 +1814,15 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       });
       const data = await resp.json();
       if (!resp.ok || !data.reachable) {
-        statusEl.style.color = '#f87171';
-        statusEl.textContent = `✖ Connection failed: ${data.error || data.detail || 'Unreachable'}`;
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = `Connection failed: ${data.error || data.detail || 'Unreachable'}`;
         return;
       }
-      statusEl.style.color = '#34d399';
+      statusEl.style.color = 'var(--accent)';
       const modelsStr = (data.discovered_models && data.discovered_models.length)
         ? ` | Discovered models: ${data.discovered_models.slice(0, 6).join(', ')}`
         : '';
-      statusEl.textContent = `✔ Connected to ${data.base_url} in ${data.latency_ms} ms (HTTP ${data.status_code})${modelsStr}`;
+      statusEl.textContent = `Connected to ${data.base_url} in ${data.latency_ms} ms (HTTP ${data.status_code})${modelsStr}`;
       (data.discovered_models || []).forEach(m => ensureModelInDropdowns(m, payload.egress_class));
     }
 
@@ -1790,23 +1846,23 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       box.innerHTML = '';
       targets.forEach((t, idx) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:5px 6px; border-bottom:1px solid #1e293b; font-size:12px;';
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:5px 6px; border-bottom:1px solid var(--border); font-size:12px;';
         const left = document.createElement('label');
-        left.style.cssText = 'display:flex; align-items:center; gap:8px; cursor:pointer; flex:1;';
+        left.style.cssText = 'display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; color:var(--text);';
         const chk = document.createElement('input');
         chk.type = 'checkbox';
         chk.className = 'crawler-target-chk';
         chk.dataset.uri = t.path_or_uri;
         chk.checked = Boolean(t.enabled);
         const span = document.createElement('span');
-        span.textContent = t.label || t.path_or_uri;
+        span.textContent = String(t.label || t.path_or_uri).replace(/^[^\w\[A-Za-z0-9]+/, '');
         left.appendChild(chk);
         left.appendChild(span);
 
         const focusBtn = document.createElement('button');
         focusBtn.className = 'btn btn-dark';
         focusBtn.style.cssText = 'padding:3px 8px; font-size:11px;';
-        focusBtn.textContent = '🎯 Sweep Only This';
+        focusBtn.textContent = 'Sweep Only This';
         focusBtn.onclick = async () => {
           await controlContinuousCrawler({ focus_only_target: t.path_or_uri });
           renderCrawlerTargetCheckboxes((await (await fetch('/v1/admin/crawler/status', { headers: { 'X-POD-Admin-Key': ADMIN_KEY } })).json()).targets);
@@ -1889,11 +1945,11 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       }
       if (btn) {
         if (crawlerRunning) {
-          btn.innerHTML = '&#9208; Pause Continuous Scanner';
+          btn.textContent = 'Pause Continuous Scanner';
           btn.className = 'btn btn-amber';
         } else {
-          btn.innerHTML = '&#9654; Start Enterprise Scan';
-          btn.className = 'btn btn-green';
+          btn.textContent = 'Start Enterprise Scan';
+          btn.className = 'btn';
         }
       }
       if (stopBtn) {
@@ -1917,18 +1973,18 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         streamEl.innerHTML = data.ticker_feed.map(item => {
           const safeLoc = String(item.locator || '').replace(/'/g, "\\'");
           const clickablePath = item.locator
-            ? `<a class="file-link" style="padding:0 5px;font-size:11.5px;" onclick="openFileInspector('${safeLoc}')">&#128269; ${item.path}</a>`
+            ? `<a class="file-link" style="padding:0 5px;font-size:11.5px;" onclick="openFileInspector('${safeLoc}')">${item.path}</a>`
             : `<span>${item.path}</span>`;
           if (item.kind === 'delta') {
-            return `<div style="color:#34d399;">[${item.timestamp}] ⚡ <strong>[ATTESTING DELTA]</strong> ${clickablePath} &rarr; <span class="badge badge-${item.tier || 'Internal'}" style="padding:1px 6px;font-size:10px;">${item.tier || ''}</span> <span style="color:#94a3b8;">(${item.detail}${item.sha256 ? ' • sha256: ' + item.sha256 : ''})</span></div>`;
+            return `<div style="color:var(--accent);">[${item.timestamp}] <strong>[ATTESTING DELTA]</strong> ${clickablePath} &rarr; <span class="badge badge-${item.tier || 'Internal'}" style="padding:1px 6px;font-size:10px;">${item.tier || ''}</span> <span style="color:var(--muted);">(${item.detail}${item.sha256 ? ' • sha256: ' + item.sha256 : ''})</span></div>`;
           } else if (item.kind === 'snapshot') {
-            return `<div style="color:#a78bfa; font-weight:700;">[${item.timestamp}] 📦 [ROLLING MICRO-SNAPSHOT] ${item.path} — ${item.detail}</div>`;
+            return `<div style="color:var(--text); font-weight:600;">[${item.timestamp}] [ROLLING MICRO-SNAPSHOT] ${item.path} — ${item.detail}</div>`;
           } else if (item.kind === 'stop') {
-            return `<div style="color:#f87171; font-weight:700;">[${item.timestamp}] 🛑 [ENTERPRISE SCAN STOPPED] ${item.path} — ${item.detail}</div>`;
+            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [ENTERPRISE SCAN STOPPED] ${item.path} — ${item.detail}</div>`;
           } else if (item.kind === 'revoke') {
-            return `<div style="color:#f87171; font-weight:700;">[${item.timestamp}] 🚫 [REVOKED DELETED] ${clickablePath} — ${item.detail}</div>`;
+            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [REVOKED DELETED] ${clickablePath} — ${item.detail}</div>`;
           } else {
-            return `<div style="color:#64748b;">[${item.timestamp}] ⏭ [UNCHANGED SKIP] ${clickablePath} (${item.detail})</div>`;
+            return `<div style="color:var(--muted);">[${item.timestamp}] [UNCHANGED SKIP] ${clickablePath} (${item.detail})</div>`;
           }
         }).join('');
       }
@@ -2011,7 +2067,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const banner = document.getElementById('inspBanner');
       if (!isFound && (!tier || tier === 'NONE' || tier === 'UNATTESTED')) {
         banner.className = 'english-verdict has-failures';
-        banner.innerHTML = `<strong>&#9888; UNATTESTED OBJECT (Fail-Closed Default Deny):</strong> <code>${fileName}</code> exists in the target directory/store (` +
+        banner.innerHTML = `<strong>UNATTESTED OBJECT (Fail-Closed Default Deny):</strong> <code>${fileName}</code> exists in the target directory/store (` +
           `observed SHA-256: <code>${(cached.observed_sha256 || 'unhashed').slice(0, 16)}…</code>), but has <strong>NO signed attestation record</strong> in the Registry or Active Snapshot. ` +
           `The Prevalidator blocks all AI requests referencing this object until you click <strong>1. Run Attestation on Directory (Engine)</strong>.`;
       } else {
@@ -2020,7 +2076,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         const stewardVal = own.steward || cached.steward || 'data-governance-steward@contoso.com';
         const aiRuleVal = pol.ai_eligibility || rec.ai_eligibility || cached.ai_eligibility || (snapEntry && snapEntry.ai_eligibility) || 'deny';
         const egressVal = pol.egress_class || rec.egress_class || cached.egress_class || (snapEntry && snapEntry.egress_class) || 'local_only';
-        banner.innerHTML = `<strong>&#10004; Signed POD Attestation Record:</strong> <code>${fileName}</code> is owned by <strong>${ownerVal}</strong> (Steward: <strong>${stewardVal}</strong>), ` +
+        banner.innerHTML = `<strong>Signed Attestation Record:</strong> <code>${fileName}</code> is owned by <strong>${ownerVal}</strong> (Steward: <strong>${stewardVal}</strong>), ` +
           `classified as <strong>${tier}</strong> (${((Number(classif.confidence ?? rec.confidence ?? cached.confidence ?? 0.95)) * 100).toFixed(1)}% confidence via <code>${classif.classifier_engine || cached.classifier_engine || 'presidio'}</code>), ` +
           `with AI policy <code>ai_eligibility=${aiRuleVal}</code> and max egress <code>${egressVal}</code>.`;
       }
@@ -2042,16 +2098,16 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const cats = classif.sensitive_categories || cached.sensitive_categories || [];
       const catsBox = document.getElementById('inspSensitiveCats');
       if (!isFound && (!tier || tier === 'NONE' || tier === 'UNATTESTED')) {
-        catsBox.innerHTML = `<span style="color:#f87171;">&#9888; File has not been scanned by the Attestation Engine yet.</span>`;
+        catsBox.innerHTML = `<span style="color:var(--danger);">File has not been scanned by the Attestation Engine yet.</span>`;
       } else if (!Array.isArray(cats) || cats.length === 0) {
-        catsBox.innerHTML = `<span style="color:#34d399;">&#10004; 0 Sensitive PII / PHI / PCI / Credential Entities Detected — Verified Clean (${tier})</span>`;
+        catsBox.innerHTML = `<span style="color:var(--accent);">0 Sensitive PII / PHI / PCI / Credential Entities Detected — Verified Clean (${tier})</span>`;
       } else {
         catsBox.innerHTML = cats.map(c => {
           const confStr = c.max_confidence !== undefined ? `${(Number(c.max_confidence) * 100).toFixed(0)}% conf` : '';
           const colStr = c.column_or_field ? ` • field: <code>${c.column_or_field}</code>` : '';
-          return `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 6px; border-bottom:1px solid #1e293b;">
-            <span><strong style="color:#fbbf24;">${c.category}</strong>${colStr}</span>
-            <span><span class="badge badge-Confidential" style="font-size:10px;">Count: ${c.count}</span> <code style="color:#94a3b8;">${confStr}</code></span>
+          return `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 6px; border-bottom:1px solid var(--border);">
+            <span><strong style="color:var(--text);">${c.category}</strong>${colStr}</span>
+            <span><span class="badge badge-Confidential" style="font-size:10px;">Count: ${c.count}</span> <code style="color:var(--muted);">${confStr}</code></span>
           </div>`;
         }).join('');
       }
@@ -2067,8 +2123,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       document.getElementById('inspAiRule').innerHTML = `<code>${aiElig}</code>`;
       document.getElementById('inspMinClearance').innerHTML = `<span class="badge badge-${minClear}">${minClear}</span>`;
       document.getElementById('inspEgressClass').innerHTML = `<code>${egressCls}</code>`;
-      document.getElementById('inspAllowRag').innerHTML = allowRag ? '<span style="color:#34d399;font-weight:700;">&#10004; Allowed (true)</span>' : '<span style="color:#f87171;font-weight:700;">&#10006; Blocked (false)</span>';
-      document.getElementById('inspAllowTrain').innerHTML = allowTrain ? '<span style="color:#34d399;">Allowed (true)</span>' : '<span style="color:#94a3b8;">Prohibited (false)</span>';
+      document.getElementById('inspAllowRag').innerHTML = allowRag ? '<span style="color:var(--accent);font-weight:600;">Allowed (true)</span>' : '<span style="color:var(--danger);font-weight:600;">Blocked (false)</span>';
+      document.getElementById('inspAllowTrain').innerHTML = allowTrain ? '<span style="color:var(--accent);">Allowed (true)</span>' : '<span style="color:var(--muted);">Prohibited (false)</span>';
       document.getElementById('inspRedactCats').textContent = (Array.isArray(redactList) && redactList.length > 0) ? redactList.join(', ') : 'None';
 
       // Group 4: Cryptographic Integrity & Chunks
@@ -2083,7 +2139,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       document.getElementById('inspContentSha').textContent = attSha || 'NONE (Unattested)';
       if (obsSha && attSha) {
         const match = obsSha.toLowerCase() === attSha.toLowerCase();
-        document.getElementById('inspObservedSha').innerHTML = `${obsSha} ${match ? '<span style="color:#34d399;font-weight:700;">(&#10004; Match)</span>' : '<span style="color:#ef4444;font-weight:700;">(&#10006; DRIFT!)</span>'}`;
+        document.getElementById('inspObservedSha').innerHTML = `${obsSha} ${match ? '<span style="color:var(--accent);font-weight:600;">(Match)</span>' : '<span style="color:var(--danger);font-weight:600;">(DRIFT!)</span>'}`;
       } else {
         document.getElementById('inspObservedSha').textContent = obsSha || '-';
       }
@@ -2091,7 +2147,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       document.getElementById('inspSchemaSha').textContent = schemaSha || 'N/A (Unstructured File)';
       document.getElementById('inspFpMethod').textContent = integ.fingerprint_method || cached.fingerprint_method || 'raw_bytes_sha256';
       document.getElementById('inspSizeRows').textContent = `${sizeBytes !== null && sizeBytes !== undefined ? Number(sizeBytes).toLocaleString() + ' bytes' : '-'}${rowCount !== null && rowCount !== undefined ? ' • ' + Number(rowCount).toLocaleString() + ' rows' : ''}`;
-      document.getElementById('inspChunkCount').innerHTML = `<strong style="color:#38bdf8;">${Array.isArray(chunks) ? chunks.length : 0}</strong> canonical paragraph/row SHA-256 chunk digest(s)`;
+      document.getElementById('inspChunkCount').innerHTML = `<strong style="color:var(--text);">${Array.isArray(chunks) ? chunks.length : 0}</strong> canonical paragraph/row SHA-256 chunk digest(s)`;
 
       // Group 3: Provenance
       document.getElementById('inspAttestedBy').textContent = prov.attested_by || cached.attested_by || (isFound ? 'pod-engine-v0.1' : '-');
@@ -2101,10 +2157,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       const derived = prov.derived_from || cached.derived_from || [];
       document.getElementById('inspDerivedFrom').innerHTML = (Array.isArray(derived) && derived.length > 0)
         ? derived.map(d => `<code>${d.locator || d}</code>`).join(', ')
-        : '<span style="color:#94a3b8;">Primary Source Object (0 upstream lineage dependencies)</span>';
+        : '<span style="color:var(--muted);">Primary Source Object (0 upstream lineage dependencies)</span>';
 
       // Group 7: Lifecycle & DSSE Signature
-      document.getElementById('inspLifeStatus').innerHTML = `<code>${statusStr}</code>${cached.preval_reason_detail ? ' — <span style="color:#93c5fd;">' + cached.preval_reason_detail + '</span>' : ''}`;
+      document.getElementById('inspLifeStatus').innerHTML = `<code>${statusStr}</code>${cached.preval_reason_detail ? ' — <span style="color:var(--muted);">' + cached.preval_reason_detail + '</span>' : ''}`;
       document.getElementById('inspIssuedAt').textContent = life.issued_at || rec.issued_at || cached.issued_at || '-';
       const expStr = life.expires_at || rec.expires_at || cached.expires_at || (snapEntry && snapEntry.expires_at) || '-';
       const ttlStr = life.ttl_days || cached.ttl_days ? ` (TTL: ${life.ttl_days || cached.ttl_days} days)` : '';
@@ -2113,8 +2169,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 
       const inSnap = Boolean((apiData && apiData.in_active_snapshot) || snapEntry);
       document.getElementById('inspSnapStatus').innerHTML = inSnap
-        ? `<span style="color:#34d399;font-weight:700;">&#10004; Active in In-Memory Snapshot${apiData && apiData.snapshot_sequence ? ' #' + apiData.snapshot_sequence : ''}</span>`
-        : `<span style="color:#f87171;font-weight:700;">&#10006; Not in Active Snapshot (Blocked at Gate)</span>`;
+        ? `<span style="color:var(--accent);font-weight:600;">Active in In-Memory Snapshot${apiData && apiData.snapshot_sequence ? ' #' + apiData.snapshot_sequence : ''}</span>`
+        : `<span style="color:var(--danger);font-weight:600;">Not in Active Snapshot (Blocked at Gate)</span>`;
 
       const sigEntry = (env && Array.isArray(env.signatures) && env.signatures[0]) || null;
       document.getElementById('inspDsseKeyId').textContent = sigEntry
@@ -2228,35 +2284,40 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>G1 Docket — Multi-Cloud DLP & Microsoft Purview Connector | G1163RT Security Labs</title>
+  <title>G1 Docket — Multi-Cloud DLP &amp; Microsoft Purview Connector | G1163RT Security Labs</title>
   <link rel="icon" type="image/png" href="/assets/g1-logo.png" />
   <style>
     :root {
-      --bg: #0b0f19;
-      --panel: #111827;
-      --border: #1f2937;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #3b82f6;
-      --green: #10b981;
-      --amber: #f59e0b;
-      --red: #ef4444;
+      --bg: #F8FAFC;
+      --bg-subtle: #F1F5F9;
+      --panel: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #475569;
+      --primary: #1E293B;
+      --link: #2563EB;
+      --green: #15803D;
+      --amber: #B45309;
+      --red: #B91C1C;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding: 20px 28px;
+      padding: 24px 32px;
+      line-height: 1.6;
+      text-align: left;
     }
     header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 14px;
-      margin-bottom: 18px;
+      padding-bottom: 18px;
+      margin-bottom: 0;
+      gap: 20px;
+      flex-wrap: wrap;
     }
     .brand-lockup {
       display: flex;
@@ -2264,107 +2325,116 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       gap: 14px;
     }
     .brand-logo {
-      width: 52px;
-      height: 52px;
-      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
       object-fit: contain;
-      background: #ffffff;
-      padding: 3px;
-      box-shadow: 0 0 16px rgba(59, 130, 246, 0.35);
-      border: 1px solid #374151;
+      background: #FFFFFF;
+      padding: 2px;
+      border: 1px solid var(--border);
     }
-    h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
-    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); }
+    h2, h3 { margin: 0 0 8px 0; font-size: 15px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); text-align: left; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; max-width: 65ch; line-height: 1.6; }
     .lab-pill {
       display: inline-block;
-      background: rgba(59, 130, 246, 0.14);
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      color: #93c5fd;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--muted);
       font-size: 11px;
       font-weight: 600;
       padding: 2px 8px;
-      border-radius: 999px;
+      border-radius: 4px;
       margin-left: 8px;
       vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
     .badge {
-      background: rgba(16, 185, 129, 0.15);
+      background: #F0FDF4;
       color: var(--green);
-      border: 1px solid rgba(16, 185, 129, 0.4);
-      padding: 6px 12px;
-      border-radius: 999px;
+      border: 1px solid #BBF7D0;
+      padding: 4px 10px;
+      border-radius: 4px;
       font-size: 12px;
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
+    .section-band { border-bottom: 1px solid var(--border); padding: 24px 0; }
+    .section-band-subtle { background: var(--bg-subtle); border-bottom: 1px solid var(--border); margin: 0 -32px; padding: 24px 32px; }
+    .asymmetric-layout { display: grid; grid-template-columns: 280px 1fr; gap: 28px; align-items: start; }
+    .section-aside { position: sticky; top: 20px; text-align: left; }
+    .section-aside .eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+    .section-aside h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin-bottom: 8px; line-height: 1.35; }
+    .section-aside p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 65ch; margin: 0 0 12px 0; }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 6px;
       padding: 18px;
-      margin-bottom: 18px;
+      margin-bottom: 0;
     }
-    h2 { margin: 0 0 10px 0; font-size: 15px; font-weight: 600; color: #f3f4f6; }
-    label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 8px 0 4px; }
     select, input {
       width: 100%;
-      background: #030712;
+      background: #FFFFFF;
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-radius: 4px;
+      padding: 7px 10px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 12px;
+      font-variant-numeric: tabular-nums;
     }
     button {
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 9px 14px;
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      padding: 8px 14px;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 12.5px;
       cursor: pointer;
     }
-    button:hover { opacity: 0.92; }
+    button:hover { background: #334155; border-color: #334155; }
     .btn-secondary {
-      background: #1f2937;
-      border: 1px solid #374151;
-      color: #d1d5db;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: var(--text);
     }
-    .btn-green {
-      background: #059669;
-      color: #ffffff;
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      border-color: #CBD5E1;
     }
-    .btn-purple {
-      background: #7c3aed;
-      color: #ffffff;
+    .btn-green, .btn-purple, .btn-amber {
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
     }
-    .btn-amber {
-      background: #d97706;
-      color: #ffffff;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
-    th { color: var(--muted); font-weight: 600; }
-    .pill { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; display: inline-block; }
-    .tier-Public { background: rgba(16,185,129,0.2); color: #34d399; }
-    .tier-Internal { background: rgba(59,130,246,0.2); color: #60a5fa; }
-    .tier-Confidential { background: rgba(245,158,11,0.2); color: #fbbf24; }
-    .tier-Restricted { background: rgba(239,68,68,0.2); color: #f87171; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; background: var(--bg); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+    .pill { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; display: inline-block; font-variant-numeric: tabular-nums; }
+    .tier-Public { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .tier-Internal { background: #F1F5F9; color: #1E293B; border: 1px solid #CBD5E1; }
+    .tier-Confidential { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .tier-Restricted { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
     .stage-num {
       display: inline-block;
-      background: #1e3a8a;
-      color: #93c5fd;
-      border: 1px solid #3b82f6;
+      background: var(--bg-subtle);
+      color: var(--text);
+      border: 1px solid var(--border);
       padding: 2px 8px;
-      border-radius: 6px;
+      border-radius: 4px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 600;
       margin-right: 6px;
+      font-variant-numeric: tabular-nums;
     }
     .cloud-checks {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
       margin-top: 6px;
     }
@@ -2373,21 +2443,34 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       align-items: center;
       gap: 6px;
       margin: 0;
-      background: #030712;
-      border: 1px solid #1f2937;
+      background: var(--bg);
+      border: 1px solid var(--border);
       padding: 6px 10px;
-      border-radius: 6px;
-      color: #e5e7eb;
+      border-radius: 4px;
+      color: var(--text);
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
     }
     .cloud-checks input[type="checkbox"] {
       width: auto;
       margin: 0;
     }
+    .status-banner {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
     footer {
       margin-top: 28px;
-      padding: 16px 12px;
+      padding: 16px 0;
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
@@ -2401,16 +2484,21 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       display: flex;
       align-items: center;
       gap: 10px;
-      color: #e5e7eb;
+      color: var(--text);
       font-weight: 600;
     }
     .footer-logo {
-      width: 26px;
-      height: 26px;
-      border-radius: 6px;
-      background: #ffffff;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
       padding: 2px;
       object-fit: contain;
+    }
+    @media (max-width: 1100px) {
+      .asymmetric-layout { grid-template-columns: 1fr; }
+      .section-aside { position: static; }
     }
   </style>
 </head>
@@ -2424,315 +2512,196 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       </div>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <a href="/" style="background:#1e293b; color:#93c5fd; border:1px solid #3b82f6; padding:7px 13px; border-radius:8px; font-size:12px; font-weight:600; text-decoration:none;">⬅ Back to Main G1 Docket Console</a>
-      <div class="badge" id="statusBadge">● <code>evaluate_findings()</code> Seam Ready</div>
+      <a href="/" style="background:#FFFFFF; color:var(--text); border:1px solid var(--border); padding:7px 13px; border-radius:4px; font-size:12.5px; font-weight:600; text-decoration:none;">Back to Main G1 Docket Console</a>
+      <div class="badge" id="statusBadge"><code>evaluate_findings()</code> Seam Ready</div>
     </div>
   </header>
 
-  <!-- Connector Configuration Card -->
-  <div class="card" style="border-color:#3b82f6; background:linear-gradient(180deg, rgba(59,130,246,0.08), rgba(17,24,39,0.96));">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <div>
-        <h2 style="margin:0;">☁ Cloud DLP &amp; Microsoft Purview Connection Profile</h2>
-        <div class="sub">Configure how G1 Docket connects to Microsoft Purview (Azure) or other cloud DLP catalogs. All findings funnel into <code>evaluate_findings()</code> with provenance metadata.</div>
-      </div>
-      <button onclick="saveDlpConfig()">💾 Save Connector Config</button>
-    </div>
+  <!-- SECTION 01: CONNECTOR CONFIGURATION PROFILE -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">01 / Connection Profile</div>
+        <h2>Cloud DLP &amp; Purview Configuration</h2>
+        <p>
+          Configure how G1 Docket authenticates to Microsoft Purview or multi-cloud DLP catalogs. All findings funnel into <code>evaluate_findings()</code> with full provenance metadata.
+        </p>
+        <button onclick="saveDlpConfig()">Save Connector Config</button>
+        <div id="configSaveMsg" style="margin-top:8px; font-size:12px; color:var(--green); font-family:ui-monospace, monospace;"></div>
+      </aside>
 
-    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:10px;">
-      <div>
-        <label>Primary DLP / Governance Provider</label>
-        <select id="dlpProvider">
-          <option value="Microsoft Purview (Azure Multi-Cloud Data Map)">Microsoft Purview (Azure Multi-Cloud Data Map)</option>
-          <option value="AWS Macie + Purview Multi-Cloud">AWS Macie + Purview Multi-Cloud</option>
-          <option value="Google Cloud Sensitive Data Protection (SDP)">Google Cloud Sensitive Data Protection (SDP)</option>
-          <option value="OpenMetadata + Purview Hybrid">OpenMetadata + Purview Hybrid</option>
-        </select>
-      </div>
-      <div>
-        <label>Authentication Mode (Zero Stored Credentials Default)</label>
-        <select id="dlpAuthMode">
-          <option value="azure_managed_identity">Azure Managed Identity (DefaultAzureCredential — No Stored Secrets)</option>
-          <option value="entra_workload_identity">Entra ID Workload Identity Federation</option>
-          <option value="aws_iam_role">AWS IAM Role Assumption (Multi-Cloud S3 Connector)</option>
-          <option value="gcp_workload_identity">GCP Workload Identity Pool</option>
-        </select>
-      </div>
-      <div>
-        <label>Purview Account Name</label>
-        <input id="purviewAccount" type="text" value="g1-enterprise-purview" />
-      </div>
-      <div>
-        <label>Purview / Cloud Catalog Endpoint URL</label>
-        <input id="purviewEndpoint" type="text" value="https://g1-enterprise-purview.purview.azure.com" />
-      </div>
-    </div>
-
-    <label style="margin-top:12px;">Multi-Cloud Estates Scanned by Purview &amp; Consumed by G1 Docket (Stage 2):</label>
-    <div class="cloud-checks">
-      <label><input type="checkbox" class="cloud-src" value="SharePoint Online" checked /> SharePoint Online</label>
-      <label><input type="checkbox" class="cloud-src" value="OneDrive" checked /> OneDrive for Business</label>
-      <label><input type="checkbox" class="cloud-src" value="Azure SQL" checked /> Azure SQL Database</label>
-      <label><input type="checkbox" class="cloud-src" value="Azure Blob" checked /> Azure Blob Storage</label>
-      <label><input type="checkbox" class="cloud-src" value="AWS S3" checked /> AWS S3 (Multi-Cloud)</label>
-      <label><input type="checkbox" class="cloud-src" value="GCP BigQuery" checked /> GCP BigQuery (Multi-Cloud)</label>
-    </div>
-
-    <div id="configSaveMsg" style="margin-top:8px; font-size:12px; color:#34d399; font-family:monospace;"></div>
-  </div>
-
-  <!-- STAGE 1 CARD -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
-      <div>
-        <h2><span class="stage-num">STAGE 1</span> Read the Labels Off the Files (Lightest — Zero API Calls, Zero Tenant Integration)</h2>
-        <div class="sub">
-          Purview's sensitivity labels (<code>MSIP_Label_&lt;GUID&gt;_Name</code>) are stamped directly into Office documents' own metadata (<code>docProps/custom.xml</code>).
-          When G1 Docket opens a labeled <code>.docx</code> or <code>.xlsx</code>, it reads the label directly and maps it 1:1 to the attestation tier ladder
-          (<strong>Public → Public</strong>, <strong>Internal → Internal</strong>, <strong>Confidential → Confidential</strong>, <strong>Highly Confidential / Restricted → Restricted</strong>).
-        </div>
-      </div>
-    </div>
-
-    <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.3fr; gap:12px; align-items:end; margin-top:12px;">
-      <div>
-        <label>Select PC Directory to Inspect for Embedded Purview Sensitivity Labels</label>
-        <select id="stage1DirSelect"></select>
-      </div>
-      <div>
-        <button class="btn-green" style="width:100%;" onclick="runStage1Inspect()">1. Scan Files for Embedded Purview Labels</button>
-      </div>
-      <div style="display:flex; gap:6px;">
-        <select id="stampLabelSelect" style="width:55%;">
-          <option value="Highly Confidential">Highly Confidential (→ Restricted)</option>
-          <option value="Confidential">Confidential (→ Confidential)</option>
-          <option value="Internal">Internal (→ Internal)</option>
-          <option value="Public">Public (→ Public)</option>
-        </select>
-        <button class="btn-secondary" style="width:45%;" onclick="stampNewPurviewDocx()">+ Stamp .docx</button>
-      </div>
-    </div>
-
-    <div id="stage1Banner" style="margin-top:12px; padding:11px 14px; border-radius:8px; background:#030712; border:1px solid #1f2937; font-size:13px; font-weight:600; color:#93c5fd;">
-      Loading Stage 1 embedded label scan...
-    </div>
-
-    <div style="max-height:230px; overflow:auto; margin-top:8px;">
-      <table>
-        <thead>
-          <tr>
-            <th>File Name</th>
-            <th>Purview Label Found?</th>
-            <th>Embedded <code>MSIP_Label</code> Name</th>
-            <th>Label GUID &amp; Method</th>
-            <th>Metadata Part</th>
-            <th>1:1 G1 Docket Tier Mapping</th>
-          </tr>
-        </thead>
-        <tbody id="stage1TableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- STAGE 2 CARD -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-      <div>
-        <h2><span class="stage-num">STAGE 2</span> Pull Purview's Multi-Cloud Catalog (The Real Integration via <code>evaluate_findings()</code>)</h2>
-        <div class="sub">
-          Authenticates with Azure Managed Identity (zero stored credentials) and pulls classifications per asset across SharePoint, OneDrive, Azure SQL, Azure Blob, AWS S3, and GCP BigQuery.
-          Each classification becomes a <code>CategoryFinding</code> fed into <code>PresidioClassifier.evaluate_findings()</code>, and G1 Docket issues a DSSE-signed attestation record on top.
-        </div>
-      </div>
-      <button class="btn-purple" onclick="runStage2PullCatalog()">2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records</button>
-    </div>
-
-    <div id="stage2Banner" style="margin-top:12px; padding:11px 14px; border-radius:8px; background:#030712; border:1px solid #1f2937; font-size:13px; font-weight:600; color:#c4b5fd;">
-      Click "2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records" to consume Purview's multi-cloud crawl and mint DSSE-signed records.
-    </div>
-
-    <div style="max-height:280px; overflow:auto; margin-top:8px;">
-      <table>
-        <thead>
-          <tr>
-            <th>Cloud Estate</th>
-            <th>Asset Name &amp; Locator</th>
-            <th>Purview Label</th>
-            <th>Purview Classifications (Fed to <code>evaluate_findings</code>)</th>
-            <th>G1 Docket Signed Tier</th>
-            <th>Signed Record ID</th>
-            <th>Expires At</th>
-            <th>Write-Back State</th>
-          </tr>
-        </thead>
-        <tbody id="stage2TableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- STAGE 3 CARD -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-      <div>
-        <h2><span class="stage-num">STAGE 3</span> Catalog Write-Back (Heaviest, Optional — Annotate G1 Docket State Back into Purview)</h2>
-        <div class="sub">
-          Writes G1 Docket's cryptographic attestation state (<code>G1DocketAttestation.record_id</code>, <code>docket_tier</code>, <code>content_sha256</code>, <code>expires_at</code>, and <code>dsse_key_id</code>)
-          back into Purview's Data Map catalog (<code>POST /datamap/api/atlas/v2/entity/guid/{guid}/businessmetadata</code>) so the governance team sees attestation state in the tool they already use.
-        </div>
-      </div>
-      <button class="btn-amber" onclick="runStage3WriteBack()">3. Write Back Signed Tier &amp; Expiry to Purview Catalog</button>
-    </div>
-
-    <div id="stage3Banner" style="margin-top:12px; padding:11px 14px; border-radius:8px; background:#030712; border:1px solid #1f2937; font-size:13px; font-weight:600; color:#fcd34d;">
-      Stage 3 is staged last so you can pull &amp; attest first (Stage 2) without requiring Purview Data Curator write-back permissions upfront.
-    </div>
-
-    <div style="max-height:240px; overflow:auto; margin-top:8px;">
-      <table>
-        <thead>
-          <tr>
-            <th>Purview Entity GUID</th>
-            <th>Cloud Estate</th>
-            <th>Asset Locator</th>
-            <th>Purview Atlas API Endpoint</th>
-            <th>Annotated G1 Docket Tier</th>
-            <th>Annotated Record ID</th>
-            <th>Annotated Expiry</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="stage3TableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- FILE / OBJECT CLASSIFICATION, OWNERSHIP & ATTESTATION INSPECTOR MODAL DRAWER -->
-  <div id="fileInspectorModal" class="inspector-overlay" onclick="if(event.target === this) closeFileInspector()">
-    <div class="inspector-modal">
-      <div class="inspector-header">
-        <div style="flex: 1; min-width: 0;">
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="font-size: 20px;">&#128269;</span>
-            <span id="inspTitle" style="font-size: 18px; font-weight: 800; color: #f8fafc;">Object Attestation Inspector</span>
-            <span id="inspTierBadge" class="badge badge-Public">PUBLIC</span>
-            <span id="inspStatusBadge" class="badge badge-Internal">ISSUED</span>
-            <span id="inspPrevalBadge" class="badge badge-PASS" style="display: none;">PASS</span>
+      <div class="card">
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+          <div>
+            <label>Primary DLP / Governance Provider</label>
+            <select id="dlpProvider">
+              <option value="Microsoft Purview (Azure Multi-Cloud Data Map)">Microsoft Purview (Azure Multi-Cloud Data Map)</option>
+              <option value="AWS Macie + Purview Multi-Cloud">AWS Macie + Purview Multi-Cloud</option>
+              <option value="Google Cloud Sensitive Data Protection (SDP)">Google Cloud Sensitive Data Protection (SDP)</option>
+              <option value="OpenMetadata + Purview Hybrid">OpenMetadata + Purview Hybrid</option>
+            </select>
           </div>
-          <div style="margin-top: 6px; font-size: 12px; color: #93c5fd; font-family: ui-monospace, monospace; word-break: break-all;">
-            Canonical Locator: <strong id="inspLocator">-</strong>
+          <div>
+            <label>Authentication Mode (Zero Stored Credentials Default)</label>
+            <select id="dlpAuthMode">
+              <option value="azure_managed_identity">Azure Managed Identity (DefaultAzureCredential — No Stored Secrets)</option>
+              <option value="entra_workload_identity">Entra ID Workload Identity Federation</option>
+              <option value="aws_iam_role">AWS IAM Role Assumption (Multi-Cloud S3 Connector)</option>
+              <option value="gcp_workload_identity">GCP Workload Identity Pool</option>
+            </select>
           </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-          <button class="btn btn-green" style="padding: 6px 12px; font-size: 12px;" onclick="loadInspectedFileIntoPlayground()">&#129514; Load in Prompt Playground</button>
-          <button class="btn btn-dark" style="padding: 6px 12px; font-size: 12px;" onclick="copyInspectedJson()">&#128203; Copy Signed DSSE JSON</button>
-          <button class="btn" style="background: #dc2626; padding: 6px 12px; font-size: 12px;" onclick="closeFileInspector()">&#10005; Close</button>
-        </div>
-      </div>
-
-      <div class="inspector-body">
-        <div id="inspBanner" class="english-verdict" style="margin-bottom: 0; font-size: 13px; padding: 10px 14px;">
-          Loading full 32-field in-toto v1 Attestation Statement &amp; DSSE signature envelope...
-        </div>
-
-        <div class="inspector-grid">
-          <!-- GROUP 1 & 2: OWNERSHIP, STEWARDSHIP & ASSET IDENTITY -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#128100; Ownership, Governance &amp; Asset Identity</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Groups 1 &amp; 2</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">Accountable Owner</div><div id="inspOwner" class="kv-val" style="color: #38bdf8; font-weight: 700;">-</div></div>
-            <div class="kv-row"><div class="kv-label">Data Steward</div><div id="inspSteward" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Organizational Unit</div><div id="inspOrgUnit" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Jurisdiction</div><div id="inspJurisdiction" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Attestation Record ID</div><div class="kv-val"><code id="inspRecordId">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Object Type &amp; Env</div><div class="kv-val"><code id="inspObjTypeEnv">-</code></div></div>
+          <div>
+            <label>Purview Account Name</label>
+            <input id="purviewAccount" type="text" value="g1-enterprise-purview" />
           </div>
-
-          <!-- GROUP 5: CLASSIFICATION & DETECTED SENSITIVE ENTITIES -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#128270; Classification &amp; Sensitive Entity Findings</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Group 5</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">Classified Tier</div><div id="inspClassTier" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Confidence Score</div><div id="inspConfidence" class="kv-val" style="font-weight: 700; color: #34d399;">-</div></div>
-            <div class="kv-row"><div class="kv-label">Classifier Engine</div><div class="kv-val"><code id="inspClassifierEngine">-</code></div></div>
-            <div style="margin-top: 8px;">
-              <div class="kv-label" style="margin-bottom: 6px;">Detected Sensitive Entity Categories (PII / PHI / PCI / Labels):</div>
-              <div id="inspSensitiveCats" style="background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 8px; max-height: 115px; overflow-y: auto; font-size: 12px;">
-                -
-              </div>
-            </div>
-          </div>
-
-          <!-- GROUP 6: AI HANDLING & ZERO-TRUST ENFORCEMENT POLICY -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#128737; AI Handling &amp; Zero-Trust Gate Policy</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Group 6</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">AI Eligibility Rule</div><div id="inspAiRule" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Minimum Clearance</div><div id="inspMinClearance" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Allowed Egress Class</div><div id="inspEgressClass" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Allow RAG Indexing</div><div id="inspAllowRag" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Allow Model Training</div><div id="inspAllowTrain" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Redaction Categories</div><div class="kv-val"><code id="inspRedactCats">-</code></div></div>
-          </div>
-
-          <!-- GROUP 4: CRYPTOGRAPHIC INTEGRITY & CHUNK DIGESTS -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#128272; Cryptographic Integrity &amp; RAG Chunk Digests</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Group 4</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">Attested SHA-256</div><div class="kv-val"><code id="inspContentSha" style="color: #34d399;">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Observed Disk SHA-256</div><div class="kv-val"><code id="inspObservedSha">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Extracted Text SHA-256</div><div class="kv-val"><code id="inspTextSha">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Schema SHA-256</div><div class="kv-val"><code id="inspSchemaSha">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Fingerprint Method</div><div class="kv-val"><code id="inspFpMethod">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Size &amp; Row Count</div><div id="inspSizeRows" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Verified Chunk Hashes</div><div id="inspChunkCount" class="kv-val">-</div></div>
-          </div>
-
-          <!-- GROUP 3: PROVENANCE, SCANNER & OPENLINEAGE -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#129517; Provenance, Discovery &amp; OpenLineage</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Group 3</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">Attested By Engine</div><div class="kv-val"><code id="inspAttestedBy">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Source System</div><div class="kv-val"><code id="inspSourceSystem">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Scanner Version</div><div class="kv-val"><code id="inspScannerVer">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Discovered At</div><div class="kv-val"><code id="inspDiscoveredAt">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Upstream Lineage</div><div id="inspDerivedFrom" class="kv-val">-</div></div>
-          </div>
-
-          <!-- GROUP 7: LIFECYCLE, VALIDITY & DSSE SIGNATURE -->
-          <div class="inspector-section">
-            <h3>
-              <span>&#9201; Lifecycle, Validity &amp; Ed25519 DSSE Signature</span>
-              <span style="font-size: 10.5px; color: var(--muted);">Group 7</span>
-            </h3>
-            <div class="kv-row"><div class="kv-label">Lifecycle Status</div><div id="inspLifeStatus" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">Issued At (UTC)</div><div class="kv-val"><code id="inspIssuedAt">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Expires At &amp; TTL</div><div class="kv-val"><code id="inspExpiresAt">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Previous Record ID</div><div class="kv-val"><code id="inspPrevRecId">-</code></div></div>
-            <div class="kv-row"><div class="kv-label">Active Snapshot Status</div><div id="inspSnapStatus" class="kv-val">-</div></div>
-            <div class="kv-row"><div class="kv-label">DSSE Signing Key ID</div><div class="kv-val"><code id="inspDsseKeyId" style="color: #a78bfa;">-</code></div></div>
+          <div>
+            <label>Purview / Cloud Catalog Endpoint URL</label>
+            <input id="purviewEndpoint" type="text" value="https://g1-enterprise-purview.purview.azure.com" />
           </div>
         </div>
 
-        <!-- EXPANDABLE CHUNK HASHES & RAW IN-TOTO / DSSE ENVELOPE JSON -->
-        <details style="background: #090d16; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px;">
-          <summary style="cursor: pointer; font-size: 12.5px; font-weight: 700; color: #93c5fd;">
-            &#128196; View Raw In-Toto v1 Attestation Statement, DSSE Signature Envelope &amp; Canonical Chunk Hashes JSON
-          </summary>
-          <pre id="inspRawJson" style="margin-top: 10px; max-height: 240px; overflow-y: auto; font-size: 11.5px; color: #cbd5e1;">-</pre>
-        </details>
+        <label style="margin-top:12px;">Multi-Cloud Estates Scanned by Purview &amp; Consumed by G1 Docket (Stage 2):</label>
+        <div class="cloud-checks">
+          <label><input type="checkbox" class="cloud-src" value="SharePoint Online" checked /> SharePoint Online</label>
+          <label><input type="checkbox" class="cloud-src" value="OneDrive" checked /> OneDrive for Business</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure SQL" checked /> Azure SQL Database</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure Blob" checked /> Azure Blob Storage</label>
+          <label><input type="checkbox" class="cloud-src" value="AWS S3" checked /> AWS S3 (Multi-Cloud)</label>
+          <label><input type="checkbox" class="cloud-src" value="GCP BigQuery" checked /> GCP BigQuery (Multi-Cloud)</label>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- SECTION 02: STAGE 1 -->
+  <section class="section-band-subtle">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 01 / Zero API Calls</div>
+        <h2>Embedded File Sensitivity Labels</h2>
+        <p>
+          Purview sensitivity labels (<code>MSIP_Label_&lt;GUID&gt;_Name</code>) are stamped directly into Office OpenXML metadata (<code>docProps/custom.xml</code>) and mapped 1:1 to the G1 Docket tier ladder.
+        </p>
+      </aside>
+
+      <div class="card">
+        <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.3fr; gap:12px; align-items:end;">
+          <div>
+            <label>Select PC Directory to Inspect for Embedded Purview Sensitivity Labels</label>
+            <select id="stage1DirSelect"></select>
+          </div>
+          <div>
+            <button class="btn-green" style="width:100%;" onclick="runStage1Inspect()">1. Scan Files for Embedded Purview Labels</button>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <select id="stampLabelSelect" style="width:55%;">
+              <option value="Highly Confidential">Highly Confidential (&rarr; Restricted)</option>
+              <option value="Confidential">Confidential (&rarr; Confidential)</option>
+              <option value="Internal">Internal (&rarr; Internal)</option>
+              <option value="Public">Public (&rarr; Public)</option>
+            </select>
+            <button class="btn-secondary" style="width:45%;" onclick="stampNewPurviewDocx()">+ Stamp .docx</button>
+          </div>
+        </div>
+
+        <div id="stage1Banner" class="status-banner">
+          Loading Stage 1 embedded label scan...
+        </div>
+
+        <div style="max-height:240px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>File Name</th>
+                <th>Purview Label Found?</th>
+                <th>Embedded <code>MSIP_Label</code> Name</th>
+                <th>Label GUID &amp; Method</th>
+                <th>Metadata Part</th>
+                <th>1:1 G1 Docket Tier Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="stage1TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 03: STAGE 2 -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 02 / Catalog Pull</div>
+        <h2>Multi-Cloud Catalog Ingestion</h2>
+        <p>
+          Authenticates with Azure Managed Identity and pulls classifications across SharePoint, OneDrive, Azure SQL, Azure Blob, AWS S3, and GCP BigQuery into <code>evaluate_findings()</code>.
+        </p>
+        <button class="btn-purple" onclick="runStage2PullCatalog()">2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records</button>
+      </aside>
+
+      <div class="card">
+        <div id="stage2Banner" class="status-banner" style="margin-top:0;">
+          Click "2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records" to consume Purview's multi-cloud crawl and mint DSSE-signed records.
+        </div>
+
+        <div style="max-height:280px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Cloud Estate</th>
+                <th>Asset Name &amp; Locator</th>
+                <th>Purview Label</th>
+                <th>Purview Classifications (Fed to <code>evaluate_findings</code>)</th>
+                <th>G1 Docket Signed Tier</th>
+                <th>Signed Record ID</th>
+                <th>Expires At</th>
+                <th>Write-Back State</th>
+              </tr>
+            </thead>
+            <tbody id="stage2TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 04: STAGE 3 -->
+  <section class="section-band-subtle" style="border-bottom: none;">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 03 / Optional Write-Back</div>
+        <h2>Purview Data Map Annotation</h2>
+        <p>
+          Writes G1 Docket's signed attestation record ID, tier, SHA-256 digest, and expiry back into Purview's Atlas business metadata endpoint.
+        </p>
+        <button class="btn-amber" onclick="runStage3WriteBack()">3. Write Back Signed Tier &amp; Expiry to Purview Catalog</button>
+      </aside>
+
+      <div class="card">
+        <div id="stage3Banner" class="status-banner" style="margin-top:0;">
+          Stage 3 is staged last so you can pull &amp; attest first (Stage 2) without requiring Purview Data Curator write-back permissions upfront.
+        </div>
+
+        <div style="max-height:240px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Purview Entity GUID</th>
+                <th>Cloud Estate</th>
+                <th>Asset Locator</th>
+                <th>Purview Atlas API Endpoint</th>
+                <th>Annotated G1 Docket Tier</th>
+                <th>Annotated Record ID</th>
+                <th>Annotated Expiry</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="stage3TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <footer>
     <div class="footer-brand">
@@ -2740,7 +2709,7 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       <span>G1 Docket by G1163RT Security Labs</span>
     </div>
     <div>
-      Multi-Cloud DLP &amp; Microsoft Purview Seam • <code>PresidioClassifier.evaluate_findings()</code> • © G1163RT Security Labs
+      Multi-Cloud DLP &amp; Microsoft Purview Seam &bull; <code>PresidioClassifier.evaluate_findings()</code> &bull; &copy; G1163RT Security Labs
     </div>
   </footer>
 
@@ -2770,7 +2739,8 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
         (dirData.folders || []).forEach(f => {
           const opt = document.createElement('option');
           opt.value = f.path;
-          opt.textContent = `${f.label} (${f.file_count} files)`;
+          const cleanLabel = String(f.label || f.path).replace(/^[^\w\[A-Za-z0-9]+/, '');
+          opt.textContent = `${cleanLabel} (${f.file_count} files)`;
           sel.appendChild(opt);
         });
       }
@@ -2803,16 +2773,16 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       const data = await res.json();
       const msg = document.getElementById('configSaveMsg');
       if (res.ok) {
-        msg.textContent = `✔ Saved connector profile: ${data.config.provider} (${data.config.auth_mode}) across ${data.config.cloud_sources_enabled.length} cloud source(s).`;
+        msg.textContent = `Saved connector profile: ${data.config.provider} (${data.config.auth_mode}) across ${data.config.cloud_sources_enabled.length} cloud source(s).`;
       } else {
-        msg.textContent = `✖ Error saving config: ${data.detail || 'Unknown error'}`;
+        msg.textContent = `Error saving config: ${data.detail || 'Unknown error'}`;
       }
     }
 
     async function runStage1Inspect() {
       const dirPath = document.getElementById('stage1DirSelect').value || 'C:\\Users\\chuck\\pc_demo_folder';
       const banner = document.getElementById('stage1Banner');
-      banner.style.color = '#fbbf24';
+      banner.style.color = 'var(--muted)';
       banner.textContent = `Scanning files in ${dirPath} for embedded Purview sensitivity labels (MSIP_Label)...`;
       const res = await fetch('/v1/admin/dlp/stage1-inspect-labels', {
         method: 'POST',
@@ -2821,24 +2791,24 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       });
       const data = await res.json();
       if (!res.ok) {
-        banner.style.color = '#f87171';
+        banner.style.color = 'var(--red)';
         banner.textContent = `Error: ${data.detail || 'Failed Stage 1 scan'}`;
         return;
       }
-      banner.style.color = '#34d399';
-      banner.textContent = `✔ ${data.english_summary}`;
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
       const tbody = document.getElementById('stage1TableBody');
       tbody.innerHTML = '';
       (data.files || []).forEach(f => {
         const tr = document.createElement('tr');
         const tierBadge = f.mapped_docket_tier
           ? `<span class="pill tier-${f.mapped_docket_tier}">${f.mapped_docket_tier}</span>`
-          : `<span style="color:#9ca3af;">Presidio Content Fallback</span>`;
+          : `<span style="color:var(--muted);">Presidio Content Fallback</span>`;
         tr.innerHTML = `
           <td><code>${f.file_name}</code></td>
-          <td style="color:${f.has_purview_label ? '#34d399' : '#9ca3af'}; font-weight:600;">${f.has_purview_label ? '✔ YES (Embedded)' : 'No Label'}</td>
+          <td style="color:${f.has_purview_label ? 'var(--green)' : 'var(--muted)'}; font-weight:600;">${f.has_purview_label ? 'YES (Embedded)' : 'No Label'}</td>
           <td><code>${f.purview_label_name || '—'}</code></td>
-          <td><span style="font-size:11px; color:#9ca3af;">${f.purview_label_guid ? f.purview_label_guid + ' (' + f.assignment_method + ')' : '—'}</span></td>
+          <td><span style="font-size:11px; color:var(--muted);">${f.purview_label_guid ? f.purview_label_guid + ' (' + f.assignment_method + ')' : '—'}</span></td>
           <td><code>${f.metadata_source || '—'}</code></td>
           <td>${tierBadge}</td>
         `;
@@ -2864,7 +2834,7 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
 
     async function runStage2PullCatalog() {
       const banner = document.getElementById('stage2Banner');
-      banner.style.color = '#fbbf24';
+      banner.style.color = 'var(--muted)';
       banner.textContent = 'Authenticating via Azure Managed Identity and pulling multi-cloud classifications into evaluate_findings()...';
       const res = await fetch('/v1/admin/dlp/stage2-pull-catalog', {
         method: 'POST',
@@ -2876,25 +2846,25 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       });
       const data = await res.json();
       if (!res.ok) {
-        banner.style.color = '#f87171';
+        banner.style.color = 'var(--red)';
         banner.textContent = `Error: ${data.detail || 'Failed Stage 2 catalog pull'}`;
         return;
       }
-      banner.style.color = '#34d399';
-      banner.textContent = `✔ ${data.english_summary}`;
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
       const tbody = document.getElementById('stage2TableBody');
       tbody.innerHTML = '';
       (data.attested_assets || []).forEach(a => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><strong>${a.cloud_source}</strong></td>
-          <td><div><strong>${a.asset_name}</strong></div><code style="font-size:10px; color:#9ca3af;">${a.locator}</code></td>
+          <td><div><strong>${a.asset_name}</strong></div><code style="font-size:10px; color:var(--muted);">${a.locator}</code></td>
           <td><code>${a.purview_label || 'None'}</code></td>
-          <td><code style="font-size:11px; color:#93c5fd;">${(a.purview_classifications || []).join(', ')}</code></td>
+          <td><code style="font-size:11px; color:var(--text);">${(a.purview_classifications || []).join(', ')}</code></td>
           <td><span class="pill tier-${a.docket_tier}">${a.docket_tier}</span></td>
           <td><code style="font-size:11px;">${a.record_id}</code></td>
-          <td style="font-size:11px; color:#9ca3af;">${a.expires_at ? a.expires_at.slice(0, 10) : '—'}</td>
-          <td style="font-size:11px; color:#fbbf24;">${a.writeback ? '✔ Annotated' : 'Staged for Stage 3'}</td>
+          <td style="font-size:11px; color:var(--muted);">${a.expires_at ? a.expires_at.slice(0, 10) : '—'}</td>
+          <td style="font-size:11px; color:var(--amber); font-weight:600;">${a.writeback ? 'Annotated' : 'Staged for Stage 3'}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -2902,7 +2872,7 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
 
     async function runStage3WriteBack() {
       const banner = document.getElementById('stage3Banner');
-      banner.style.color = '#fbbf24';
+      banner.style.color = 'var(--muted)';
       banner.textContent = 'Writing G1 Docket signed attestation tier, record_id, and expiry back to Purview Data Map businessmetadata...';
       const res = await fetch('/v1/admin/dlp/stage3-writeback', {
         method: 'POST',
@@ -2911,12 +2881,12 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
       });
       const data = await res.json();
       if (!res.ok) {
-        banner.style.color = '#f87171';
+        banner.style.color = 'var(--red)';
         banner.textContent = `Error: ${data.detail || 'Failed Stage 3 write-back'}`;
         return;
       }
-      banner.style.color = '#34d399';
-      banner.textContent = `✔ ${data.english_summary}`;
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
       const tbody = document.getElementById('stage3TableBody');
       tbody.innerHTML = '';
       (data.writeback_results || []).forEach(w => {
@@ -2926,11 +2896,11 @@ DLP_CONNECTOR_HTML = r"""<!DOCTYPE html>
           <td><code>${w.purview_guid}</code></td>
           <td><strong>${w.cloud_source}</strong></td>
           <td><code style="font-size:11px;">${w.locator}</code></td>
-          <td><code style="font-size:10px; color:#93c5fd;">${w.purview_api_endpoint}</code></td>
+          <td><code style="font-size:10px; color:var(--link);">${w.purview_api_endpoint}</code></td>
           <td><span class="pill tier-${meta.docket_tier}">${meta.docket_tier}</span></td>
           <td><code style="font-size:11px;">${meta.record_id}</code></td>
-          <td style="font-size:11px; color:#9ca3af;">${meta.expires_at ? meta.expires_at.slice(0, 10) : '—'}</td>
-          <td style="color:#34d399; font-weight:600;">✔ ${w.writeback_status}</td>
+          <td style="font-size:11px; color:var(--muted);">${meta.expires_at ? meta.expires_at.slice(0, 10) : '—'}</td>
+          <td style="color:var(--green); font-weight:600;">${w.writeback_status}</td>
         `;
         tbody.appendChild(tr);
       });
