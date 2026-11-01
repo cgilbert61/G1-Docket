@@ -41,6 +41,7 @@ where = ["."]
 include = ["registry*", "engine*", "snapshot*", "prevalidator*", "conformance*"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["tests", "conformance"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

@@ -62,6 +62,22 @@ python -m registry.cli publish-snapshot --output ./pod_snapshot.dsse.json
 
 ---
 
+## One-Click Automated Docker Installers
+
+Self-contained automated installers are provided for Windows and Linux/macOS. They verify prerequisites (Docker, WSL mounts if on secondary drives), prepare `.env`, build all images, launch the stack, and poll health endpoints until ready:
+
+- **Windows**:
+  ```cmd
+  install.bat
+  ```
+- **Linux / macOS**:
+  ```bash
+  chmod +x install.sh
+  ./install.sh
+  ```
+
+---
+
 ## Docker Compose Profiles
 
 Three Compose profiles are provided in `docker-compose.yml`:

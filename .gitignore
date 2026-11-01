@@ -13,6 +13,7 @@ build/
 .pytest_cache/
 
 # Local runtime state & keys
+.env
 .pod_keys/
 examples/out_demo/
 *.priv.pem

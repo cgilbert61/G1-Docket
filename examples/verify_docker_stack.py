@@ -16,7 +16,7 @@ def main() -> int:
     gateway_url = "http://localhost:14000"
     admin_headers = {"X-POD-Admin-Key": "pod-dev-admin-key"}
 
-    with httpx.Client(timeout=10.0) as client:
+    with httpx.Client(timeout=60.0) as client:
         # Wait up to 20s for engine bootstrap to populate Registry and reload Prevalidator
         for _ in range(20):
             try:
