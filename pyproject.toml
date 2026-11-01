@@ -38,7 +38,7 @@ pod = "registry.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["registry*", "engine*", "snapshot*", "prevalidator*", "conformance*"]
+include = ["registry*", "engine*", "snapshot*", "prevalidator*", "conformance*", "docket*", "sdk*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
