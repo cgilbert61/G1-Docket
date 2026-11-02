@@ -54,7 +54,45 @@ with DocketClient(base_url="http://localhost:18082") as client:
 
 ---
 
-## 3. Inline `<pod:object>` Tagging & Policy Enforcement
+## 3. Polling & Snapshot Convergence Loop
+
+When newly published snapshots or background directory attestations are issued, downstream consumers (or tests) should poll until the Prevalidator has loaded the updated monotonic snapshot sequence into memory:
+
+### Using the Built-In `wait_for_sync()` Method
+```python
+from docket import DocketClient
+
+with DocketClient() as client:
+    # Block until the Prevalidator has synchronized at least snapshot sequence 10
+    client.wait_for_sync(min_sequence=10, timeout_sec=30)
+    print("Prevalidator in-memory snapshot is up to date!")
+```
+
+### Custom Polling Loop Pattern
+```python
+import time
+from docket import DocketClient, DocketError
+
+def wait_for_prevalidator_sync(client: DocketClient, min_sequence: int = 1, timeout_sec: int = 60) -> bool:
+    """Poll the Prevalidator until it loads at least `min_sequence` snapshot in memory."""
+    start_time = time.time()
+    while time.time() - start_time < timeout_sec:
+        try:
+            health = client.get_health()
+            seq = health.get("snapshot_sequence", 0)
+            if health.get("status") == "ok" and seq >= min_sequence:
+                print(f"[+] In-memory snapshot synchronized (Sequence: {seq})")
+                return True
+        except DocketError:
+            pass
+        print("Waiting for snapshot convergence...")
+        time.sleep(2)
+    raise TimeoutError(f"Prevalidator failed to reach sequence {min_sequence} within {timeout_sec}s")
+```
+
+---
+
+## 4. Inline `<pod:object>` Tagging & Policy Enforcement
 
 When sending context or retrieved documents to an LLM, wrap the segments in `<pod:object>` tags using `DocketClient.wrap_object()`:
 
@@ -92,7 +130,7 @@ except PolicyDenialError as err:
 
 ---
 
-## 4. Directory Prevalidation & Scanning
+## 5. Directory Prevalidation & Scanning
 
 Prevalidate local directory shares or batch files before indexing into vector databases or passing to LLMs:
 
@@ -120,7 +158,7 @@ print("Attested Files Count:", len(crawl_summary.get("attested_records", [])))
 
 ---
 
-## 5. Authoritative Registry & Catalog Governance
+## 6. Authoritative Registry & Catalog Governance
 
 Interact directly with the Registry service (port `18080`) for cryptographic record lookups, lifecycle operations, and review queue approvals:
 
@@ -176,7 +214,7 @@ for review in pending_reviews:
 
 ---
 
-## 6. Signed Snapshot Publisher
+## 7. Signed Snapshot Publisher
 
 Fetch the active monotonic DSSE-signed snapshot:
 
@@ -196,7 +234,7 @@ print(f"Key ID: {signatures[0]['keyid']}")
 
 ---
 
-## 7. Asynchronous Client (`AsyncDocketClient`)
+## 8. Asynchronous Client (`AsyncDocketClient`)
 
 For high-throughput `asyncio`, FastAPI, or Starlette applications:
 
@@ -210,6 +248,9 @@ async def main():
         # Prevalidator health
         health = await client.get_health()
         print("Async Status:", health["status"])
+
+        # Wait for sync
+        await client.wait_for_sync(min_sequence=1, timeout_sec=30)
 
         # OpenAI chat completion
         try:
@@ -232,7 +273,7 @@ if __name__ == "__main__":
 
 ---
 
-## 8. Client Initialization Options
+## 9. Client Initialization Options
 
 `DocketClient` and `AsyncDocketClient` accept the following configuration parameters:
 
@@ -247,7 +288,7 @@ if __name__ == "__main__":
 
 ---
 
-## 9. Error Reference
+## 10. Error Reference
 
 All SDK errors inherit from `DocketError`:
 

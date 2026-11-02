@@ -116,6 +116,27 @@ class DocketClient:
         res = self._client.get(f"{self.base_url}/healthz")
         return self._handle_response(res)
 
+    def wait_for_sync(
+        self,
+        min_sequence: int = 1,
+        timeout_sec: float = 60.0,
+        interval_sec: float = 2.0,
+    ) -> bool:
+        """Poll the Prevalidator until it loads at least `min_sequence` snapshot in memory."""
+        import time
+
+        start_time = time.time()
+        while time.time() - start_time < timeout_sec:
+            try:
+                health = self.get_health()
+                seq = health.get("snapshot_sequence", 0)
+                if health.get("status") == "ok" and seq >= min_sequence:
+                    return True
+            except DocketError:
+                pass
+            time.sleep(interval_sec)
+        raise TimeoutError(f"Prevalidator failed to reach snapshot sequence {min_sequence} within {timeout_sec}s")
+
     def chat_completions(
         self,
         messages: Sequence[Mapping[str, Any]],
@@ -429,6 +450,28 @@ class AsyncDocketClient:
         """Check Prevalidator health status and active snapshot sequence."""
         res = await self._client.get(f"{self.base_url}/healthz")
         return self._handle_response(res)
+
+    async def wait_for_sync(
+        self,
+        min_sequence: int = 1,
+        timeout_sec: float = 60.0,
+        interval_sec: float = 2.0,
+    ) -> bool:
+        """Poll the Prevalidator until it loads at least `min_sequence` snapshot in memory asynchronously."""
+        import asyncio
+        import time
+
+        start_time = time.time()
+        while time.time() - start_time < timeout_sec:
+            try:
+                health = await self.get_health()
+                seq = health.get("snapshot_sequence", 0)
+                if health.get("status") == "ok" and seq >= min_sequence:
+                    return True
+            except DocketError:
+                pass
+            await asyncio.sleep(interval_sec)
+        raise TimeoutError(f"Prevalidator failed to reach snapshot sequence {min_sequence} within {timeout_sec}s")
 
     async def chat_completions(
         self,

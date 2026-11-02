@@ -95,6 +95,48 @@ python -m examples.verify_docker_stack
 docker compose --profile prevalidator up -d --build
 ```
 
+---
+
+## Troubleshooting & Automated Health Loop
+
+If secondary drives (such as `D:`) unmount after a Windows reboot, or if you need to poll for stack readiness:
+
+### Automated WSL Remount & Health Polling Loop (PowerShell)
+```powershell
+# 1. Remount Drive D in Docker Desktop WSL if needed
+wsl -d docker-desktop -u root -e sh -c "mkdir -p /mnt/host/d /mnt/d; mountpoint -q /mnt/host/d || mount -t drvfs D: /mnt/host/d -o metadata; mountpoint -q /mnt/d || mount --bind /mnt/host/d /mnt/d"
+
+# 2. Poll health endpoints until active
+$endpoints = @(
+    "http://localhost:18080/docs",
+    "http://localhost:18081/docs",
+    "http://localhost:18082/healthz",
+    "http://localhost:18083/healthz",
+    "http://localhost:14000/healthz"
+)
+
+Write-Host "Waiting for G1 Docket services to stabilize..." -ForegroundColor Cyan
+for ($i = 1; $i -le 40; $i++) {
+    $pending = 0
+    foreach ($url in $endpoints) {
+        try {
+            $resp = Invoke-WebRequest -Uri $url -TimeoutSec 2 -UseBasicParsing
+            if ($resp.StatusCode -ne 200) { $pending++ }
+        } catch {
+            $pending++
+        }
+    }
+    if ($pending -eq 0) {
+        Write-Host "`n[+] All G1 Docket services are healthy and active!" -ForegroundColor Green
+        break
+    }
+    Write-Host -NoNewline "."
+    Start-Sleep -Seconds 2
+}
+```
+
+---
+
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
