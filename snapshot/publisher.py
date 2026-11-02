@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
 from registry.schema_validator import (
@@ -141,6 +141,20 @@ class SnapshotPublisher:
 def create_snapshot_app(publisher: SnapshotPublisher | None = None) -> FastAPI:
     """Create the FastAPI service for the Snapshot Publisher."""
     app = FastAPI(title="POD Signed Snapshot Publisher", version="0.1.0")
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data: fastmcp.org;"
+        )
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
+
     pub = publisher or SnapshotPublisher(RegistryService())
 
     admin_token = os.environ.get("POD_ADMIN_API_KEY", "pod-dev-admin-key")

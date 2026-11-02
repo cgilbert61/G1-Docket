@@ -2924,6 +2924,20 @@ def create_prevalidator_app(
 ) -> FastAPI:
     """Create the Prevalidator proxy application."""
     app = FastAPI(title="G1 Docket by G1163RT Security Labs — AI Gateway Prevalidator", version="0.1.0")
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data: fastmcp.org;"
+        )
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
+
     logo_path = Path(__file__).resolve().parent / "g1_logo.png"
 
     if enforcer is None:

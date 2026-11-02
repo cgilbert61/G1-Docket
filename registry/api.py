@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
@@ -61,6 +61,19 @@ class IssueFindingRequest(BaseModel):
 def create_registry_app(registry: RegistryService | None = None) -> FastAPI:
     """Create the hardened Registry FastAPI server (requires X-POD-Admin-Key for all catalog queries and mutations)."""
     app = FastAPI(title="POD Authoritative Registry API", version="0.1.0")
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data: fastmcp.org;"
+        )
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
     svc = registry or RegistryService()
     admin_key = os.environ.get("POD_ADMIN_API_KEY", "pod-dev-admin-key")
     control_token = os.environ.get("POD_CONTROL_PLANE_TOKEN", "pod-dev-control-plane-token")

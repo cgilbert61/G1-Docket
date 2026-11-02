@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
@@ -172,10 +172,16 @@ def create_engine_app() -> FastAPI:
         # Ensure sample disparate PC demo folder exists on the live-mounted Windows user folder and workspace
         host_user = Path("/host_user")
         if host_user.is_dir():
-            ensure_sample_pc_demo_folder(host_user / "pc_demo_folder")
+            try:
+                ensure_sample_pc_demo_folder(host_user / "pc_demo_folder")
+            except Exception:
+                pass
         host_ws = Path("/host_workspace")
         if host_ws.is_dir():
-            ensure_sample_pc_demo_folder(host_ws / "pc_demo_folder")
+            try:
+                ensure_sample_pc_demo_folder(host_ws / "pc_demo_folder")
+            except Exception:
+                pass
         await asyncio.to_thread(run_bootstrap)
         state.last_scan_at = format_iso8601(datetime.now(timezone.utc))
         state.scans_completed = 1
@@ -194,6 +200,19 @@ def create_engine_app() -> FastAPI:
             registry.close()
 
     app = FastAPI(title="G1 Docket by G1163RT Security Labs — Attestation Engine Service", version="0.1.0", lifespan=lifespan)
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; img-src 'self' data: fastmcp.org;"
+        )
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
