@@ -27,3 +27,6 @@ pod_snapshot.dsse.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Large scanner raw dumps
+reports/*.xml

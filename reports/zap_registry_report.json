@@ -1,0 +1,729 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.17.0",
+	"@generated": "Mon, 2 Nov 2026 15:39:07",
+	"created": "2026-11-02T15:39:07.383608084Z",
+	"insights":[
+		{
+			"level": "Medium",
+			"reason": "Exceeded High",
+			"site": "http://registry:8080",
+			"key": "insight.code.4xx",
+			"description": "Percentage of responses with status code 4xx",
+			"statistic": "99"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://registry:8080",
+			"key": "insight.endpoint.ctype.application/json",
+			"description": "Percentage of endpoints with content type application/json",
+			"statistic": "95"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://registry:8080",
+			"key": "insight.endpoint.ctype.text/html",
+			"description": "Percentage of endpoints with content type text/html",
+			"statistic": "4"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://registry:8080",
+			"key": "insight.endpoint.method.GET",
+			"description": "Percentage of endpoints with method GET",
+			"statistic": "57"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://registry:8080",
+			"key": "insight.endpoint.method.POST",
+			"description": "Percentage of endpoints with method POST",
+			"statistic": "42"
+		},
+		{
+			"level": "Info",
+			"reason": "Informational",
+			"site": "http://registry:8080",
+			"key": "insight.endpoint.total",
+			"description": "Count of total endpoints",
+			"statistic": "45"
+		}
+	],
+	"site":[ 
+		{
+			"@name": "http://registry:8080",
+			"@host": "registry",
+			"@port": "8080",
+			"@ssl": "false",
+			"alerts": [ 
+				{
+					"pluginid": "90004",
+					"alertRef": "90004-1",
+					"alert": "Cross-Origin-Resource-Policy Header Missing or Invalid",
+					"name": "Cross-Origin-Resource-Policy Header Missing or Invalid",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.</p>",
+					"instances":[ 
+						{
+							"id": "168",
+							"uri": "http://registry:8080/healthz",
+							"nodeName": "http:\/\/registry:8080\/healthz",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						},
+						{
+							"id": "173",
+							"uri": "http://registry:8080/openapi.json",
+							"nodeName": "http:\/\/registry:8080\/openapi.json",
+							"method": "GET",
+							"param": "Cross-Origin-Resource-Policy",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": ""
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "<p>Ensure that the application/web server sets the Cross-Origin-Resource-Policy header appropriately, and that it sets the Cross-Origin-Resource-Policy header to 'same-origin' for all web pages.</p><p>'same-site' is considered as less secured and should be avoided.</p><p>If resources must be shared, set the header to 'cross-origin'.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Resource-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-resource-policy).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</p>",
+					"cweid": "693",
+					"wascid": "14",
+					"sourceid": "3"
+				},
+				{
+					"pluginid": "100001",
+					"alertRef": "100001",
+					"alert": "Unexpected Content-Type was returned",
+					"name": "Unexpected Content-Type was returned",
+					"riskcode": "1",
+					"confidence": "3",
+					"riskdesc": "Low (High)",
+					"desc": "<p>A Content-Type of text/html was returned by the server.</p><p>This is not one of the types expected to be returned by an API.</p><p>Raised by the 'Alert on Unexpected Content Types' script</p>",
+					"instances":[ 
+						{
+							"id": "2330",
+							"uri": "http://registry:8080/",
+							"nodeName": "http:\/\/registry:8080\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "text/html",
+							"otherinfo": ""
+						},
+						{
+							"id": "2329",
+							"uri": "http://registry:8080/docs",
+							"nodeName": "http:\/\/registry:8080\/docs",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "text/html",
+							"otherinfo": ""
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "",
+					"otherinfo": "",
+					"reference": "",
+					"cweid": "-1",
+					"wascid": "-1",
+					"sourceid": "2358"
+				},
+				{
+					"pluginid": "10021",
+					"alertRef": "10021",
+					"alert": "X-Content-Type-Options Header Missing",
+					"name": "X-Content-Type-Options Header Missing",
+					"riskcode": "1",
+					"confidence": "2",
+					"riskdesc": "Low (Medium)",
+					"desc": "<p>The Anti-MIME-Sniffing header X-Content-Type-Options was not set to 'nosniff'. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.</p>",
+					"instances":[ 
+						{
+							"id": "162",
+							"uri": "http://registry:8080/healthz",
+							"nodeName": "http:\/\/registry:8080\/healthz",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						},
+						{
+							"id": "171",
+							"uri": "http://registry:8080/openapi.json",
+							"nodeName": "http:\/\/registry:8080\/openapi.json",
+							"method": "GET",
+							"param": "x-content-type-options",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "<p>Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.</p>",
+					"otherinfo": "<p>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</p><p>At \"High\" threshold this scan rule will not alert on client or server error responses.</p>",
+					"reference": "<p>https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)</p><p>https://owasp.org/www-community/Security_Headers</p>",
+					"cweid": "693",
+					"wascid": "15",
+					"sourceid": "3"
+				},
+				{
+					"pluginid": "100000",
+					"alertRef": "100000-1",
+					"alert": "A Client Error response code was returned by the server",
+					"name": "A Client Error response code was returned by the server",
+					"riskcode": "0",
+					"confidence": "3",
+					"riskdesc": "Informational (High)",
+					"desc": "<p>A response code of 404 was returned by the server.</p><p>This may indicate that the application is failing to handle unexpected input correctly.</p><p>Raised by the 'Alert on HTTP Response Code Error' script</p>",
+					"instances":[ 
+						{
+							"id": "10",
+							"uri": "http://registry:8080/8595891220309933467",
+							"nodeName": "http:\/\/registry:8080\/8595891220309933467",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "15",
+							"uri": "http://registry:8080/v1",
+							"nodeName": "http:\/\/registry:8080\/v1",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2327",
+							"uri": "http://registry:8080/v1/",
+							"nodeName": "http:\/\/registry:8080\/v1\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "11",
+							"uri": "http://registry:8080/v1/6052536590538080840",
+							"nodeName": "http:\/\/registry:8080\/v1\/6052536590538080840",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "16",
+							"uri": "http://registry:8080/v1/records",
+							"nodeName": "http:\/\/registry:8080\/v1\/records",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "1",
+							"uri": "http://registry:8080/v1/records?current_only=true",
+							"nodeName": "http:\/\/registry:8080\/v1\/records (current_only)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2339",
+							"uri": "http://registry:8080/v1/records/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "12",
+							"uri": "http://registry:8080/v1/records/7450983573095673050",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/7450983573095673050",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2626",
+							"uri": "http://registry:8080/v1/records/actuator/health",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/actuator\/health",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2332",
+							"uri": "http://registry:8080/v1/records/expiring",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/expiring",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2",
+							"uri": "http://registry:8080/v1/records/expiring?within_days=30",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/expiring (within_days)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2336",
+							"uri": "http://registry:8080/v1/records/expiring/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/expiring\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2333",
+							"uri": "http://registry:8080/v1/records/lookup",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lookup",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "0",
+							"uri": "http://registry:8080/v1/records/lookup?locator=locator",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lookup (locator)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2335",
+							"uri": "http://registry:8080/v1/records/lookup/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lookup\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "25",
+							"uri": "http://registry:8080/v1/reviews",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "8",
+							"uri": "http://registry:8080/v1/reviews?status=PENDING_REVIEW",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews (status)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2342",
+							"uri": "http://registry:8080/v1/reviews/",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "13",
+							"uri": "http://registry:8080/v1/reviews/5102581464701538007",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/5102581464701538007",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "30",
+							"uri": "http://registry:8080/v1/reviews/review_id",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/review_id",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "2343",
+							"uri": "http://registry:8080/v1/reviews/review_id/",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/review_id\/",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "14",
+							"uri": "http://registry:8080/v1/reviews/review_id/2742829784722008937",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/review_id\/2742829784722008937",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1728",
+							"uri": "http://registry:8080/computeMetadata/v1/",
+							"nodeName": "http:\/\/registry:8080\/computeMetadata\/v1\/ ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1721",
+							"uri": "http://registry:8080/latest/meta-data/",
+							"nodeName": "http:\/\/registry:8080\/latest\/meta-data\/ ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1779",
+							"uri": "http://registry:8080/metadata/instance",
+							"nodeName": "http:\/\/registry:8080\/metadata\/instance ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1788",
+							"uri": "http://registry:8080/metadata/v1",
+							"nodeName": "http:\/\/registry:8080\/metadata\/v1 ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1737",
+							"uri": "http://registry:8080/opc/v1/instance/",
+							"nodeName": "http:\/\/registry:8080\/opc\/v1\/instance\/ ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1751",
+							"uri": "http://registry:8080/opc/v2/instance/",
+							"nodeName": "http:\/\/registry:8080\/opc\/v2\/instance\/ ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "1800",
+							"uri": "http://registry:8080/openstack/latest/meta_data.json",
+							"nodeName": "http:\/\/registry:8080\/openstack\/latest\/meta_data.json ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "404",
+							"otherinfo": ""
+						},
+						{
+							"id": "3",
+							"uri": "http://registry:8080/v1/records/issue-finding",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/issue-finding ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2319",
+							"uri": "http://registry:8080/v1/records/issue-finding/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/issue-finding\/ ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "5",
+							"uri": "http://registry:8080/v1/records/lower-tier",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lower-tier ()({locator,new_tier,approvals:[{approver_id,rationale}]})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2316",
+							"uri": "http://registry:8080/v1/records/lower-tier/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lower-tier\/ ()({locator,new_tier,approvals:[{approver_id,rationale}]})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "4",
+							"uri": "http://registry:8080/v1/records/raise-tier",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/raise-tier ()({locator,new_tier})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2325",
+							"uri": "http://registry:8080/v1/records/raise-tier/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/raise-tier\/ ()({locator,new_tier})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "7",
+							"uri": "http://registry:8080/v1/records/renew",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/renew ()({locator,observed_content_sha256,ttl_days})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2318",
+							"uri": "http://registry:8080/v1/records/renew/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/renew\/ ()({locator,observed_content_sha256,ttl_days})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "6",
+							"uri": "http://registry:8080/v1/records/revoke",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/revoke ()({locator,reason})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2322",
+							"uri": "http://registry:8080/v1/records/revoke/",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/revoke\/ ()({locator,reason})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "9",
+							"uri": "http://registry:8080/v1/reviews/review_id/approve",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/review_id\/approve ()({approver_id,confirmed_tier,rationale})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						},
+						{
+							"id": "2324",
+							"uri": "http://registry:8080/v1/reviews/review_id/approve/",
+							"nodeName": "http:\/\/registry:8080\/v1\/reviews\/review_id\/approve\/ ()({approver_id,confirmed_tier,rationale})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "401",
+							"otherinfo": ""
+						}
+					],
+					"count": "41",
+					"systemic": false,
+					"solution": "",
+					"otherinfo": "",
+					"reference": "",
+					"cweid": "388",
+					"wascid": "20",
+					"sourceid": "18"
+				},
+				{
+					"pluginid": "10049",
+					"alertRef": "10049-1",
+					"alert": "Non-Storable Content",
+					"name": "Non-Storable Content",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.</p>",
+					"instances":[ 
+						{
+							"id": "190",
+							"uri": "http://registry:8080/v1/records?current_only=true",
+							"nodeName": "http:\/\/registry:8080\/v1\/records (current_only)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "authorization:",
+							"otherinfo": ""
+						},
+						{
+							"id": "185",
+							"uri": "http://registry:8080/v1/records/expiring?within_days=30",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/expiring (within_days)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "authorization:",
+							"otherinfo": ""
+						},
+						{
+							"id": "184",
+							"uri": "http://registry:8080/v1/records/lookup?locator=locator",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/lookup (locator)",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "authorization:",
+							"otherinfo": ""
+						},
+						{
+							"id": "182",
+							"uri": "http://registry:8080/v1/records/issue-finding",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/issue-finding ()({locator,content_sha256,tier,owner})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "authorization:",
+							"otherinfo": ""
+						},
+						{
+							"id": "188",
+							"uri": "http://registry:8080/v1/records/raise-tier",
+							"nodeName": "http:\/\/registry:8080\/v1\/records\/raise-tier ()({locator,new_tier})",
+							"method": "POST",
+							"param": "",
+							"attack": "",
+							"evidence": "authorization:",
+							"otherinfo": ""
+						}
+					],
+					"count": "5",
+					"systemic": true,
+					"solution": "<p>The content may be marked as storable by ensuring that the following conditions are satisfied:</p><p>The request method must be understood by the cache and defined as being cacheable (\"GET\", \"HEAD\", and \"POST\" are currently defined as cacheable)</p><p>The response status code must be understood by the cache (one of the 1XX, 2XX, 3XX, 4XX, or 5XX response classes are generally understood)</p><p>The \"no-store\" cache directive must not appear in the request or response header fields</p><p>For caching by \"shared\" caches such as \"proxy\" caches, the \"private\" response directive must not appear in the response</p><p>For caching by \"shared\" caches such as \"proxy\" caches, the \"Authorization\" header field must not appear in the request, unless the response explicitly allows it (using one of the \"must-revalidate\", \"public\", or \"s-maxage\" Cache-Control response directives)</p><p>In addition to the conditions above, at least one of the following conditions must also be satisfied by the response:</p><p>It must contain an \"Expires\" header field</p><p>It must contain a \"max-age\" response directive</p><p>For \"shared\" caches such as \"proxy\" caches, it must contain a \"s-maxage\" response directive</p><p>It must contain a \"Cache Control Extension\" that allows it to be cached</p><p>It must have a status code that is defined as cacheable by default (200, 203, 204, 206, 300, 301, 404, 405, 410, 414, 501).</p>",
+					"otherinfo": "",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc7234</p><p>https://datatracker.ietf.org/doc/html/rfc7231</p><p>https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</p>",
+					"cweid": "524",
+					"wascid": "13",
+					"sourceid": "7"
+				},
+				{
+					"pluginid": "10049",
+					"alertRef": "10049-3",
+					"alert": "Storable and Cacheable Content",
+					"name": "Storable and Cacheable Content",
+					"riskcode": "0",
+					"confidence": "2",
+					"riskdesc": "Informational (Medium)",
+					"desc": "<p>The response contents are storable by caching components such as proxy servers, and may be retrieved directly from the cache, rather than from the origin server by the caching servers, in response to similar requests from other users. If the response data is sensitive, personal or user-specific, this may result in sensitive information being leaked. In some cases, this may even result in a user gaining complete control of the session of another user, depending on the configuration of the caching components in use in their environment. This is primarily an issue where \"shared\" caching servers such as \"proxy\" caches are configured on the local network. This configuration is typically found in corporate or educational environments, for instance.</p>",
+					"instances":[ 
+						{
+							"id": "167",
+							"uri": "http://registry:8080/healthz",
+							"nodeName": "http:\/\/registry:8080\/healthz",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
+						},
+						{
+							"id": "172",
+							"uri": "http://registry:8080/openapi.json",
+							"nodeName": "http:\/\/registry:8080\/openapi.json",
+							"method": "GET",
+							"param": "",
+							"attack": "",
+							"evidence": "",
+							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
+						}
+					],
+					"count": "2",
+					"systemic": false,
+					"solution": "<p>Validate that the response does not contain sensitive, personal or user-specific information. If it does, consider the use of the following HTTP response headers, to limit, or prevent the content being stored and retrieved from the cache by another user:</p><p>Cache-Control: no-cache, no-store, must-revalidate, private</p><p>Pragma: no-cache</p><p>Expires: 0</p><p>This configuration directs both HTTP 1.0 and HTTP 1.1 compliant caching servers to not store the response, and to not retrieve the response (without validation) from the cache, in response to a similar request.</p>",
+					"otherinfo": "<p>In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234.</p>",
+					"reference": "<p>https://datatracker.ietf.org/doc/html/rfc7234</p><p>https://datatracker.ietf.org/doc/html/rfc7231</p><p>https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html</p>",
+					"cweid": "524",
+					"wascid": "13",
+					"sourceid": "3"
+				}
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}
