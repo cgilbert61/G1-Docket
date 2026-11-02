@@ -29,6 +29,68 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 
 ---
 
+## Attestation Record Schema (32 Fields)
+
+Every data asset evaluated and attested by G1 Docket produces a DSSE-signed in-toto v1 attestation record. The payload adheres to a comprehensive 32-field governance schema across 6 functional dimensions:
+
+### 1. Object Identity & Storage (5 Fields)
+| Field | Description |
+| :--- | :--- |
+| `locator` | Canonical URI of the object (`file://...`, `s3://...`, `postgresql://...`). |
+| `file_name` | Display filename (e.g., `07_purview_labeled_board_strategy.docx`). |
+| `file_path` | Full local host or cloud storage relative path. |
+| `mime_type` | Detected file content format (e.g., `application/vnd.openxmlformats...`). |
+| `file_size_bytes` | Physical file size in bytes. |
+
+### 2. Cryptographic Integrity & Provenance (5 Fields)
+| Field | Description |
+| :--- | :--- |
+| `content_sha256` | Cryptographic SHA-256 digest of the raw content payload. |
+| `attestation_id` | Unique UUID of the signed in-toto v1 attestation record. |
+| `issued_at` | UTC ISO-8601 timestamp of record issuance. |
+| `expires_at` | Expiry timestamp based on tier policy (`30d`, `90d`, `180d`, or `365d`). |
+| `signature_key_id` | Key ID of the active Ed25519/ECDSA operator key that signed the DSSE envelope. |
+
+### 3. Classification & AI Gateway Policy (6 Fields)
+| Field | Description |
+| :--- | :--- |
+| `tier` | Classification tier (`Public`, `Internal`, `Confidential`, `Restricted`). |
+| `ai_eligibility` | Prevalidator policy action (`allow`, `strip`, `deny`). |
+| `minimum_clearance` | Lowest caller clearance key required to access the data. |
+| `egress_class` | Network egress boundary allowed (`local_only`, `private_cloud`, `public_api`). |
+| `classification_confidence` | Probabilistic confidence score from Presidio / ML classification (`0.0`–`1.0`). |
+| `classification_method` | Classification mechanism (`purview_label`, `presidio_dlp`, `regex_heuristic`, `manual_human_review`). |
+
+### 4. DLP, Purview & Sensitivity Findings (6 Fields)
+| Field | Description |
+| :--- | :--- |
+| `sensitive_entity_types` | Array of detected sensitive data types (`PII`, `PHI`, `PCI`, `API_KEY`, etc.). |
+| `sensitive_entity_counts` | Map of entity frequencies (records sensitive types and counts only—never raw values). |
+| `total_sensitive_matches` | Aggregate count of sensitive findings in the object. |
+| `purview_sensitivity_label_name` | Microsoft Purview / MIP label extracted from document XML metadata. |
+| `purview_sensitivity_label_id` | Unique GUID of the Microsoft Information Protection label. |
+| `purview_watermark_present` | Boolean indicating whether an enterprise protection watermark or visual marking exists. |
+
+### 5. Ownership, Stewardship & Lineage (5 Fields)
+| Field | Description |
+| :--- | :--- |
+| `owner_id` | Accountable business owner or email (`security@company.org`). |
+| `owner_department` | Department or cost center responsible for the data asset. |
+| `data_custodian` | Technical administrator / system owning storage. |
+| `upstream_lineage_sources` | Origin sources or ingestion pipeline IDs (OpenLineage / OpenMetadata). |
+| `downstream_consumers` | Known AI models, applications, or pipelines consuming the asset. |
+
+### 6. Lifecycle State Machine & Review (5 Fields)
+| Field | Description |
+| :--- | :--- |
+| `status` | Lifecycle state (`active`, `pending_review`, `expired`, `revoked`). |
+| `last_scanned_at` | Timestamp of the most recent crawl/re-evaluation. |
+| `last_verified_at` | Timestamp when cryptographic hash matching was last confirmed. |
+| `review_queue_id` | Foreign key to the human-review governance queue if flagged for low confidence or Restricted findings. |
+| `governance_approvals` | Dual-approval audit log recording approver IDs and rationales (required for declassifications). |
+
+---
+
 ## Quickstart (Local Evaluation & Demo)
 
 ### 1. Run the Reproducible End-to-End Demo (Phases 0–3)
