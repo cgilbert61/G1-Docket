@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G1 Docket & Combine — Governance, Audit & Triage Subsystem</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --muted: #475569;
+      --border: #E2E8F0;
+      --primary: #1E293B;
+      --link: #2563EB;
+      --danger: #DC2626;
+      --success: #16A34A;
+      --warning: #D97706;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      letter-spacing: -0.01em;
+    }
+    .font-mono-tabular {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .badge-success { background: #F0FDF4; color: #166534; border-color: #BBF7D0; }
+    .badge-danger { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+    .badge-warning { background: #FFFBEB; color: #92400E; border-color: #FDE68A; }
+    .badge-neutral { background: #F1F5F9; color: #334155; border-color: #CBD5E1; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #FFFFFF; border-color: var(--primary); }
+    .btn-primary:hover { background: #0F172A; }
+    .btn-secondary { background: #FFFFFF; color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: #F1F5F9; border-color: #CBD5E1; }
+    .btn-danger { background: #FFFFFF; color: var(--danger); border-color: #FECACA; }
+    .btn-danger:hover { background: #FEF2F2; border-color: var(--danger); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Institutional Top Header -->
+  <header class="bg-white border-b border-[#E2E8F0] px-6 py-3.5 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="w-3 h-3 rounded-full bg-[#16A34A] inline-block" title="System Operational"></span>
+        <h1 class="text-sm font-semibold tracking-tight text-[#0F172A] uppercase">
+          G1 Security Infrastructure <span class="text-[#475569] font-normal">| Governance & Triage Subsystem</span>
+        </h1>
+        <span class="badge badge-neutral ml-2">Port 18084</span>
+      </div>
+      <div class="flex items-center gap-4 text-xs font-mono-tabular text-[#475569]">
+        <span>Inference Boundary: <a href="http://localhost:18082/" target="_blank" class="text-[#2563EB] hover:underline font-bold">:18082</a></span>
+        <span class="text-[#E2E8F0]">|</span>
+        <span>Engine API: <a href="http://localhost:18083/docs" target="_blank" class="text-[#2563EB] hover:underline font-bold">:18083</a></span>
+        <span class="text-[#E2E8F0]">|</span>
+        <span>Cognitive Gateway: <strong class="text-[#0F172A]">:8000</strong></span>
+        <span class="text-[#E2E8F0]">|</span>
+        <span class="badge badge-success">WORM Active</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Body Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Institutional Footer -->
+  <footer class="bg-white border-t border-[#E2E8F0] px-6 py-3 text-xs text-[#475569]">
+    <div class="max-w-7xl mx-auto flex items-center justify-between font-mono-tabular">
+      <span>G1 Docket & Combine Dual-Plane Security Subsystem (Scope-Delineated 4.0.0)</span>
+      <span>Confidential & Proprietary — Automated Attestation & Four-Eyes Governance</span>
+    </div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

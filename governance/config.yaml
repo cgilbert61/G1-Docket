@@ -1,0 +1,74 @@
+server:
+  host: "0.0.0.0"
+  port: 18084
+  inference_gateway_url: "http://localhost:18082"
+  emergency_ticket_ttl_seconds: 7200
+
+storage:
+  worm_sqlite_path: "data/governance/worm_ledger.db"
+  worm_jsonl_path: "data/governance/worm_ledger.jsonl"
+  quarantine_db_path: "data/governance/quarantine.db"
+  siem_buffer_db_path: "data/governance/siem_buffer.db"
+  keys_dir: ".pod_keys"
+
+siem_destinations:
+  - id: "splunk_hec"
+    name: "Splunk Enterprise HEC"
+    type: "splunk"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:18088/services/collector/event"
+    api_key: "splunk-hec-dev-token"
+    index_or_sourcetype: "g1:security:event"
+    timeout_seconds: 5.0
+
+  - id: "elastic_ecs"
+    name: "Elasticsearch ECS 1.12"
+    type: "elastic"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:19200/g1-security-events/_doc"
+    api_key: "elastic-api-key-dev"
+    index_or_sourcetype: "g1-security-events"
+    timeout_seconds: 5.0
+
+  - id: "syslog_cef"
+    name: "Syslog CEF Streamer"
+    type: "syslog"
+    enabled: true
+    syslog_host: "127.0.0.1"
+    syslog_port: 15514
+    syslog_use_tls: false
+    timeout_seconds: 5.0
+
+  - id: "otel_webhook"
+    name: "OpenTelemetry / SOAR Webhook"
+    type: "webhook"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:14318/v1/logs"
+    auth_header: "Bearer otel-dev-token"
+    timeout_seconds: 5.0
+
+  - id: "datadog_logs"
+    name: "Datadog Logs API"
+    type: "datadog"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:18090/api/v2/logs"
+    api_key: "dd-api-key-dev"
+    timeout_seconds: 5.0
+
+  - id: "azure_sentinel"
+    name: "Microsoft Sentinel / Log Analytics"
+    type: "sentinel"
+    enabled: true
+    workspace_id: "sentinel-workspace-dev"
+    endpoint_url: "http://127.0.0.1:18091/api/logs"
+    api_key: "sentinel-shared-key-dev"
+    timeout_seconds: 5.0
+
+  - id: "aws_cloudwatch"
+    name: "AWS CloudWatch Logs"
+    type: "cloudwatch"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:18092/cloudwatch/logs"
+    log_group_name: "/g1/docket/security"
+    auth_header: "AWS4-HMAC-SHA256 dev"
+    timeout_seconds: 5.0

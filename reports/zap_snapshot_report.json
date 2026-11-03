@@ -1,8 +1,8 @@
 {
 	"@programName": "ZAP",
 	"@version": "2.17.0",
-	"@generated": "Mon, 2 Nov 2026 15:40:28",
-	"created": "2026-11-02T15:40:28.200772444Z",
+	"@generated": "Mon, 2 Nov 2026 16:33:46",
+	"created": "2026-11-02T16:33:46.400284716Z",
 	"insights":[
 		{
 			"level": "Low",
@@ -85,66 +85,6 @@
 			"@ssl": "false",
 			"alerts": [ 
 				{
-					"pluginid": "90004",
-					"alertRef": "90004-1",
-					"alert": "Cross-Origin-Resource-Policy Header Missing or Invalid",
-					"name": "Cross-Origin-Resource-Policy Header Missing or Invalid",
-					"riskcode": "1",
-					"confidence": "2",
-					"riskdesc": "Low (Medium)",
-					"desc": "<p>Cross-Origin-Resource-Policy header is an opt-in header designed to counter side-channels attacks like Spectre. Resource should be specifically set as shareable amongst different origins.</p>",
-					"instances":[ 
-						{
-							"id": "13",
-							"uri": "http://snapshot-publisher:8081/healthz",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/healthz",
-							"method": "GET",
-							"param": "Cross-Origin-Resource-Policy",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": ""
-						},
-						{
-							"id": "17",
-							"uri": "http://snapshot-publisher:8081/openapi.json",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/openapi.json",
-							"method": "GET",
-							"param": "Cross-Origin-Resource-Policy",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": ""
-						},
-						{
-							"id": "14",
-							"uri": "http://snapshot-publisher:8081/v1/snapshot/keys",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/keys",
-							"method": "GET",
-							"param": "Cross-Origin-Resource-Policy",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": ""
-						},
-						{
-							"id": "79",
-							"uri": "http://snapshot-publisher:8081/v1/snapshot/latest",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/latest",
-							"method": "GET",
-							"param": "Cross-Origin-Resource-Policy",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": ""
-						}
-					],
-					"count": "4",
-					"systemic": false,
-					"solution": "<p>Ensure that the application/web server sets the Cross-Origin-Resource-Policy header appropriately, and that it sets the Cross-Origin-Resource-Policy header to 'same-origin' for all web pages.</p><p>'same-site' is considered as less secured and should be avoided.</p><p>If resources must be shared, set the header to 'cross-origin'.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that supports the Cross-Origin-Resource-Policy header (https://caniuse.com/mdn-http_headers_cross-origin-resource-policy).</p>",
-					"otherinfo": "",
-					"reference": "<p>https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cross-Origin-Embedder-Policy</p>",
-					"cweid": "693",
-					"wascid": "14",
-					"sourceid": "3"
-				},
-				{
 					"pluginid": "100001",
 					"alertRef": "100001",
 					"alert": "Unexpected Content-Type was returned",
@@ -155,7 +95,7 @@
 					"desc": "<p>A Content-Type of text/html was returned by the server.</p><p>This is not one of the types expected to be returned by an API.</p><p>Raised by the 'Alert on Unexpected Content Types' script</p>",
 					"instances":[ 
 						{
-							"id": "55",
+							"id": "49",
 							"uri": "http://snapshot-publisher:8081/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/",
 							"method": "GET",
@@ -165,7 +105,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "54",
+							"id": "47",
 							"uri": "http://snapshot-publisher:8081/docs",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/docs",
 							"method": "GET",
@@ -182,67 +122,7 @@
 					"reference": "",
 					"cweid": "-1",
 					"wascid": "-1",
-					"sourceid": "81"
-				},
-				{
-					"pluginid": "10021",
-					"alertRef": "10021",
-					"alert": "X-Content-Type-Options Header Missing",
-					"name": "X-Content-Type-Options Header Missing",
-					"riskcode": "1",
-					"confidence": "2",
-					"riskdesc": "Low (Medium)",
-					"desc": "<p>The Anti-MIME-Sniffing header X-Content-Type-Options was not set to 'nosniff'. This allows older versions of Internet Explorer and Chrome to perform MIME-sniffing on the response body, potentially causing the response body to be interpreted and displayed as a content type other than the declared content type. Current (early 2014) and legacy versions of Firefox will use the declared content type (if one is set), rather than performing MIME-sniffing.</p>",
-					"instances":[ 
-						{
-							"id": "8",
-							"uri": "http://snapshot-publisher:8081/healthz",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/healthz",
-							"method": "GET",
-							"param": "x-content-type-options",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
-						},
-						{
-							"id": "15",
-							"uri": "http://snapshot-publisher:8081/openapi.json",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/openapi.json",
-							"method": "GET",
-							"param": "x-content-type-options",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
-						},
-						{
-							"id": "9",
-							"uri": "http://snapshot-publisher:8081/v1/snapshot/keys",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/keys",
-							"method": "GET",
-							"param": "x-content-type-options",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
-						},
-						{
-							"id": "77",
-							"uri": "http://snapshot-publisher:8081/v1/snapshot/latest",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/latest",
-							"method": "GET",
-							"param": "x-content-type-options",
-							"attack": "",
-							"evidence": "",
-							"otherinfo": "This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.\nAt \"High\" threshold this scan rule will not alert on client or server error responses."
-						}
-					],
-					"count": "4",
-					"systemic": false,
-					"solution": "<p>Ensure that the application/web server sets the Content-Type header appropriately, and that it sets the X-Content-Type-Options header to 'nosniff' for all web pages.</p><p>If possible, ensure that the end user uses a standards-compliant and modern web browser that does not perform MIME-sniffing at all, or that can be directed by the web application/web server to not perform MIME-sniffing.</p>",
-					"otherinfo": "<p>This issue still applies to error type pages (401, 403, 500, etc.) as those pages are often still affected by injection issues, in which case there is still concern for browsers sniffing pages away from their actual content type.</p><p>At \"High\" threshold this scan rule will not alert on client or server error responses.</p>",
-					"reference": "<p>https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941(v=vs.85)</p><p>https://owasp.org/www-community/Security_Headers</p>",
-					"cweid": "693",
-					"wascid": "15",
-					"sourceid": "3"
+					"sourceid": "80"
 				},
 				{
 					"pluginid": "100000",
@@ -256,8 +136,8 @@
 					"instances":[ 
 						{
 							"id": "2",
-							"uri": "http://snapshot-publisher:8081/8456957513375188874",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/8456957513375188874",
+							"uri": "http://snapshot-publisher:8081/7136571996908539454",
+							"nodeName": "http:\/\/snapshot-publisher:8081\/7136571996908539454",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -275,7 +155,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "57",
+							"id": "50",
 							"uri": "http://snapshot-publisher:8081/v1/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/",
 							"method": "GET",
@@ -286,8 +166,8 @@
 						},
 						{
 							"id": "3",
-							"uri": "http://snapshot-publisher:8081/v1/6740755963033944767",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/6740755963033944767",
+							"uri": "http://snapshot-publisher:8081/v1/5081784837830155622",
+							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/5081784837830155622",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -295,7 +175,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "67",
+							"id": "61",
 							"uri": "http://snapshot-publisher:8081/v1/actuator/health",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/actuator\/health",
 							"method": "GET",
@@ -315,7 +195,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "58",
+							"id": "52",
 							"uri": "http://snapshot-publisher:8081/v1/snapshot/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/",
 							"method": "GET",
@@ -326,8 +206,8 @@
 						},
 						{
 							"id": "4",
-							"uri": "http://snapshot-publisher:8081/v1/snapshot/8524579900996294638",
-							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/8524579900996294638",
+							"uri": "http://snapshot-publisher:8081/v1/snapshot/8789969987846087931",
+							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/8789969987846087931",
 							"method": "GET",
 							"param": "",
 							"attack": "",
@@ -335,7 +215,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "34",
+							"id": "30",
 							"uri": "http://snapshot-publisher:8081/computeMetadata/v1/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/computeMetadata\/v1\/",
 							"method": "POST",
@@ -345,7 +225,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "32",
+							"id": "26",
 							"uri": "http://snapshot-publisher:8081/latest/meta-data/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/latest\/meta-data\/",
 							"method": "POST",
@@ -355,7 +235,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "44",
+							"id": "38",
 							"uri": "http://snapshot-publisher:8081/metadata/instance",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/metadata\/instance",
 							"method": "POST",
@@ -365,7 +245,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "45",
+							"id": "39",
 							"uri": "http://snapshot-publisher:8081/metadata/v1",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/metadata\/v1",
 							"method": "POST",
@@ -375,7 +255,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "38",
+							"id": "32",
 							"uri": "http://snapshot-publisher:8081/opc/v1/instance/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/opc\/v1\/instance\/",
 							"method": "POST",
@@ -385,7 +265,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "40",
+							"id": "34",
 							"uri": "http://snapshot-publisher:8081/opc/v2/instance/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/opc\/v2\/instance\/",
 							"method": "POST",
@@ -395,7 +275,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "46",
+							"id": "40",
 							"uri": "http://snapshot-publisher:8081/openstack/latest/meta_data.json",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/openstack\/latest\/meta_data.json",
 							"method": "POST",
@@ -415,7 +295,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "51",
+							"id": "44",
 							"uri": "http://snapshot-publisher:8081/v1/publish/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/publish\/",
 							"method": "POST",
@@ -435,7 +315,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "52",
+							"id": "48",
 							"uri": "http://snapshot-publisher:8081/v1/snapshot/publish/",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/publish\/",
 							"method": "POST",
@@ -465,7 +345,7 @@
 					"desc": "<p>The response contents are not storable by caching components such as proxy servers. If the response does not contain sensitive, personal or user-specific information, it may benefit from being stored and cached, to improve performance.</p>",
 					"instances":[ 
 						{
-							"id": "19",
+							"id": "15",
 							"uri": "http://snapshot-publisher:8081/v1/publish",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/publish",
 							"method": "POST",
@@ -475,7 +355,7 @@
 							"otherinfo": ""
 						},
 						{
-							"id": "18",
+							"id": "13",
 							"uri": "http://snapshot-publisher:8081/v1/snapshot/publish",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/publish",
 							"method": "POST",
@@ -505,7 +385,7 @@
 					"desc": "<p>The response contents are storable by caching components such as proxy servers, and may be retrieved directly from the cache, rather than from the origin server by the caching servers, in response to similar requests from other users. If the response data is sensitive, personal or user-specific, this may result in sensitive information being leaked. In some cases, this may even result in a user gaining complete control of the session of another user, depending on the configuration of the caching components in use in their environment. This is primarily an issue where \"shared\" caching servers such as \"proxy\" caches are configured on the local network. This configuration is typically found in corporate or educational environments, for instance.</p>",
 					"instances":[ 
 						{
-							"id": "11",
+							"id": "9",
 							"uri": "http://snapshot-publisher:8081/healthz",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/healthz",
 							"method": "GET",
@@ -515,7 +395,7 @@
 							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
 						},
 						{
-							"id": "16",
+							"id": "10",
 							"uri": "http://snapshot-publisher:8081/openapi.json",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/openapi.json",
 							"method": "GET",
@@ -525,7 +405,7 @@
 							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
 						},
 						{
-							"id": "12",
+							"id": "11",
 							"uri": "http://snapshot-publisher:8081/v1/snapshot/keys",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/keys",
 							"method": "GET",
@@ -535,7 +415,7 @@
 							"otherinfo": "In the absence of an explicitly specified caching lifetime directive in the response, a liberal lifetime heuristic of 1 year was assumed. This is permitted by rfc7234."
 						},
 						{
-							"id": "78",
+							"id": "71",
 							"uri": "http://snapshot-publisher:8081/v1/snapshot/latest",
 							"nodeName": "http:\/\/snapshot-publisher:8081\/v1\/snapshot\/latest",
 							"method": "GET",

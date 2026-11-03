@@ -126,3 +126,97 @@
       License.
 
    END OF TERMS AND CONDITIONS
+
+========================================================================
+Third-Party Open Source Software Notice and Attributions
+========================================================================
+
+G1 Docket utilizes and depends upon several open-source libraries and specifications.
+Each component continues to be licensed under its own terms:
+
+1. FastAPI (https://github.com/fastapi/fastapi)
+   License: MIT License
+   Copyright (c) 2018 Sebastián Ramírez
+
+2. Starlette (https://github.com/encode/starlette)
+   License: BSD 3-Clause License
+   Copyright (c) 2018 Encode OSS Ltd.
+
+3. Uvicorn (https://github.com/encode/uvicorn)
+   License: BSD 3-Clause License
+   Copyright (c) 2017-present Encode OSS Ltd.
+
+4. Pydantic & Pydantic Core (https://github.com/pydantic/pydantic)
+   License: MIT License
+   Copyright (c) 2017-present Samuel Colvin & Pydantic contributors
+
+5. Cryptography (https://github.com/pyca/cryptography)
+   License: Dual licensed under Apache License 2.0 OR BSD 3-Clause License
+   Copyright (c) Individual contributors
+
+6. PyJWT (https://github.com/jpadilla/pyjwt)
+   License: MIT License
+   Copyright (c) 2015 José Padilla
+
+7. SQLAlchemy (https://github.com/sqlalchemy/sqlalchemy)
+   License: MIT License
+   Copyright (c) 2005-2024 Michael Bayer and contributors
+
+8. HTTPX & HTTPCore (https://github.com/encode/httpx)
+   License: BSD 3-Clause License
+   Copyright (c) 2019-present Tom Christie
+
+9. JSONSchema (https://github.com/python-jsonschema/jsonschema)
+   License: MIT License
+   Copyright (c) 2013 Julian Berman
+
+10. OpenPyXL & et_xmlfile (https://foss.heptapod.net/openpyxl/openpyxl)
+    License: MIT License
+    Copyright (c) 2010-present openpyxl
+
+11. Jinja2 & MarkupSafe (https://github.com/pallets/jinja)
+    License: BSD 3-Clause License
+    Copyright (c) 2007-present Pallets
+
+12. PyYAML (https://github.com/yaml/pyyaml)
+    License: MIT License
+    Copyright (c) 2017-2020 Ingy döt Net, Kirill Simonov
+
+13. AnyIO (https://github.com/agronholm/anyio)
+    License: MIT License
+    Copyright (c) Alex Grönholm
+
+14. Pytest & Pluggy (https://github.com/pytest-dev/pytest)
+    License: MIT License
+    Copyright (c) Holger Krekel and pytest contributors
+
+15. Click (https://github.com/pallets/click)
+    License: BSD 3-Clause License
+    Copyright (c) 2014 Pallets
+
+16. Microsoft Presidio Analyzer & Anonymizer (https://github.com/microsoft/presidio)
+    License: MIT License
+    Copyright (c) Microsoft Corporation
+
+17. Apache Tika (https://tika.apache.org/)
+    License: Apache License 2.0
+    Copyright (c) The Apache Software Foundation
+
+18. OpenTelemetry Python (https://github.com/open-telemetry/opentelemetry-python)
+    License: Apache License 2.0
+    Copyright (c) The OpenTelemetry Authors
+
+19. in-toto Framework & Attestation Specification (https://github.com/in-toto/in-toto)
+    License: Apache License 2.0
+    Copyright (c) in-toto authors
+
+20. Dead Simple Signing Envelope (DSSE) (https://github.com/secure-systems-lab/dsse)
+    License: Apache License 2.0
+    Copyright (c) Secure Systems Lab
+
+21. LiteLLM (https://github.com/BerriAI/litellm)
+    License: MIT License
+    Copyright (c) BerriAI Inc.
+
+22. SQLite (https://www.sqlite.org/)
+    License: Public Domain (Blessing)

@@ -164,6 +164,71 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     .kv-row:last-child { border-bottom: none; }
     .kv-label { color: var(--muted); font-weight: 600; font-size: 11.5px; }
     .kv-val { color: var(--text); word-break: break-all; }
+    /* ATTESTOR & PREVALIDATOR PROCESSING INDICATORS */
+    @keyframes attest-spin {
+      to { transform: rotate(360deg); }
+    }
+    .attest-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: attest-spin 0.65s linear infinite;
+      vertical-align: middle;
+      margin-right: 7px;
+    }
+    .attest-spinner-dark {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #CBD5E1;
+      border-top-color: #1E293B;
+      border-radius: 50%;
+      animation: attest-spin 0.65s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes hairline-scan {
+      0% { left: 0%; width: 22%; }
+      50% { left: 45%; width: 45%; }
+      100% { left: 82%; width: 18%; }
+    }
+    .hairline-progress-container {
+      position: relative;
+      width: 100%;
+      height: 3px;
+      background: #E2E8F0;
+      overflow: hidden;
+      border-radius: 2px;
+      margin: 8px 0 10px 0;
+      display: none;
+    }
+    .hairline-progress-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: #2563EB;
+      animation: hairline-scan 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.85); }
+    }
+    .status-dot-active {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: #2563EB;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+    .active-shimmer {
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
     @media (max-width: 1100px) {
       .asymmetric-layout { grid-template-columns: 1fr; }
       .section-aside { position: static; }
@@ -198,6 +263,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <button class="btn btn-dark" onclick="toggleEnterpriseStoresDrawer()">Enterprise Data Stores</button>
       <button class="btn btn-dark" onclick="toggleLlmConfig()">LLM Provider Config</button>
       <button id="toggleModeBtn" class="btn" onclick="toggleMode()">Mode: ENFORCE (Switch to Observe)</button>
+      <a href="http://localhost:18084/" target="_blank" class="btn" style="background: #0F172A; color: #FFFFFF; border: 1px solid #0F172A; text-decoration: none; padding: 6px 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; margin-left: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22C55E;"></span>
+        <span>HITL Governance &amp; SIEM (:18084) &rarr;</span>
+      </a>
       <a href="/docs" target="_blank">Prevalidator API</a>
       <a href="http://localhost:18083/docs" target="_blank">Engine API (:18083)</a>
       <a href="http://localhost:18080/docs" target="_blank">Registry API (:18080)</a>
@@ -386,6 +455,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           <strong>1. Select LLM Provider Preset</strong>
         </label>
         <select id="llmPresetSelect" onchange="applyLlmPreset()" style="margin-bottom: 0;">
+          <option value="g1_combine" selected>G1 Combine / Optimize-Combine (:8000) (http://host.docker.internal:8000)</option>
           <option value="builtin">Built-in G1 Mock Gateway (http://litellm-gateway:4000)</option>
           <option value="lmstudio">LM Studio on Host PC (http://host.docker.internal:1234)</option>
           <option value="ollama">Ollama on Host PC (http://host.docker.internal:11434)</option>
@@ -603,6 +673,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
               <strong>Select Enterprise Data Store (S3, Azure ADLS, GCS, Snowflake, BigQuery, Postgres) or Local PC Drive/Folder:</strong>
             </label>
             <select id="pcFolderSelect" style="margin-bottom: 0; font-size: 13px; font-weight: 600;" onchange="selectPresetFolder()">
+              <option value="D:\attestation\pc_demo_folder" selected>D:\attestation\pc_demo_folder — Sample Demo Documents (7 files)</option>
               <option value="C:\Users\chuck\pc_demo_folder">C:\Users\chuck\pc_demo_folder — Sample Disparate Files</option>
               <option value="s3://contoso-ai-datalake-prod/rag-corpus">[AWS S3] s3://contoso-ai-datalake-prod/rag-corpus — Production AI &amp; RAG Data Lake</option>
               <option value="azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge">[Azure ADLS Gen2 / Blob] azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge</option>
@@ -610,10 +681,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
               <option value="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC">[Snowflake] snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC</option>
               <option value="bigquery://contoso-gcp-analytics/enterprise_mart">[Google BigQuery] bigquery://contoso-gcp-analytics/enterprise_mart</option>
               <option value="postgres://estate-db:5432/estate">[PostgreSQL] postgres://estate-db:5432/estate — Operational DB (Live SQL)</option>
-              <option value="C:\">C:\ — Entire C: Drive (Recursive Data Scan)</option>
-              <option value="D:\">D:\ — Entire D: Drive (Recursive Data Scan)</option>
             </select>
-            <input type="hidden" id="pcPathInput" value="C:\Users\chuck\pc_demo_folder" />
+            <input type="hidden" id="pcPathInput" value="D:\attestation\pc_demo_folder" />
           </div>
 
           <div>
@@ -679,7 +748,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             </select>
             <span style="font-size: 12px; color: var(--muted);">Target Egress:</span>
             <select id="dirModelSelect" style="width: 170px; margin-bottom: 0;">
-              <option value="local-model" selected>local-model (local_only)</option>
+              <option value="gpt-4" selected>gpt-4 (G1 Combine :8000)</option>
+              <option value="local-model">local-model (local_only)</option>
               <option value="vpc-model">vpc-model (private_cloud)</option>
               <option value="gpt-4o">gpt-4o (public_api)</option>
             </select>
@@ -703,6 +773,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (ENGINE) -->
         <div id="attestEnglishBanner" class="english-verdict">
           Loading verifiable file count from Attestation Engine...
+        </div>
+        <div id="attestHairlineProgress" class="hairline-progress-container">
+          <div class="hairline-progress-bar"></div>
         </div>
 
         <div class="score-grid" style="grid-template-columns: repeat(3, 1fr);">
@@ -744,6 +817,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (PREVALIDATOR) -->
         <div id="prevalEnglishBanner" class="english-verdict">
           Loading verifiable Prevalidator pass/fail file count...
+        </div>
+        <div id="prevalHairlineProgress" class="hairline-progress-container">
+          <div class="hairline-progress-bar"></div>
         </div>
 
         <div class="score-grid">
@@ -803,7 +879,13 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         </div>
 
         <div class="card">
-          <h2>Operator Audit Log (Internal Reason Codes)</h2>
+          <h2>
+            <span>Operator Audit Log (Internal Reason Codes)</span>
+            <a href="http://localhost:18084/" target="_blank" class="btn btn-dark" style="font-size: 11.5px; padding: 4px 10px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22C55E;"></span>
+              <span>Open HITL Triage Queue (:18084) &rarr;</span>
+            </a>
+          </h2>
           <table id="auditTable">
             <thead>
               <tr>
@@ -849,6 +931,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
             <div>
               <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Target Gateway Model</label>
               <select id="modelSelect">
+                <option value="gpt-4" selected>gpt-4 (G1 Combine :8000)</option>
                 <option value="gpt-4o">gpt-4o (public_api)</option>
                 <option value="vpc-model">vpc-model (private_cloud)</option>
                 <option value="local-model">local-model (local_only)</option>
@@ -1352,17 +1435,35 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     let isAttesting = false;
+    let attestTimerInterval = null;
 
     async function attestSelectedDirectory() {
       if (isAttesting) return;
       isAttesting = true;
+      const startTime = Date.now();
       const btn = document.getElementById('runAttestBtn');
+      const hairline = document.getElementById('attestHairlineProgress');
+      if (hairline) hairline.style.display = 'block';
+
       if (btn) {
         btn.disabled = true;
-        btn.textContent = 'Running Attestation on Directory...';
+        btn.innerHTML = '<span class="attest-spinner"></span>Attesting Directory (<span class="attest-live-timer active-shimmer">0.0s</span>)...';
       }
-      document.getElementById('attestStatusText').textContent = 'Scanning & signing files...';
-      document.getElementById('attestEnglishBanner').innerHTML = '<strong>Scanning &amp; signing files in directory...</strong>';
+
+      document.getElementById('attestStatusText').innerHTML = '<span style="color:var(--link); font-weight:600; display:inline-flex; align-items:center;"><span class="status-dot-active"></span>Attesting files (<span class="attest-live-timer active-shimmer">0.0s</span>)...</span>';
+      document.getElementById('attestEnglishBanner').innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><strong><span class="status-dot-active"></span>Attestation Engine Active:</strong> Scanning directory, computing SHA-256 digests &amp; signing DSSE envelopes (<span class="attest-live-timer active-shimmer">0.0s</span>)...</div>';
+
+      const tbody = document.querySelector('#attestedFilesTable tbody');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px 16px; color: var(--muted);"><span class="attest-spinner attest-spinner-dark"></span> <strong>Engine in flight:</strong> Generating cryptographic SHA-256 hashes and DSSE v1 envelopes across target files...</td></tr>';
+      }
+
+      if (attestTimerInterval) clearInterval(attestTimerInterval);
+      attestTimerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        document.querySelectorAll('.attest-live-timer').forEach(el => el.textContent = `${elapsed}s`);
+      }, 50);
+
       try {
         const maxFilesVal = parseInt(document.getElementById('demoMaxFilesSelect')?.value ?? '120', 10);
         const includeCodeVal = Boolean(document.getElementById('demoIncludeCodeChk')?.checked);
@@ -1382,8 +1483,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         } catch (parseErr) {
           data = { detail: rawText || `HTTP ${resp.status}` };
         }
+        clearInterval(attestTimerInterval);
+        if (hairline) hairline.style.display = 'none';
+        const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
         if (!resp.ok) {
-          document.getElementById('attestStatusText').textContent = 'Error: ' + (data.detail || resp.status);
+          document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${data.detail || resp.status}</span>`;
           document.getElementById('attestEnglishBanner').textContent = 'Error: ' + (data.detail || resp.status);
           if (btn) {
             btn.disabled = false;
@@ -1392,13 +1497,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           return;
         }
         const stamp = new Date().toLocaleTimeString();
-        document.getElementById('attestStatusText').textContent = `Attested ${data.attested_active_count} of ${data.total_files_found} file(s) at ${stamp}`;
-        document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${stamp}):</strong> ${data.english_summary}`;
+        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--accent); font-weight:600;">✓ Attested ${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s</span> <span style="color:var(--muted); font-size:11px;">(${stamp})</span>`;
+        document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${totalElapsed}s • ${stamp}):</strong> ${data.english_summary}`;
         document.getElementById('attTotal').textContent = data.total_files_found;
         document.getElementById('attActive').textContent = data.attested_active_count;
         document.getElementById('attHeld').textContent = data.held_in_review_count;
 
-        const tbody = document.querySelector('#attestedFilesTable tbody');
         tbody.innerHTML = '';
         (data.files || []).forEach(f => {
           if (f.locator) {
@@ -1416,12 +1520,16 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found}) — 1. Run Attestation on Directory`;
+          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s) — 1. Run Attestation on Directory`;
         }
         await prevalidateSelectedDirectory();
       } catch (err) {
-        document.getElementById('attestStatusText').textContent = 'Error: ' + err;
+        clearInterval(attestTimerInterval);
+        if (hairline) hairline.style.display = 'none';
+        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${err}</span>`;
       } finally {
+        clearInterval(attestTimerInterval);
+        if (hairline) hairline.style.display = 'none';
         isAttesting = false;
         if (btn) {
           btn.disabled = false;
@@ -1443,65 +1551,116 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       }
     }
 
-    async function prevalidateSelectedDirectory() {
-      document.getElementById('prevalStatusText').textContent = 'Scanning directory against signed snapshot...';
-      const callerKey = document.getElementById('dirCallerKey').value.toLowerCase();
-      const model = document.getElementById('dirModelSelect').value;
-      const maxFilesVal = parseInt(document.getElementById('demoMaxFilesSelect')?.value ?? '120', 10);
-      const includeCodeVal = Boolean(document.getElementById('demoIncludeCodeChk')?.checked);
-      const body = browserPickedFiles
-        ? { files: browserPickedFiles, caller_key: callerKey, model }
-        : { directory_path: document.getElementById('pcPathInput').value, caller_key: callerKey, model, max_files: maxFilesVal, include_code_dirs: includeCodeVal };
+    let isPrevalidating = false;
+    let prevalTimerInterval = null;
 
-      const resp = await fetch('/v1/prevalidate-directory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        document.getElementById('prevalStatusText').textContent = 'Error: ' + (data.detail || resp.status);
-        document.getElementById('prevalEnglishBanner').textContent = 'Error: ' + (data.detail || resp.status);
-        return;
+    async function prevalidateSelectedDirectory() {
+      if (isPrevalidating) return;
+      isPrevalidating = true;
+      const startTime = Date.now();
+      const btn = document.getElementById('runPrevalBtn');
+      const hairline = document.getElementById('prevalHairlineProgress');
+      if (hairline) hairline.style.display = 'block';
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="attest-spinner"></span>Prevalidating (<span class="preval-live-timer active-shimmer">0.0s</span>)...';
       }
 
-      document.getElementById('prevalStatusText').textContent = `${data.passed_count} Passed / ${data.failed_count} Did Not Pass`;
-      const banner = document.getElementById('prevalEnglishBanner');
-      banner.innerHTML = `<strong>Verifiable Prevalidator Count:</strong> ${data.english_summary}`;
-      banner.className = 'english-verdict' + (data.failed_count > 0 ? ' has-failures' : '');
-
-      document.getElementById('pvTotal').textContent = data.total_files;
-      document.getElementById('pvPassed').textContent = data.passed_count;
-      document.getElementById('pvFailed').textContent = data.failed_count;
-      document.getElementById('pvUnattested').textContent = data.unattested_count;
+      document.getElementById('prevalStatusText').innerHTML = '<span style="color:var(--link); font-weight:600; display:inline-flex; align-items:center;"><span class="status-dot-active"></span>Evaluating against snapshot (<span class="preval-live-timer active-shimmer">0.0s</span>)...</span>';
+      document.getElementById('prevalEnglishBanner').innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><strong><span class="status-dot-active"></span>Prevalidator Active:</strong> Zero-DB memory evaluation against active cryptographic snapshot (<span class="preval-live-timer active-shimmer">0.0s</span>)...</div>';
 
       const tbody = document.querySelector('#prevalidatedFilesTable tbody');
-      tbody.innerHTML = '';
-      (data.files || []).forEach(f => {
-        if (f.locator) {
-          fileInspectorCache[f.locator] = Object.assign({}, fileInspectorCache[f.locator] || {}, {
-            locator: f.locator,
-            file_name: f.file_name,
-            observed_sha256: f.observed_sha256,
-            attestation_state: f.attestation_state,
-            preval_verdict: f.verdict,
-            preval_passed: f.passed,
-            preval_reason_detail: f.reason_detail,
-            preval_reason_codes: f.reason_codes || []
-          });
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px 16px; color: var(--muted);"><span class="attest-spinner attest-spinner-dark"></span> <strong>Prevalidator in flight:</strong> In-memory policy and clearance matching against snapshot manifest...</td></tr>';
+      }
+
+      if (prevalTimerInterval) clearInterval(prevalTimerInterval);
+      prevalTimerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        document.querySelectorAll('.preval-live-timer').forEach(el => el.textContent = `${elapsed}s`);
+      }, 50);
+
+      try {
+        const callerKey = document.getElementById('dirCallerKey').value.toLowerCase();
+        const model = document.getElementById('dirModelSelect').value;
+        const maxFilesVal = parseInt(document.getElementById('demoMaxFilesSelect')?.value ?? '120', 10);
+        const includeCodeVal = Boolean(document.getElementById('demoIncludeCodeChk')?.checked);
+        const body = browserPickedFiles
+          ? { files: browserPickedFiles, caller_key: callerKey, model }
+          : { directory_path: document.getElementById('pcPathInput').value, caller_key: callerKey, model, max_files: maxFilesVal, include_code_dirs: includeCodeVal };
+
+        const resp = await fetch('/v1/prevalidate-directory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        clearInterval(prevalTimerInterval);
+        if (hairline) hairline.style.display = 'none';
+        const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+        if (!resp.ok) {
+          document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${data.detail || resp.status}</span>`;
+          document.getElementById('prevalEnglishBanner').textContent = 'Error: ' + (data.detail || resp.status);
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '2. Run Prevalidator Scan on Directory';
+          }
+          return;
         }
-        const tr = document.createElement('tr');
-        const verdictBadge = f.verdict.startsWith('OBSERVED') ? 'badge-Confidential' : (f.passed ? 'badge-PASS' : 'badge-FAIL');
-        const tierBadge = f.tier && f.tier !== 'NONE' ? `badge-${f.tier}` : 'badge-FAIL';
-        const safeLoc = String(f.locator || '').replace(/'/g, "\\'");
-        tr.innerHTML = `<td><a class="file-link" title="Click to inspect full classification, ownership & Prevalidator verdict" onclick="openFileInspector('${safeLoc}')">${f.file_name}</a></td>
-          <td><code>${f.attestation_state}</code></td>
-          <td><span class="badge ${tierBadge}">${f.tier || 'UNATTESTED'}</span></td>
-          <td><span class="badge ${verdictBadge}">${f.verdict}</span></td>
-          <td><code>${f.reason_detail}</code></td>`;
-        tbody.appendChild(tr);
-      });
-      await refreshState();
+
+        document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;">✓ ${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
+        const banner = document.getElementById('prevalEnglishBanner');
+        banner.innerHTML = `<strong>Verifiable Prevalidator Count (${totalElapsed}s):</strong> ${data.english_summary}`;
+        banner.className = 'english-verdict' + (data.failed_count > 0 ? ' has-failures' : '');
+
+        document.getElementById('pvTotal').textContent = data.total_files;
+        document.getElementById('pvPassed').textContent = data.passed_count;
+        document.getElementById('pvFailed').textContent = data.failed_count;
+        document.getElementById('pvUnattested').textContent = data.unattested_count;
+
+        tbody.innerHTML = '';
+        (data.files || []).forEach(f => {
+          if (f.locator) {
+            fileInspectorCache[f.locator] = Object.assign({}, fileInspectorCache[f.locator] || {}, {
+              locator: f.locator,
+              file_name: f.file_name,
+              observed_sha256: f.observed_sha256,
+              attestation_state: f.attestation_state,
+              preval_verdict: f.verdict,
+              preval_passed: f.passed,
+              preval_reason_detail: f.reason_detail,
+              preval_reason_codes: f.reason_codes || []
+            });
+          }
+          const tr = document.createElement('tr');
+          const verdictBadge = f.verdict.startsWith('OBSERVED') ? 'badge-Confidential' : (f.passed ? 'badge-PASS' : 'badge-FAIL');
+          const tierBadge = f.tier && f.tier !== 'NONE' ? `badge-${f.tier}` : 'badge-FAIL';
+          const safeLoc = String(f.locator || '').replace(/'/g, "\\'");
+          tr.innerHTML = `<td><a class="file-link" title="Click to inspect full classification, ownership & Prevalidator verdict" onclick="openFileInspector('${safeLoc}')">${f.file_name}</a></td>
+            <td><code>${f.attestation_state}</code></td>
+            <td><span class="badge ${tierBadge}">${f.tier || 'UNATTESTED'}</span></td>
+            <td><span class="badge ${verdictBadge}">${f.verdict}</span></td>
+            <td><code>${f.reason_detail}</code></td>`;
+          tbody.appendChild(tr);
+        });
+        if (btn) {
+          btn.textContent = `Prevalidated (${data.passed_count}/${data.total_files} in ${totalElapsed}s) — 2. Run Prevalidator Scan`;
+        }
+        await refreshState();
+      } catch (err) {
+        clearInterval(prevalTimerInterval);
+        if (hairline) hairline.style.display = 'none';
+        document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${err}</span>`;
+      } finally {
+        clearInterval(prevalTimerInterval);
+        if (hairline) hairline.style.display = 'none';
+        isPrevalidating = false;
+        if (btn) {
+          btn.disabled = false;
+        }
+      }
     }
 
     function loadPreset(name) {
@@ -1699,6 +1858,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     }
 
     const LLM_PRESETS = {
+      g1_combine: { name: 'G1 Combine Gateway (:8000)', protocol: 'openai', base_url: 'http://host.docker.internal:8000', default_model: 'gpt-4', egress_class: 'private_cloud' },
       builtin: { name: 'Built-in G1 Gateway', protocol: 'openai', base_url: 'http://litellm-gateway:4000', default_model: 'local-model', egress_class: 'local_only' },
       lmstudio: { name: 'LM Studio (Host PC)', protocol: 'openai', base_url: 'http://host.docker.internal:1234', default_model: 'local-model', egress_class: 'local_only' },
       ollama: { name: 'Ollama (Host PC)', protocol: 'openai', base_url: 'http://host.docker.internal:11434', default_model: 'llama3.2', egress_class: 'local_only' },
@@ -2271,10 +2431,8 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     loadPreset('allow');
     loadLlmConfig();
     loadPcFoldersDropdown();
-    // Auto-run initial directory attestation and Prevalidator scan so verifiable English counts appear immediately
-    attestSelectedDirectory();
-    refreshCrawlerTelemetry(true);
-    setInterval(() => refreshCrawlerTelemetry(false), 650);
+    refreshState();
+    setInterval(refreshState, 1000);
   </script>
 </body>
 </html>"""
@@ -3531,6 +3689,17 @@ def create_prevalidator_app(
         except Exception as exc:
             return {"reachable": False, "base_url": base_url, "error": str(exc)}
 
+    _shared_upstream_client: httpx.AsyncClient | None = None
+
+    def get_shared_upstream_client() -> httpx.AsyncClient:
+        nonlocal _shared_upstream_client
+        if _shared_upstream_client is None or _shared_upstream_client.is_closed:
+            _shared_upstream_client = httpx.AsyncClient(
+                timeout=60.0,
+                limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)
+            )
+        return _shared_upstream_client
+
     @app.post("/v1/chat/completions")
     async def openai_chat_completions(request: Request) -> Any:
         payload = await request.json()
@@ -3538,7 +3707,12 @@ def create_prevalidator_app(
         outcome = enforcer.evaluate_request(payload=payload, headers=headers)
 
         if not outcome.allowed_to_forward:
-            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body)
+            denial_headers = {
+                "X-Blocked-By": "G1-Docket-Prevalidator",
+                "X-POD-Attestation-Verdict": "BLOCKED",
+                "X-POD-Reason-Codes": ",".join(outcome.audit_entry.reason_codes) if outcome.audit_entry else "policy_denied",
+            }
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
 
         clean_payload = outcome.transformed_payload
         model = clean_payload.get("model", llm_config.get("default_model", "gpt-4o"))
@@ -3570,6 +3744,16 @@ def create_prevalidator_app(
             for k, v in request.headers.items()
             if k.lower() not in ("host", "content-length", "x-pod-locators", "x-pod-caller-key", "x-pod-caller-token")
         }
+        if outcome.audit_entry and outcome.audit_entry.locators_evaluated:
+            forward_headers["X-Docket-Attestation-Verdict"] = outcome.audit_entry.decision.upper()
+            forward_headers["X-Docket-Clearance-Tier"] = outcome.audit_entry.caller_clearance.upper()
+            forward_headers["X-Docket-Attested-Locators"] = ",".join(outcome.audit_entry.locators_evaluated)
+            forward_headers["X-Docket-Attestation-Timestamp"] = outcome.audit_entry.timestamp
+        else:
+            forward_headers["X-Docket-Attestation-Verdict"] = "PASSTHROUGH_UNATTESTED"
+            forward_headers["X-Docket-Clearance-Tier"] = "PUBLIC"
+            forward_headers["X-Docket-Attested-Locators"] = ""
+
         if llm_config.get("api_key") and "authorization" not in {k.lower() for k in forward_headers}:
             forward_headers["Authorization"] = f"Bearer {llm_config['api_key']}"
 
@@ -3589,9 +3773,9 @@ def create_prevalidator_app(
 
             return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-            return JSONResponse(status_code=resp.status_code, content=resp.json())
+        client = get_shared_upstream_client()
+        resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
+        return JSONResponse(status_code=resp.status_code, content=resp.json())
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request) -> Any:
@@ -3600,7 +3784,12 @@ def create_prevalidator_app(
         outcome = enforcer.evaluate_request(payload=payload, headers=headers)
 
         if not outcome.allowed_to_forward:
-            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body)
+            denial_headers = {
+                "X-Blocked-By": "G1-Docket-Prevalidator",
+                "X-POD-Attestation-Verdict": "BLOCKED",
+                "X-POD-Reason-Codes": ",".join(outcome.audit_entry.reason_codes) if outcome.audit_entry else "policy_denied",
+            }
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
 
         clean_payload = outcome.transformed_payload
         model = clean_payload.get("model", llm_config.get("default_model", "claude-3-5-sonnet"))
@@ -3653,9 +3842,9 @@ def create_prevalidator_app(
 
             return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-            return JSONResponse(status_code=resp.status_code, content=resp.json())
+        client = get_shared_upstream_client()
+        resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
+        return JSONResponse(status_code=resp.status_code, content=resp.json())
 
     @app.get("/v1/admin/audit-log")
     def get_audit_log(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:

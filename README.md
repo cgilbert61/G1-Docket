@@ -12,6 +12,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 2. **The Registry (`registry/`)** — The authoritative catalog of signed records on PostgreSQL/SQLAlchemy, enforcing tier-based expiry (`Restricted`: 30d, `Confidential`: 90d, `Internal`: 180d, `Public`: 365d), human-review queues for `Restricted` and low-confidence findings, immediate tier elevation, dual-approval tier lowering, and re-classification on content hash drift.
 3. **The Signed Snapshot Publisher (`snapshot/`) & Consumer Conformance Suite (`conformance/`)** — Publishes short-TTL, DSSE-signed snapshots with monotonic sequence numbers and active + `expired`/`revoked` tombstones so downstream consumers enforce policy in memory with zero Registry calls in the request path.
 4. **The Prevalidator (`prevalidator/`)** — A fast proxy placed in front of any AI gateway speaking standard OpenAI (`/v1/chat/completions`) or Anthropic (`/v1/messages`) formats (including SSE streaming). It evaluates `<pod:object>` blocks and request headers against the in-memory snapshot to forward, strip, or refuse requests before the gateway sees them.
+5. **Governance Subsystem (`governance/`)** — Downstream compliance and triage stack featuring an immutable cryptographic WORM audit ledger, a 7-target enterprise SIEM forwarder engine with persistent SQLite buffering, and a Four-Eyes Dual-Key Human-in-the-Loop (HITL) triage interface minting Ed25519 DSSE emergency admission tickets.
 
 ---
 
@@ -22,6 +23,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `registry/` — Registry service, lifecycle state machine, human-review queue, hardened FastAPI server, local DSSE/Sigstore signing toolkit, and `pod` CLI
 - `snapshot/` — Signed Snapshot Publisher service and API
 - `prevalidator/` — OpenAI & Anthropic Prevalidator proxy (Enforce & Observe modes)
+- `governance/` — Cryptographic WORM audit ledger, multi-target SIEM forwarders, and HITL Dual-Key triage GUI & server
 - `conformance/` — Reference consumer simulator and Consumer Conformance Test Suite
 - `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`)
 - `examples/` — Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, and reproducible end-to-end demo
@@ -199,6 +201,121 @@ for ($i = 1; $i -le 40; $i++) {
 
 ---
 
-## License
+## Service Architecture & Swagger API Directory
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+G1 Docket deploys a modular, microservice-based attestation, prevalidation, and compliance stack:
+
+| Port | Service Component | Interactive Swagger / UI | Key Role & Scope |
+| :--- | :--- | :--- | :--- |
+| **`18080`** | Registry Service | `http://localhost:18080/docs` | Authoritative PostgreSQL catalog of DSSE-signed in-toto attestation records and review queues. |
+| **`18081`** | Snapshot Publisher | `http://localhost:18081/docs` | Issues short-TTL, monotonic DSSE snapshot contracts for zero-DB gate evaluation. |
+| **`18082`** | Prevalidator Proxy | `http://localhost:18082/` | OpenAI/Anthropic gateway proxy, continuous estate scanner, and unified operator dashboard. |
+| **`18083`** | **Attestation Engine Service** | `http://localhost:18083/docs` | Enterprise crawler, Purview/Presidio classifier, and cloud/warehouse connector API. |
+| **`18084`** | **HITL Governance & SIEM Hub** | `http://localhost:18084/` & `/docs` | Cryptographic WORM audit ledger, dual-key quarantine triage GUI, and multi-target SIEM dispatcher. |
+| **`14000`** | LiteLLM Mock Gateway | `http://localhost:14000/healthz` | Upstream OpenAI/Anthropic model router and mock gateway for testing. |
+
+---
+
+### Attestation Engine Service (`:18083/docs`)
+
+The **Attestation Engine Service** (OpenAPI 3.1, `v0.1.0`) provides programmatic APIs to discover, inspect, and attest assets across local disks, network shares, and enterprise cloud data lakes:
+
+```
+default
+├── GET  /healthz                     Service health and readiness probe
+├── GET  /v1/browse-dir               Browse host drives and directories for estate targeting
+├── POST /v1/attest-selected          Trigger cryptographic attestation across selected drive or path
+├── GET  /v1/pc-folders               List auto-discovered workstation directories & document stores
+├── GET  /v1/datastores               Query registered enterprise data stores (S3, Azure, GCS, Snowflake, BigQuery)
+├── POST /v1/datastores               Register new enterprise cloud data lake or warehouse connection
+└── GET  /v1/datastores/objects       Enumerate discovered objects and partitions within enterprise datastores
+```
+
+- **`GET /v1/browse-dir`**: Takes `?path=` query parameter to navigate the host filesystem, reporting directory entries, file counts, and accessibility.
+- **`POST /v1/attest-selected`**: Initiates discovery, DLP classification (Presidio + Purview metadata extraction), and cryptographic DSSE envelope issuance over all scannable files in the path.
+- **`GET /v1/datastores` & `POST /v1/datastores`**: Configures enterprise cloud data stores with zero-secret credentials (AWS IAM roles, Azure Managed Identity, GCP Workload Identity / ADC, Snowflake key-pair) and runs partition-level attestation.
+
+---
+
+### HITL Governance Subsystem & WORM Ledger (`:18084` & `:18084/docs`)
+
+The **Governance Subsystem** (OpenAPI 3.1, `v4.0.0`) operates the downstream compliance, immutable audit ledger, quarantine triage, and real-time SIEM streaming pipeline:
+
+```
+default
+├── GET  /                            Unified HITL Triage, WORM Chain Audit & SIEM Operations Dashboard
+├── GET  /api/quarantine              List all quarantined objects (un-papered files, forged envelopes, Presidio blocks)
+├── GET  /api/quarantine/{id}         Inspect quarantined object metadata, payload snippet, and audit status
+├── POST /api/quarantine/{id}/stage-override    Key 1: Requester stages override with operational rationale
+├── POST /api/quarantine/{id}/approve-override  Key 2: Distinct Approver signs release with Ed25519 DSSE emergency ticket
+├── POST /api/quarantine/{id}/reject            Formal reviewer rejection and permanent block of quarantined item
+├── GET  /api/worm/verify             Full Merkle/hash-chain integrity audit from genesis block ("0"*64) to tip
+├── GET  /api/worm/events             Query paginated tamper-evident WORM audit records
+├── GET  /api/siem/status             Real-time health, buffer queue length, and delivered count across all 7 forwarders
+├── POST /api/siem/{dest_id}/test     Synthetic probe injection with automatic fallback to persistent SQLite buffer
+├── GET  /api/siem/mock-receivers     Status of embedded local mock receiver cluster (ports 18088, 19200, 15514, etc.)
+├── POST /api/siem/mock-receivers/toggle Toggle local mock receivers on/off
+├── GET  /api/siem/{dest_id}/config   Fetch destination parameters (URL, API keys, headers, indices, Syslog TLS)
+├── POST /api/siem/{dest_id}/config   Live update destination parameters and persist to governance/config.yaml
+├── POST /api/intercept               Boundary intercept webhook for Prevalidator and Combine cognitive denials
+└── GET  /events/stream               Server-Sent Events (SSE) live security telemetry stream
+```
+
+#### Core Capabilities:
+1. **Cryptographic WORM Audit Ledger (`worm_ledger.py`)**:
+   - Implements dual-store append-only audit persistence: SQLite with triggers that raise an immediate error on any `UPDATE` or `DELETE` attempt, coupled with a canonical JSON Lines log.
+   - Hash-chained with SHA-256 Merkle links from genesis block (`previous_hash = "0" * 64`) to tip.
+   - `verify_ledger_integrity()` recalculates the entire chain, pinpointing line numbers and byte-level mutations if tampering occurs.
+2. **Four-Eyes Dual-Key Triage Workflow (`dual_key.py`)**:
+   - Intercepted un-papered data objects, forged DSSE envelope blocks, or Presidio/Combine PII denials are isolated in quarantine.
+   - Override requires **two distinct authorized identities**: Requester (Key 1) stages a business justification; Approver (Key 2) validates the diff and signs an Ed25519 DSSE emergency admission ticket.
+   - Upon release, the clean payload is automatically replayed through `:18082`, a `HITL_DUAL_KEY_RELEASE` record is locked into the WORM ledger, and audit notifications stream to downstream SIEMs.
+3. **Multi-Target Enterprise SIEM Integration Engine (`siem_forwarder.py`)**:
+   - Streams security telemetry to 7 pre-configured destinations:
+     - **Splunk HEC**: `/services/collector/event`
+     - **Elasticsearch / OpenSearch**: `ecs-1.12` compliant index mapping
+     - **Syslog CEF Streamer**: RFC 5424 Common Event Format over TCP/TLS
+     - **OpenTelemetry / SOAR Webhook**: CloudEvents structured HTTP POST
+     - **Datadog Logs API**: `/api/v2/logs`
+     - **Microsoft Sentinel / Azure Log Analytics**: Data Collector API
+     - **AWS CloudWatch Logs**: PutLogEvents structured JSON format
+   - Zero sensitive data leakage: payloads are scrubbed to hashes, rule IDs, and ticket identifiers.
+   - Offline resilience: failed socket transmissions automatically persist to a local SQLite buffer queue and retry upon network reconnection.
+   - Integrated GUI editor: update live endpoints, API keys, and Syslog TLS parameters on the fly with automatic persistence to `governance/config.yaml`.
+
+---
+
+## License & Third-Party Open Source Software
+
+G1 Docket is licensed under the **Apache License 2.0** — see [LICENSE](LICENSE).
+
+### Open Source Dependencies & Licenses
+
+This project relies on and incorporates open-source libraries and standards. We gratefully acknowledge the upstream maintainers:
+
+| Package / Project | Version | Upstream License | Project URL / Source | Primary Role in G1 Docket |
+| :--- | :--- | :--- | :--- | :--- |
+| **FastAPI** | `>=0.109.0` | **MIT** | [tiangolo/fastapi](https://github.com/fastapi/fastapi) | Async REST API framework for Registry, Engine, Prevalidator, and Governance servers |
+| **Starlette** | `~=1.10.0` | **BSD 3-Clause** | [encode/starlette](https://github.com/encode/starlette) | ASGI web core, routing, Server-Sent Events (SSE), and request processing |
+| **Uvicorn** | `>=0.27.0` | **BSD 3-Clause** | [encode/uvicorn](https://github.com/encode/uvicorn) | High-performance lightning-fast ASGI server |
+| **Pydantic** | `>=2.5.0` | **MIT** | [pydantic/pydantic](https://github.com/pydantic/pydantic) | Strict data validation, schema enforcement, and JSON serialization |
+| **Pydantic Core** | `>=2.14.0` | **MIT** | [pydantic/pydantic-core](https://github.com/pydantic/pydantic-core) | High-speed Rust core for data parsing |
+| **Cryptography** | `>=41.0.0` | **Apache-2.0 / BSD** | [pyca/cryptography](https://github.com/pyca/cryptography) | Ed25519 signing, verification, SHA-256 digests, and X.509 certificates |
+| **PyJWT** | `>=2.8.0` | **MIT** | [jpadilla/pyjwt](https://github.com/jpadilla/pyjwt) | JSON Web Token (JWT) encode/decode for role-based service authentication |
+| **SQLAlchemy** | `>=2.0.25` | **MIT** | [sqlalchemy/sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | Database abstraction, WAL transactions, and SQLite/PostgreSQL persistence |
+| **HTTPX** | `>=0.26.0` | **BSD 3-Clause** | [encode/httpx](https://github.com/encode/httpx) | Asynchronous HTTP client for SIEM forwarder and AI Gateway reverse proxy |
+| **HTTPCore** | `~=1.0.9` | **BSD 3-Clause** | [encode/httpcore](https://github.com/encode/httpcore) | Low-level HTTP transport and connection pooling |
+| **JSONSchema** | `>=4.20.0` | **MIT** | [python-jsonschema/jsonschema](https://github.com/python-jsonschema/jsonschema) | Draft 2020-12 schema verification for in-toto attestation records |
+| **OpenPyXL** | `>=3.1.2` | **MIT** | [openpyxl](https://foss.heptapod.net/openpyxl/openpyxl) | Spreadsheet parsing, cell extraction, and Excel workbook classification |
+| **Jinja2** | `>=3.1.0` | **BSD 3-Clause** | [pallets/jinja](https://github.com/pallets/jinja) | Institutional HTML template rendering for HITL Governance dashboard |
+| **PyYAML** | `>=6.0.0` | **MIT** | [yaml/pyyaml](https://github.com/yaml/pyyaml) | SIEM configuration serialization and persistent setting storage |
+| **AnyIO** | `>=4.0.0` | **MIT** | [agronholm/anyio](https://github.com/agronholm/anyio) | Structured asynchronous concurrency primitives |
+| **Pytest** | `>=8.0.0` | **MIT** | [pytest-dev/pytest](https://github.com/pytest-dev/pytest) | Automated unit, regression, and conformance testing framework |
+| **Click** | `>=8.0.0` | **BSD 3-Clause** | [pallets/click](https://github.com/pallets/click) | Command-line interface driver for the `pod` CLI |
+| **OpenTelemetry API** | `>=1.20.0` | **Apache-2.0** | [open-telemetry/opentelemetry-python](https://github.com/open-telemetry/opentelemetry-python) | Distributed tracing, security audit events, and trace propagation |
+| **Microsoft Presidio** | `>=2.2.35` | **MIT** | [microsoft/presidio](https://github.com/microsoft/presidio) | Sensitive entity recognition (PII/PHI/PCI/API keys) in document content |
+| **Apache Tika** | `>=2.6.0` | **Apache-2.0** | [apache/tika](https://tika.apache.org/) | Multi-format content detection and document text extraction |
+| **in-toto Specification** | `v1.0` | **Apache-2.0** | [in-toto/attestation](https://github.com/in-toto/attestation) | Standardized metadata format for cryptographic software & data supply chain attestation |
+| **DSSE Specification** | `v1.0` | **Apache-2.0** | [secure-systems-lab/dsse](https://github.com/secure-systems-lab/dsse) | Dead Simple Signing Envelope for multi-key detached signatures |
+| **LiteLLM** | `>=1.0.0` | **MIT** | [BerriAI/litellm](https://github.com/BerriAI/litellm) | Upstream AI gateway and OpenAI/Anthropic protocol translation |
+| **SQLite** | `v3` | **Public Domain** | [sqlite.org](https://www.sqlite.org/) | Embedded transactional storage for WORM ledger, quarantine queue, and SIEM buffer |

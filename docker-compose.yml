@@ -120,7 +120,7 @@ services:
       POD_SNAPSHOT_FILE: /var/lib/pod/state/snapshots/pod_snapshot.dsse.json
       POD_LLM_CONFIG_FILE: /tmp/llm_provider_config.json
       POD_PREVALIDATOR_MODE: ${POD_PREVALIDATOR_MODE:-enforce}
-      POD_UPSTREAM_GATEWAY_URL: ${POD_UPSTREAM_GATEWAY_URL:-http://litellm-gateway:4000}
+      POD_UPSTREAM_GATEWAY_URL: ${POD_UPSTREAM_GATEWAY_URL:-http://host.docker.internal:8000}
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
     extra_hosts:
@@ -166,6 +166,31 @@ services:
       - C:/:/host_c
     ports:
       - "${POD_ENGINE_PORT:-18083}:8083"
+
+  governance:
+    build:
+      context: .
+      dockerfile: prevalidator/Dockerfile
+    profiles: ["core", "demo"]
+    depends_on:
+      prevalidator:
+        condition: service_started
+    environment:
+      GOVERNANCE_HOST: "0.0.0.0"
+      GOVERNANCE_PORT: "8084"
+      INFERENCE_GATEWAY_URL: "http://prevalidator:8082"
+      POD_KEY_DIR: /var/lib/pod/public_keys
+      WORM_SQLITE_PATH: /var/lib/pod/state/worm_ledger.db
+      WORM_JSONL_PATH: /var/lib/pod/state/worm_ledger.jsonl
+      QUARANTINE_DB_PATH: /var/lib/pod/state/quarantine.db
+      SIEM_BUFFER_DB_PATH: /var/lib/pod/state/siem_buffer.db
+    volumes:
+      - pod_public_keys:/var/lib/pod/public_keys:ro
+      - pod_state:/var/lib/pod/state
+      - d:/attestation:/host_workspace
+    ports:
+      - "${POD_GOVERNANCE_PORT:-18084}:8084"
+    command: ["uvicorn", "governance.triage_server:app", "--host", "0.0.0.0", "--port", "8084"]
 
 volumes:
   pod_postgres_data:

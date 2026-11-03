@@ -142,7 +142,7 @@ class PrevalidatorEnforcer:
         default_egress_class: str = "public_api",
         caller_key_clearance_map: dict[str, str] | None = None,
         jwt_secret: str | None = None,
-        enable_presidio_fallback: bool = True,
+        enable_presidio_fallback: bool | None = None,
         allow_header_only_objects: bool | None = None,
         strict_inline_hash: bool | None = None,
         max_untagged_chars: int | None = None,
@@ -155,6 +155,8 @@ class PrevalidatorEnforcer:
             "local-model": "local_only",
             "ollama": "local_only",
             "vpc-model": "private_cloud",
+            "gpt-4": "private_cloud",
+            "combine-gateway": "private_cloud",
             "gpt-4o": "public_api",
             "claude-3-5-sonnet": "public_api",
         }
@@ -166,7 +168,11 @@ class PrevalidatorEnforcer:
             "pod-key-restricted": "Restricted",
         }
         self.jwt_secret = jwt_secret or "pod-local-jwt-secret-key-minimum-32-bytes-long"
-        self.enable_presidio_fallback = enable_presidio_fallback
+        self.enable_presidio_fallback = (
+            enable_presidio_fallback
+            if enable_presidio_fallback is not None
+            else os.environ.get("POD_ENABLE_PRESIDIO_FALLBACK", "false").lower() in ("1", "true", "yes")
+        )
         self.allow_header_only_objects = (
             allow_header_only_objects
             if allow_header_only_objects is not None
@@ -589,7 +595,9 @@ class PrevalidatorEnforcer:
 
         # 2. Enforce Untagged Context Quota when <pod:object> tags or X-POD-Require-Attested-Context: true are present
         require_attested_ctx = norm_hdrs.get("x-pod-require-attested-context", "").lower() in ("1", "true", "yes")
-        if (has_inline_pod_tags or require_attested_ctx) and total_untagged_chars > self.max_untagged_chars:
+        if require_attested_ctx and not has_inline_pod_tags:
+            reason_codes.append("UNATTESTED_DATA_OBJECT")
+        elif (has_inline_pod_tags or require_attested_ctx) and total_untagged_chars > self.max_untagged_chars:
             reason_codes.append(REASON_UNATTESTED_CONTEXT_OVERFLOW)
 
         # 3. Evaluate request-level header locators (`X-POD-Locators` or `X-POD-Objects`)

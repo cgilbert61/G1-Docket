@@ -66,18 +66,25 @@ class ContinuousDeltaCrawler:
         # Configurable scan targets (Drives, Directories, Cloud Lakes, Warehouses)
         self.targets: list[dict[str, Any]] = [
             {
+                "id": "target-pc-demo",
+                "path_or_uri": "D:\\attestation\\pc_demo_folder",
+                "label": "📁 D:\\attestation\\pc_demo_folder — Sample Demo Documents",
+                "kind": "pc_dir",
+                "enabled": False,
+            },
+            {
                 "id": "target-d-drive",
                 "path_or_uri": "D:\\",
                 "label": "🖴 D:\\ — Entire D: Drive (Unbounded Recursive Sweep)",
                 "kind": "pc_drive",
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "id": "target-user-home",
                 "path_or_uri": "C:\\Users\\chuck",
                 "label": "📁 C:\\Users\\chuck — User Profile Root (Unbounded Recursive Sweep)",
                 "kind": "pc_dir",
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "id": "target-c-drive",
@@ -91,21 +98,21 @@ class ContinuousDeltaCrawler:
                 "path_or_uri": "s3://contoso-ai-datalake-prod/rag-corpus",
                 "label": "☁️ AWS S3 — s3://contoso-ai-datalake-prod/rag-corpus",
                 "kind": "cloud_store",
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "id": "target-azure-adls",
                 "path_or_uri": "azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge",
                 "label": "☁️ Azure ADLS Gen2 — azblob://contosodatalake.../enterprise-knowledge",
                 "kind": "cloud_store",
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "id": "target-gcp-gcs",
                 "path_or_uri": "gs://contoso-vertex-lake-us/curated-zones",
                 "label": "☁️ GCP Cloud Storage — gs://contoso-vertex-lake-us/curated-zones",
                 "kind": "cloud_store",
-                "enabled": True,
+                "enabled": False,
             },
             {
                 "id": "target-snowflake",
