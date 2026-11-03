@@ -174,6 +174,11 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    static_dir = Path(__file__).parent / "static"
+    if static_dir.exists():
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
     # Attach subsystem singletons to app state
     app.state.worm_ledger = worm_ledger
     app.state.quarantine_store = quarantine_store

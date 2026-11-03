@@ -1,0 +1,13 @@
+<!-- Tab 4: Live Event Stream (SSE) -->
+<div id="tab-live" class="hidden space-y-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-[#0F172A] tracking-tight">Live Server-Sent Events (SSE)</h2>
+      <p class="text-xs text-[#475569]">Real-time streaming telemetry from inference boundary, WORM ledger, and HITL actions.</p>
+    </div>
+    <button onclick="clearLiveLog()" class="btn btn-secondary">Clear Log</button>
+  </div>
+  <div class="bg-white border border-[#E2E8F0] rounded p-4 font-mono-tabular text-xs max-h-[500px] overflow-y-auto space-y-2" id="live-event-container">
+    <div class="text-[#475569]">// Waiting for real-time telemetry events...</div>
+  </div>
+</div>

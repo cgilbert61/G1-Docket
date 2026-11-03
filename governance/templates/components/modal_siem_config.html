@@ -1,0 +1,89 @@
+<!-- SIEM Destination Configuration Modal -->
+<div id="siem-config-modal" class="hidden fixed inset-0 bg-[#0F172A] bg-opacity-40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white border border-[#E2E8F0] rounded max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-sm">
+    <div class="bg-[#F8FAFC] border-b border-[#E2E8F0] px-6 py-4 flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-semibold text-[#0F172A] uppercase tracking-wide">Configure SIEM Destination</h3>
+        <p class="text-xs text-[#475569]" id="cfg-modal-subtitle">Update endpoint parameters or point to live production server</p>
+      </div>
+      <button onclick="closeConfigModal()" class="text-[#475569] hover:text-[#0F172A] text-lg font-bold">&times;</button>
+    </div>
+
+    <div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+      <div class="flex items-center justify-between bg-[#F8FAFC] border border-[#E2E8F0] rounded p-3">
+        <div>
+          <span class="font-semibold text-[#0F172A]" id="cfg-dest-name">Destination</span>
+          <span class="badge badge-neutral ml-2" id="cfg-dest-type">type</span>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer font-semibold text-[#0F172A]">
+          <input type="checkbox" id="cfg-enabled" class="rounded border-[#CBD5E1]">
+          <span>Enabled</span>
+        </label>
+      </div>
+
+      <!-- HTTP Endpoint or Syslog Host -->
+      <div id="cfg-http-fields" class="space-y-3">
+        <div>
+          <label class="block font-semibold text-[#0F172A] mb-1">Live Endpoint URL</label>
+          <input type="text" id="cfg-endpoint-url" placeholder="https://your-siem-cluster.example.com/api/..." class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+          <p class="text-[11px] text-[#475569] mt-0.5">Supports Splunk HEC, Elastic / OpenSearch, Datadog Logs API, MS Sentinel, CloudWatch, or custom Webhooks.</p>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-[#0F172A] mb-1">API Key / Ingest Token</label>
+          <div class="flex gap-2">
+            <input type="password" id="cfg-api-key" placeholder="Enter API Key / Ingest Token" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+            <button type="button" onclick="togglePasswordVisibility('cfg-api-key')" class="btn btn-secondary text-xs">Show</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-[#0F172A] mb-1">Custom Authorization Header (Optional)</label>
+          <input type="text" id="cfg-auth-header" placeholder="e.g. Bearer eyJhbGci... or SharedKey <workspace>:<sig>" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-[#0F172A] mb-1">Index / Sourcetype / Table</label>
+            <input type="text" id="cfg-index-sourcetype" placeholder="e.g. g1:security:event or g1-security-events" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+          </div>
+          <div>
+            <label class="block font-semibold text-[#0F172A] mb-1">Workspace ID / Log Group</label>
+            <input type="text" id="cfg-workspace-loggroup" placeholder="e.g. /g1/docket/security or workspace-id" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+          </div>
+        </div>
+      </div>
+
+      <!-- Syslog Specific Fields -->
+      <div id="cfg-syslog-fields" class="space-y-3 hidden">
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2">
+            <label class="block font-semibold text-[#0F172A] mb-1">Syslog Host / IP</label>
+            <input type="text" id="cfg-syslog-host" placeholder="127.0.0.1 or syslog.corp.internal" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+          </div>
+          <div>
+            <label class="block font-semibold text-[#0F172A] mb-1">Port</label>
+            <input type="number" id="cfg-syslog-port" placeholder="514" class="w-full border border-[#E2E8F0] rounded p-2 text-xs font-mono-tabular">
+          </div>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer font-semibold text-[#0F172A]">
+          <input type="checkbox" id="cfg-syslog-tls" class="rounded border-[#CBD5E1]">
+          <span>Use TLS Encrypted TCP</span>
+        </label>
+      </div>
+
+      <!-- Result Banner in Modal -->
+      <div id="cfg-save-banner" class="hidden border rounded p-3 font-mono-tabular text-xs"></div>
+
+      <div class="flex justify-between items-center pt-2 border-t border-[#E2E8F0]">
+        <button type="button" onclick="testConfigModalPing()" class="btn btn-secondary text-xs">
+          Send Test Ping
+        </button>
+        <div class="flex gap-2">
+          <button type="button" onclick="closeConfigModal()" class="btn btn-secondary text-xs">Cancel</button>
+          <button type="button" onclick="saveConfigModal()" class="btn btn-primary text-xs">Save & Apply Live</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

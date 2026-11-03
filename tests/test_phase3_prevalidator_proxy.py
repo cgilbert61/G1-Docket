@@ -63,6 +63,7 @@ def test_prevalidator_observe_mode_and_streaming_and_fallback(tmp_path: Path):
         snapshot_store=store,
         mode="observe",
         jwt_secret="test-jwt-secret-key-at-least-32-bytes-long",
+        enable_presidio_fallback=True,
     )
     app = create_prevalidator_app(enforcer=enforcer, upstream_gateway_url="mock://local")
     client = TestClient(app)

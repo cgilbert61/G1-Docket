@@ -1,0 +1,50 @@
+<!-- Tab 2: WORM Ledger Auditor -->
+<div id="tab-worm" class="hidden space-y-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-[#0F172A] tracking-tight">Cryptographic WORM Audit Ledger</h2>
+      <p class="text-xs text-[#475569]">Write-Once Read-Many Merkle chain with SQLite WAL write triggers and canonical JSONL hash-chaining.</p>
+    </div>
+    <button onclick="verifyWORM()" class="btn btn-primary">
+      Verify Cryptographic Integrity
+    </button>
+  </div>
+
+  <!-- Verification Result Banner -->
+  <div id="worm-verify-banner" class="hidden border rounded p-4 text-xs font-mono-tabular"></div>
+
+  <div class="bg-white border border-[#E2E8F0] rounded overflow-hidden">
+    <table class="w-full text-left text-xs">
+      <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] font-semibold text-[#475569]">
+        <tr>
+          <th class="p-3">Seq #</th>
+          <th class="p-3">Entry ID</th>
+          <th class="p-3">Event Type</th>
+          <th class="p-3">Actor Identity</th>
+          <th class="p-3">Payload SHA-256</th>
+          <th class="p-3">Entry Hash</th>
+          <th class="p-3">Timestamp (UTC)</th>
+        </tr>
+      </thead>
+      <tbody id="worm-tbody" class="divide-y divide-[#E2E8F0] font-mono-tabular">
+        {% for w in worm_events %}
+        <tr class="hover:bg-[#F8FAFC]">
+          <td class="p-3 font-semibold text-[#0F172A]">{{ w.sequence_num }}</td>
+          <td class="p-3 text-[#475569]">{{ w.entry_id }}</td>
+          <td class="p-3">
+            <span class="badge badge-neutral">{{ w.event_type }}</span>
+          </td>
+          <td class="p-3 text-[#0F172A] font-semibold">{{ w.actor_identity }}</td>
+          <td class="p-3 text-[#475569] font-mono-tabular truncate max-w-[120px]" title="{{ w.payload_digest }}">{{ w.payload_digest[:16] }}...</td>
+          <td class="p-3 text-[#475569] font-mono-tabular truncate max-w-[120px]" title="{{ w.entry_hash }}">{{ w.entry_hash[:16] }}...</td>
+          <td class="p-3 text-[#475569]">{{ w.timestamp_utc_iso8601[:19] }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="p-6 text-center text-[#475569]">No WORM events logged yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

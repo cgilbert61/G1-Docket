@@ -1,0 +1,74 @@
+<!-- Triage & Dual-Key Signoff Modal -->
+<div id="triage-modal" class="hidden fixed inset-0 bg-[#0F172A] bg-opacity-40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white border border-[#E2E8F0] rounded max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-sm">
+    <div class="bg-[#F8FAFC] border-b border-[#E2E8F0] px-6 py-4 flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-semibold text-[#0F172A] uppercase tracking-wide">Quarantine Inspection & Dual-Key Review</h3>
+        <p class="text-xs text-[#475569]" id="modal-subtitle">Reviewing item</p>
+      </div>
+      <button onclick="closeTriageModal()" class="text-[#475569] hover:text-[#0F172A] text-lg font-bold">&times;</button>
+    </div>
+
+    <div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+      <!-- Item Meta Details Grid -->
+      <div class="grid grid-cols-2 gap-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded p-3 font-mono-tabular">
+        <div><strong class="text-[#475569]">Quarantine ID:</strong> <span id="m-id" class="text-[#0F172A] font-semibold"></span></div>
+        <div><strong class="text-[#475569]">Status:</strong> <span id="m-status"></span></div>
+        <div><strong class="text-[#475569]">Reason:</strong> <span id="m-reason" class="text-[#DC2626] font-semibold"></span></div>
+        <div><strong class="text-[#475569]">Clearance:</strong> <span id="m-tier"></span></div>
+        <div class="col-span-2 truncate"><strong class="text-[#475569]">Locator:</strong> <span id="m-loc"></span></div>
+        <div class="col-span-2 truncate"><strong class="text-[#475569]">SHA-256:</strong> <span id="m-sha"></span></div>
+      </div>
+
+      <!-- Quarantined Content Preview -->
+      <div>
+        <label class="block font-semibold text-[#0F172A] mb-1">Quarantined Content Payload Snippet</label>
+        <pre id="m-content" class="bg-[#F8FAFC] border border-[#E2E8F0] rounded p-3 text-[11.5px] font-mono-tabular max-h-40 overflow-y-auto whitespace-pre-wrap text-[#0F172A]"></pre>
+      </div>
+
+      <!-- Four-Eyes Approval Workflow Box -->
+      <div class="border border-[#E2E8F0] rounded p-4 bg-white space-y-3">
+        <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
+
+        <!-- Step 1: Requester Stage -->
+        <div id="step-1-container" class="space-y-2 border-b border-[#E2E8F0] pb-3">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-[#0F172A]">Key 1: Override Request & Business Justification</span>
+            <span id="key1-badge" class="badge badge-warning">Awaiting Key 1</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="text" id="k1-operator" placeholder="Requester ID (e.g. secops-analyst-1)" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1">
+            <input type="text" id="k1-rationale" placeholder="Emergency operational rationale..." class="border border-[#E2E8F0] rounded p-2 text-xs col-span-2">
+          </div>
+          <div class="flex justify-end">
+            <button onclick="submitKey1()" id="btn-submit-key1" class="btn btn-secondary">Stage Key 1 Override</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Approver Release -->
+        <div id="step-2-container" class="space-y-2 pt-1">
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-[#0F172A]">Key 2: Distinct Approver Signoff & Emergency Release</span>
+            <span id="key2-badge" class="badge badge-neutral">Locked</span>
+          </div>
+          <p class="text-[11px] text-[#475569]">Approver must be a distinct authorized identity. Signs an Ed25519 DSSE emergency ticket and replays payload through :18082.</p>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="text" id="k2-operator" placeholder="Approver ID (e.g. ciso-officer-2)" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1" disabled>
+            <input type="text" id="k2-notes" placeholder="Approval audit notes..." class="border border-[#E2E8F0] rounded p-2 text-xs col-span-2" disabled>
+          </div>
+          <div class="flex justify-between items-center">
+            <button onclick="rejectCurrentItem()" id="btn-reject" class="btn btn-danger">Permanently Deny</button>
+            <button onclick="submitKey2()" id="btn-submit-key2" class="btn btn-primary" disabled>Sign Key 2 & Execute Replay</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Replay Execution Result -->
+      <div id="replay-box" class="hidden border border-[#E2E8F0] rounded p-3 bg-[#F8FAFC]">
+        <div class="font-semibold text-[#0F172A] mb-1">Inference Pipeline Replay Result</div>
+        <pre id="replay-output" class="text-[11px] font-mono-tabular text-[#0F172A] whitespace-pre-wrap"></pre>
+      </div>
+
+    </div>
+  </div>
+</div>

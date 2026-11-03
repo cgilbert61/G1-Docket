@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>G1 Docket — Multi-Cloud DLP &amp; Microsoft Purview Connector | G1163RT Security Labs</title>
+  <link rel="icon" type="image/png" href="/assets/g1-logo.png" />
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --bg-subtle: #F1F5F9;
+      --panel: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #475569;
+      --primary: #1E293B;
+      --link: #2563EB;
+      --green: #15803D;
+      --amber: #B45309;
+      --red: #B91C1C;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px 32px;
+      line-height: 1.6;
+      text-align: left;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 18px;
+      margin-bottom: 0;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      object-fit: contain;
+      background: #FFFFFF;
+      padding: 2px;
+      border: 1px solid var(--border);
+    }
+    h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); }
+    h2, h3 { margin: 0 0 8px 0; font-size: 15px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); text-align: left; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; max-width: 65ch; line-height: 1.6; }
+    .lab-pill {
+      display: inline-block;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge {
+      background: #F0FDF4;
+      color: var(--green);
+      border: 1px solid #BBF7D0;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .section-band { border-bottom: 1px solid var(--border); padding: 24px 0; }
+    .section-band-subtle { background: var(--bg-subtle); border-bottom: 1px solid var(--border); margin: 0 -32px; padding: 24px 32px; }
+    .asymmetric-layout { display: grid; grid-template-columns: 280px 1fr; gap: 28px; align-items: start; }
+    .section-aside { position: sticky; top: 20px; text-align: left; }
+    .section-aside .eyebrow { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+    .section-aside h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin-bottom: 8px; line-height: 1.35; }
+    .section-aside p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 65ch; margin: 0 0 12px 0; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 0;
+    }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 8px 0 4px; }
+    select, input {
+      width: 100%;
+      background: #FFFFFF;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    button {
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+    button:hover { background: #334155; border-color: #334155; }
+    .btn-secondary {
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+      border-color: #CBD5E1;
+    }
+    .btn-green, .btn-purple, .btn-amber {
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; background: var(--bg); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+    .pill { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; display: inline-block; font-variant-numeric: tabular-nums; }
+    .tier-Public { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .tier-Internal { background: #F1F5F9; color: #1E293B; border: 1px solid #CBD5E1; }
+    .tier-Confidential { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .tier-Restricted { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .stage-num {
+      display: inline-block;
+      background: var(--bg-subtle);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .cloud-checks {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+    .cloud-checks label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .cloud-checks input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+    .status-banner {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    footer {
+      margin-top: 28px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .footer-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      padding: 2px;
+      object-fit: contain;
+    }
+    @media (max-width: 1100px) {
+      .asymmetric-layout { grid-template-columns: 1fr; }
+      .section-aside { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand-lockup">
+      <img src="/assets/g1-logo.png" alt="G1 Logo" class="brand-logo" />
+      <div>
+        <h1>G1 Docket — DLP &amp; Microsoft Purview Connectors <span class="lab-pill">by G1163RT Security Labs</span></h1>
+        <div class="sub">Plugs Purview &amp; Multi-Cloud DLP directly into <code>PresidioClassifier.evaluate_findings()</code> — Labels-First Fast Lane, Multi-Cloud Catalog Pull, and Catalog Write-Back</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <a href="/" style="background:#FFFFFF; color:var(--text); border:1px solid var(--border); padding:7px 13px; border-radius:4px; font-size:12.5px; font-weight:600; text-decoration:none;">Back to Main G1 Docket Console</a>
+      <div class="badge" id="statusBadge"><code>evaluate_findings()</code> Seam Ready</div>
+    </div>
+  </header>
+
+  <!-- SECTION 01: CONNECTOR CONFIGURATION PROFILE -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">01 / Connection Profile</div>
+        <h2>Cloud DLP &amp; Purview Configuration</h2>
+        <p>
+          Configure how G1 Docket authenticates to Microsoft Purview or multi-cloud DLP catalogs. All findings funnel into <code>evaluate_findings()</code> with full provenance metadata.
+        </p>
+        <button onclick="saveDlpConfig()">Save Connector Config</button>
+        <div id="configSaveMsg" style="margin-top:8px; font-size:12px; color:var(--green); font-family:ui-monospace, monospace;"></div>
+      </aside>
+
+      <div class="card">
+        <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+          <div>
+            <label>Primary DLP / Governance Provider</label>
+            <select id="dlpProvider">
+              <option value="Microsoft Purview (Azure Multi-Cloud Data Map)">Microsoft Purview (Azure Multi-Cloud Data Map)</option>
+              <option value="AWS Macie + Purview Multi-Cloud">AWS Macie + Purview Multi-Cloud</option>
+              <option value="Google Cloud Sensitive Data Protection (SDP)">Google Cloud Sensitive Data Protection (SDP)</option>
+              <option value="OpenMetadata + Purview Hybrid">OpenMetadata + Purview Hybrid</option>
+            </select>
+          </div>
+          <div>
+            <label>Authentication Mode (Zero Stored Credentials Default)</label>
+            <select id="dlpAuthMode">
+              <option value="azure_managed_identity">Azure Managed Identity (DefaultAzureCredential — No Stored Secrets)</option>
+              <option value="entra_workload_identity">Entra ID Workload Identity Federation</option>
+              <option value="aws_iam_role">AWS IAM Role Assumption (Multi-Cloud S3 Connector)</option>
+              <option value="gcp_workload_identity">GCP Workload Identity Pool</option>
+            </select>
+          </div>
+          <div>
+            <label>Purview Account Name</label>
+            <input id="purviewAccount" type="text" value="g1-enterprise-purview" />
+          </div>
+          <div>
+            <label>Purview / Cloud Catalog Endpoint URL</label>
+            <input id="purviewEndpoint" type="text" value="https://g1-enterprise-purview.purview.azure.com" />
+          </div>
+        </div>
+
+        <label style="margin-top:12px;">Multi-Cloud Estates Scanned by Purview &amp; Consumed by G1 Docket (Stage 2):</label>
+        <div class="cloud-checks">
+          <label><input type="checkbox" class="cloud-src" value="SharePoint Online" checked /> SharePoint Online</label>
+          <label><input type="checkbox" class="cloud-src" value="OneDrive" checked /> OneDrive for Business</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure SQL" checked /> Azure SQL Database</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure Blob" checked /> Azure Blob Storage</label>
+          <label><input type="checkbox" class="cloud-src" value="AWS S3" checked /> AWS S3 (Multi-Cloud)</label>
+          <label><input type="checkbox" class="cloud-src" value="GCP BigQuery" checked /> GCP BigQuery (Multi-Cloud)</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 02: STAGE 1 -->
+  <section class="section-band-subtle">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 01 / Zero API Calls</div>
+        <h2>Embedded File Sensitivity Labels</h2>
+        <p>
+          Purview sensitivity labels (<code>MSIP_Label_&lt;GUID&gt;_Name</code>) are stamped directly into Office OpenXML metadata (<code>docProps/custom.xml</code>) and mapped 1:1 to the G1 Docket tier ladder.
+        </p>
+      </aside>
+
+      <div class="card">
+        <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.3fr; gap:12px; align-items:end;">
+          <div>
+            <label>Select PC Directory to Inspect for Embedded Purview Sensitivity Labels</label>
+            <select id="stage1DirSelect"></select>
+          </div>
+          <div>
+            <button class="btn-green" style="width:100%;" onclick="runStage1Inspect()">1. Scan Files for Embedded Purview Labels</button>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <select id="stampLabelSelect" style="width:55%;">
+              <option value="Highly Confidential">Highly Confidential (&rarr; Restricted)</option>
+              <option value="Confidential">Confidential (&rarr; Confidential)</option>
+              <option value="Internal">Internal (&rarr; Internal)</option>
+              <option value="Public">Public (&rarr; Public)</option>
+            </select>
+            <button class="btn-secondary" style="width:45%;" onclick="stampNewPurviewDocx()">+ Stamp .docx</button>
+          </div>
+        </div>
+
+        <div id="stage1Banner" class="status-banner">
+          Loading Stage 1 embedded label scan...
+        </div>
+
+        <div style="max-height:240px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>File Name</th>
+                <th>Purview Label Found?</th>
+                <th>Embedded <code>MSIP_Label</code> Name</th>
+                <th>Label GUID &amp; Method</th>
+                <th>Metadata Part</th>
+                <th>1:1 G1 Docket Tier Mapping</th>
+              </tr>
+            </thead>
+            <tbody id="stage1TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 03: STAGE 2 -->
+  <section class="section-band">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 02 / Catalog Pull</div>
+        <h2>Multi-Cloud Catalog Ingestion</h2>
+        <p>
+          Authenticates with Azure Managed Identity and pulls classifications across SharePoint, OneDrive, Azure SQL, Azure Blob, AWS S3, and GCP BigQuery into <code>evaluate_findings()</code>.
+        </p>
+        <button class="btn-purple" onclick="runStage2PullCatalog()">2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records</button>
+      </aside>
+
+      <div class="card">
+        <div id="stage2Banner" class="status-banner" style="margin-top:0;">
+          Click "2. Pull Purview Multi-Cloud Catalog &amp; Issue Signed Records" to consume Purview's multi-cloud crawl and mint DSSE-signed records.
+        </div>
+
+        <div style="max-height:280px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Cloud Estate</th>
+                <th>Asset Name &amp; Locator</th>
+                <th>Purview Label</th>
+                <th>Purview Classifications (Fed to <code>evaluate_findings</code>)</th>
+                <th>G1 Docket Signed Tier</th>
+                <th>Signed Record ID</th>
+                <th>Expires At</th>
+                <th>Write-Back State</th>
+              </tr>
+            </thead>
+            <tbody id="stage2TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 04: STAGE 3 -->
+  <section class="section-band-subtle" style="border-bottom: none;">
+    <div class="asymmetric-layout">
+      <aside class="section-aside">
+        <div class="eyebrow">Stage 03 / Optional Write-Back</div>
+        <h2>Purview Data Map Annotation</h2>
+        <p>
+          Writes G1 Docket's signed attestation record ID, tier, SHA-256 digest, and expiry back into Purview's Atlas business metadata endpoint.
+        </p>
+        <button class="btn-amber" onclick="runStage3WriteBack()">3. Write Back Signed Tier &amp; Expiry to Purview Catalog</button>
+      </aside>
+
+      <div class="card">
+        <div id="stage3Banner" class="status-banner" style="margin-top:0;">
+          Stage 3 is staged last so you can pull &amp; attest first (Stage 2) without requiring Purview Data Curator write-back permissions upfront.
+        </div>
+
+        <div style="max-height:240px; overflow:auto; margin-top:8px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Purview Entity GUID</th>
+                <th>Cloud Estate</th>
+                <th>Asset Locator</th>
+                <th>Purview Atlas API Endpoint</th>
+                <th>Annotated G1 Docket Tier</th>
+                <th>Annotated Record ID</th>
+                <th>Annotated Expiry</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="stage3TableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-brand">
+      <img src="/assets/g1-logo.png" alt="G1 Logo" class="footer-logo" />
+      <span>G1 Docket by G1163RT Security Labs</span>
+    </div>
+    <div>
+      Multi-Cloud DLP &amp; Microsoft Purview Seam &bull; <code>PresidioClassifier.evaluate_findings()</code> &bull; &copy; G1163RT Security Labs
+    </div>
+  </footer>
+
+  <script>
+    const ADMIN_KEY = 'pod-dev-admin-key';
+
+    async function loadDlpConfigAndFolders() {
+      const [cfgRes, dirRes] = await Promise.all([
+        fetch('/v1/admin/dlp/config', { headers: { 'X-POD-Admin-Key': ADMIN_KEY } }),
+        fetch('/v1/admin/pc-folders', { headers: { 'X-POD-Admin-Key': ADMIN_KEY } })
+      ]);
+      if (cfgRes.ok) {
+        const cfg = await cfgRes.json();
+        document.getElementById('dlpProvider').value = cfg.provider || 'Microsoft Purview (Azure Multi-Cloud Data Map)';
+        document.getElementById('dlpAuthMode').value = cfg.auth_mode || 'azure_managed_identity';
+        document.getElementById('purviewAccount').value = cfg.purview_account_name || 'g1-enterprise-purview';
+        document.getElementById('purviewEndpoint').value = cfg.purview_endpoint || 'https://g1-enterprise-purview.purview.azure.com';
+        const enabledSources = new Set(cfg.cloud_sources_enabled || []);
+        document.querySelectorAll('.cloud-src').forEach(cb => {
+          cb.checked = enabledSources.has(cb.value);
+        });
+      }
+      if (dirRes.ok) {
+        const dirData = await dirRes.json();
+        const sel = document.getElementById('stage1DirSelect');
+        sel.innerHTML = '';
+        (dirData.folders || []).forEach(f => {
+          const opt = document.createElement('option');
+          opt.value = f.path;
+          const cleanLabel = String(f.label || f.path).replace(/^[^\w\[A-Za-z0-9]+/, '');
+          opt.textContent = `${cleanLabel} (${f.file_count} files)`;
+          sel.appendChild(opt);
+        });
+      }
+    }
+
+    function getSelectedCloudSources() {
+      const selected = [];
+      document.querySelectorAll('.cloud-src').forEach(cb => {
+        if (cb.checked) selected.push(cb.value);
+      });
+      return selected;
+    }
+
+    async function saveDlpConfig() {
+      const payload = {
+        provider: document.getElementById('dlpProvider').value,
+        auth_mode: document.getElementById('dlpAuthMode').value,
+        purview_account_name: document.getElementById('purviewAccount').value.trim(),
+        purview_endpoint: document.getElementById('purviewEndpoint').value.trim(),
+        cloud_sources_enabled: getSelectedCloudSources(),
+        stage1_labels_fast_lane_enabled: true,
+        stage2_catalog_pull_enabled: true,
+        stage3_writeback_enabled: true
+      };
+      const res = await fetch('/v1/admin/dlp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-POD-Admin-Key': ADMIN_KEY },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const msg = document.getElementById('configSaveMsg');
+      if (res.ok) {
+        msg.textContent = `Saved connector profile: ${data.config.provider} (${data.config.auth_mode}) across ${data.config.cloud_sources_enabled.length} cloud source(s).`;
+      } else {
+        msg.textContent = `Error saving config: ${data.detail || 'Unknown error'}`;
+      }
+    }
+
+    async function runStage1Inspect() {
+      const dirPath = document.getElementById('stage1DirSelect').value || 'C:\\Users\\chuck\\pc_demo_folder';
+      const banner = document.getElementById('stage1Banner');
+      banner.style.color = 'var(--muted)';
+      banner.textContent = `Scanning files in ${dirPath} for embedded Purview sensitivity labels (MSIP_Label)...`;
+      const res = await fetch('/v1/admin/dlp/stage1-inspect-labels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-POD-Admin-Key': ADMIN_KEY },
+        body: JSON.stringify({ directory_path: dirPath })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        banner.style.color = 'var(--red)';
+        banner.textContent = `Error: ${data.detail || 'Failed Stage 1 scan'}`;
+        return;
+      }
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
+      const tbody = document.getElementById('stage1TableBody');
+      tbody.innerHTML = '';
+      (data.files || []).forEach(f => {
+        const tr = document.createElement('tr');
+        const tierBadge = f.mapped_docket_tier
+          ? `<span class="pill tier-${f.mapped_docket_tier}">${f.mapped_docket_tier}</span>`
+          : `<span style="color:var(--muted);">Presidio Content Fallback</span>`;
+        tr.innerHTML = `
+          <td><code>${f.file_name}</code></td>
+          <td style="color:${f.has_purview_label ? 'var(--green)' : 'var(--muted)'}; font-weight:600;">${f.has_purview_label ? 'YES (Embedded)' : 'No Label'}</td>
+          <td><code>${f.purview_label_name || '—'}</code></td>
+          <td><span style="font-size:11px; color:var(--muted);">${f.purview_label_guid ? f.purview_label_guid + ' (' + f.assignment_method + ')' : '—'}</span></td>
+          <td><code>${f.metadata_source || '—'}</code></td>
+          <td>${tierBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function stampNewPurviewDocx() {
+      const dirPath = document.getElementById('stage1DirSelect').value || 'C:\\Users\\chuck\\pc_demo_folder';
+      const labelName = document.getElementById('stampLabelSelect').value;
+      const res = await fetch('/v1/admin/dlp/stage1-stamp-sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-POD-Admin-Key': ADMIN_KEY },
+        body: JSON.stringify({ directory_path: dirPath, label_name: labelName })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await runStage1Inspect();
+      } else {
+        alert(data.detail || 'Failed to stamp sample .docx');
+      }
+    }
+
+    async function runStage2PullCatalog() {
+      const banner = document.getElementById('stage2Banner');
+      banner.style.color = 'var(--muted)';
+      banner.textContent = 'Authenticating via Azure Managed Identity and pulling multi-cloud classifications into evaluate_findings()...';
+      const res = await fetch('/v1/admin/dlp/stage2-pull-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-POD-Admin-Key': ADMIN_KEY },
+        body: JSON.stringify({
+          cloud_sources: getSelectedCloudSources(),
+          enable_writeback: false
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        banner.style.color = 'var(--red)';
+        banner.textContent = `Error: ${data.detail || 'Failed Stage 2 catalog pull'}`;
+        return;
+      }
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
+      const tbody = document.getElementById('stage2TableBody');
+      tbody.innerHTML = '';
+      (data.attested_assets || []).forEach(a => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${a.cloud_source}</strong></td>
+          <td><div><strong>${a.asset_name}</strong></div><code style="font-size:10px; color:var(--muted);">${a.locator}</code></td>
+          <td><code>${a.purview_label || 'None'}</code></td>
+          <td><code style="font-size:11px; color:var(--text);">${(a.purview_classifications || []).join(', ')}</code></td>
+          <td><span class="pill tier-${a.docket_tier}">${a.docket_tier}</span></td>
+          <td><code style="font-size:11px;">${a.record_id}</code></td>
+          <td style="font-size:11px; color:var(--muted);">${a.expires_at ? a.expires_at.slice(0, 10) : '—'}</td>
+          <td style="font-size:11px; color:var(--amber); font-weight:600;">${a.writeback ? 'Annotated' : 'Staged for Stage 3'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function runStage3WriteBack() {
+      const banner = document.getElementById('stage3Banner');
+      banner.style.color = 'var(--muted)';
+      banner.textContent = 'Writing G1 Docket signed attestation tier, record_id, and expiry back to Purview Data Map businessmetadata...';
+      const res = await fetch('/v1/admin/dlp/stage3-writeback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-POD-Admin-Key': ADMIN_KEY },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        banner.style.color = 'var(--red)';
+        banner.textContent = `Error: ${data.detail || 'Failed Stage 3 write-back'}`;
+        return;
+      }
+      banner.style.color = 'var(--text)';
+      banner.textContent = data.english_summary;
+      const tbody = document.getElementById('stage3TableBody');
+      tbody.innerHTML = '';
+      (data.writeback_results || []).forEach(w => {
+        const meta = (w.business_metadata_payload && w.business_metadata_payload.G1DocketAttestation) || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><code>${w.purview_guid}</code></td>
+          <td><strong>${w.cloud_source}</strong></td>
+          <td><code style="font-size:11px;">${w.locator}</code></td>
+          <td><code style="font-size:10px; color:var(--link);">${w.purview_api_endpoint}</code></td>
+          <td><span class="pill tier-${meta.docket_tier}">${meta.docket_tier}</span></td>
+          <td><code style="font-size:11px;">${meta.record_id}</code></td>
+          <td style="font-size:11px; color:var(--muted);">${meta.expires_at ? meta.expires_at.slice(0, 10) : '—'}</td>
+          <td style="color:var(--green); font-weight:600;">${w.writeback_status}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    (async () => {
+      await loadDlpConfigAndFolders();
+      await runStage1Inspect();
+      await runStage2PullCatalog();
+    })();
+  </script>
+</body>
+</html>

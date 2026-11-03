@@ -1,0 +1,61 @@
+<!-- Tab 1: Quarantine Queue -->
+<div id="tab-quarantine" class="space-y-4">
+  <div class="flex items-center justify-between">
+    <div>
+      <h2 class="text-base font-semibold text-[#0F172A] tracking-tight">Quarantined Security Events</h2>
+      <p class="text-xs text-[#475569]">Requests blocked due to un-papered data, hash tampering, forged tickets, or policy violations.</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="refreshQuarantine()" class="btn btn-secondary">Refresh</button>
+    </div>
+  </div>
+
+  <div class="bg-white border border-[#E2E8F0] rounded overflow-hidden">
+    <table class="w-full text-left text-xs">
+      <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] font-semibold text-[#475569]">
+        <tr>
+          <th class="p-3">Quarantine ID</th>
+          <th class="p-3">Status</th>
+          <th class="p-3">Event Type</th>
+          <th class="p-3">Reason Code</th>
+          <th class="p-3">Clearance</th>
+          <th class="p-3">Locator URI</th>
+          <th class="p-3">Created</th>
+          <th class="p-3 text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody id="quarantine-tbody" class="divide-y divide-[#E2E8F0] font-mono-tabular">
+        {% for item in quarantine_items %}
+        <tr class="hover:bg-[#F8FAFC]">
+          <td class="p-3 font-semibold text-[#0F172A]">{{ item.quarantine_id }}</td>
+          <td class="p-3">
+            {% if item.status == 'QUARANTINED' %}
+            <span class="badge badge-warning">QUARANTINED</span>
+            {% elif item.status == 'AWAITING_SECOND_KEY' %}
+            <span class="badge badge-neutral">KEY 1 SIGNED</span>
+            {% elif item.status == 'RELEASED' %}
+            <span class="badge badge-success">RELEASED</span>
+            {% else %}
+            <span class="badge badge-danger">{{ item.status }}</span>
+            {% endif %}
+          </td>
+          <td class="p-3 text-[#475569]">{{ item.event_type }}</td>
+          <td class="p-3 text-[#0F172A] font-semibold">{{ item.reason_code }}</td>
+          <td class="p-3">{{ item.claimed_tier }}</td>
+          <td class="p-3 text-[#475569] truncate max-w-[200px]" title="{{ item.locator_uri }}">{{ item.locator_uri }}</td>
+          <td class="p-3 text-[#475569]">{{ item.created_at[:19] }}</td>
+          <td class="p-3 text-right">
+            <button onclick="openTriageModal('{{ item.quarantine_id }}')" class="btn btn-secondary text-xs py-1 px-2.5">
+              Inspect & Triage
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="p-6 text-center text-[#475569]">No quarantined objects pending review.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
