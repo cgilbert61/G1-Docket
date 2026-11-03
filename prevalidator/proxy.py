@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import os
@@ -24,6 +25,94 @@ from engine.directory_bridge import (
 from engine.storage_connectors import is_enterprise_store_uri
 from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
 from registry.signing import Keyring, compute_file_sha256
+
+
+_governance_target_cache: str | None = None
+
+
+async def _emit_governance_event_async(
+    event_type: str,
+    reason_code: str,
+    payload_digest: str,
+    raw_payload: dict[str, Any] | None,
+    locator_uri: str,
+    claimed_tier: str,
+    triggered_rules: list[str],
+    extracted_text: str | None = None,
+    caller_clearance: str | None = None,
+) -> None:
+    """Non-blocking background emitter to G1 Governance, WORM ledger & SIEM hub (:18084)."""
+    global _governance_target_cache
+    candidate_urls: list[str] = []
+    env_url = os.environ.get("POD_GOVERNANCE_URL")
+    if env_url:
+        candidate_urls.append(env_url.rstrip("/"))
+    if _governance_target_cache:
+        candidate_urls.append(_governance_target_cache)
+    candidate_urls.extend(["http://host.docker.internal:18084", "http://127.0.0.1:18084", "http://localhost:18084"])
+
+    seen = set()
+    deduped = []
+    for u in candidate_urls:
+        if u not in seen:
+            seen.add(u)
+            deduped.append(u)
+
+    payload = {
+        "event_type": event_type,
+        "reason_code": reason_code,
+        "payload_digest": payload_digest,
+        "raw_payload": raw_payload or {},
+        "locator_uri": locator_uri,
+        "claimed_tier": claimed_tier,
+        "triggered_rules": triggered_rules,
+        "extracted_text": extracted_text,
+        "actor_identity": "boundary:prevalidator",
+        "caller_clearance": caller_clearance,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            for base in deduped:
+                try:
+                    resp = await client.post(f"{base}/api/intercept", json=payload)
+                    if resp.status_code in (200, 201):
+                        _governance_target_cache = base
+                        return
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+
+def emit_governance_event_background(
+    event_type: str,
+    reason_code: str,
+    payload_digest: str,
+    raw_payload: dict[str, Any] | None,
+    locator_uri: str,
+    claimed_tier: str,
+    triggered_rules: list[str],
+    extracted_text: str | None = None,
+    caller_clearance: str | None = None,
+) -> None:
+    """Fire-and-forget emitter that does not block the inference hot-path."""
+    try:
+        asyncio.create_task(
+            _emit_governance_event_async(
+                event_type=event_type,
+                reason_code=reason_code,
+                payload_digest=payload_digest,
+                raw_payload=raw_payload,
+                locator_uri=locator_uri,
+                claimed_tier=claimed_tier,
+                triggered_rules=triggered_rules,
+                extracted_text=extracted_text,
+                caller_clearance=caller_clearance,
+            )
+        )
+    except Exception:
+        pass
 
 
 def _extract_last_user_text(payload: dict[str, Any]) -> str:
@@ -3706,13 +3795,55 @@ def create_prevalidator_app(
         headers = dict(request.headers)
         outcome = enforcer.evaluate_request(payload=payload, headers=headers)
 
+        user_text = _extract_last_user_text(payload)
+        p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))
+        loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:openai"
+        cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
+        reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+
         if not outcome.allowed_to_forward:
+            emit_governance_event_background(
+                event_type="DOCKET_DENIAL",
+                reason_code=reasons[0] if reasons else "POLICY_DENIED",
+                payload_digest=p_digest,
+                raw_payload=payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
                 "X-POD-Attestation-Verdict": "BLOCKED",
-                "X-POD-Reason-Codes": ",".join(outcome.audit_entry.reason_codes) if outcome.audit_entry else "policy_denied",
+                "X-POD-Reason-Codes": ",".join(reasons) if reasons else "policy_denied",
             }
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
+
+        if outcome.audit_entry and (outcome.audit_entry.decision == "strip" or outcome.audit_entry.stripped_locators):
+            emit_governance_event_background(
+                event_type="COMBINE_PII_REDACTED",
+                reason_code="CONFIDENTIAL_BLOCK_STRIPPED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+        else:
+            emit_governance_event_background(
+                event_type="DOCKET_ADMISSION",
+                reason_code="POLICY_ALLOWED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
 
         clean_payload = outcome.transformed_payload
         model = clean_payload.get("model", llm_config.get("default_model", "gpt-4o"))
@@ -3783,13 +3914,55 @@ def create_prevalidator_app(
         headers = dict(request.headers)
         outcome = enforcer.evaluate_request(payload=payload, headers=headers)
 
+        user_text = _extract_last_user_text(payload)
+        p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))
+        loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:anthropic"
+        cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
+        reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+
         if not outcome.allowed_to_forward:
+            emit_governance_event_background(
+                event_type="DOCKET_DENIAL",
+                reason_code=reasons[0] if reasons else "POLICY_DENIED",
+                payload_digest=p_digest,
+                raw_payload=payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
                 "X-POD-Attestation-Verdict": "BLOCKED",
-                "X-POD-Reason-Codes": ",".join(outcome.audit_entry.reason_codes) if outcome.audit_entry else "policy_denied",
+                "X-POD-Reason-Codes": ",".join(reasons) if reasons else "policy_denied",
             }
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
+
+        if outcome.audit_entry and (outcome.audit_entry.decision == "strip" or outcome.audit_entry.stripped_locators):
+            emit_governance_event_background(
+                event_type="COMBINE_PII_REDACTED",
+                reason_code="CONFIDENTIAL_BLOCK_STRIPPED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+        else:
+            emit_governance_event_background(
+                event_type="DOCKET_ADMISSION",
+                reason_code="POLICY_ALLOWED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
 
         clean_payload = outcome.transformed_payload
         model = clean_payload.get("model", llm_config.get("default_model", "claude-3-5-sonnet"))

@@ -76,13 +76,16 @@ class RejectRequest(BaseModel):
 
 class BoundaryInterceptRequest(BaseModel):
     event_type: str = "DOCKET_DENIAL"
-    reason_code: str
+    reason_code: str = "POLICY_EVALUATION"
     payload_digest: str
-    raw_payload: Dict[str, Any]
+    raw_payload: Optional[Dict[str, Any]] = None
     locator_uri: Optional[str] = "urn:doc:unspecified"
     claimed_tier: Optional[str] = "Internal"
     triggered_rules: Optional[List[str]] = None
     extracted_text: Optional[str] = None
+    actor_identity: Optional[str] = "boundary:prevalidator"
+    caller_clearance: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
@@ -406,32 +409,47 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     @app.post("/api/intercept")
     async def intercept_boundary_event(req: BoundaryInterceptRequest):
         """
-        Called when Docket (:18082) or Combine (:8000) blocks an un-papered data object,
-        tampered DSSE ticket, or cognitive threat.
-        Atomically stages in Quarantine, logs to WORM Ledger, and buffers to SIEM.
+        Called when Docket (:18082) or Combine (:8000) evaluates a request (pass, fail, or redact).
+        - If denial/block (DOCKET_DENIAL, COMBINE_THREAT_BLOCKED): stages in Quarantine queue.
+        - For all events: appends to WORM Ledger, buffers to SIEM forwarders, and broadcasts to live SSE.
         """
-        qid = quarantine_store.stage_quarantine(
-            event_type=req.event_type,
-            reason_code=req.reason_code,
-            payload_digest=req.payload_digest,
-            raw_payload=req.raw_payload,
-            locator_uri=req.locator_uri,
-            claimed_tier=req.claimed_tier,
-            triggered_rules=req.triggered_rules,
-            extracted_text=req.extracted_text,
+        qid = None
+        is_quarantine_candidate = (
+            req.event_type in ("DOCKET_DENIAL", "COMBINE_THREAT_BLOCKED")
+            or "DENIAL" in req.event_type.upper()
+            or "BLOCK" in req.event_type.upper()
         )
+
+        if is_quarantine_candidate:
+            qid = quarantine_store.stage_quarantine(
+                event_type=req.event_type,
+                reason_code=req.reason_code,
+                payload_digest=req.payload_digest,
+                raw_payload=req.raw_payload or {},
+                locator_uri=req.locator_uri or "urn:doc:unspecified",
+                claimed_tier=req.claimed_tier or "Internal",
+                triggered_rules=req.triggered_rules,
+                extracted_text=req.extracted_text,
+            )
+
+        meta = {
+            "reason_code": req.reason_code,
+            "locator_uri": req.locator_uri,
+            "claimed_tier": req.claimed_tier,
+            "triggered_rules": req.triggered_rules,
+        }
+        if qid:
+            meta["quarantine_id"] = qid
+        if req.caller_clearance:
+            meta["caller_clearance"] = req.caller_clearance
+        if req.metadata:
+            meta.update(req.metadata)
 
         worm_entry = worm_ledger.append_event(
             event_type=req.event_type,
-            actor_identity="boundary:interceptor",
+            actor_identity=req.actor_identity or "boundary:prevalidator",
             payload_digest=req.payload_digest,
-            metadata={
-                "quarantine_id": qid,
-                "reason_code": req.reason_code,
-                "locator_uri": req.locator_uri,
-                "claimed_tier": req.claimed_tier,
-                "triggered_rules": req.triggered_rules,
-            },
+            metadata=meta,
         )
 
         siem_forwarder.enqueue_event(worm_entry)
@@ -441,9 +459,14 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             "quarantine_id": qid,
             "reason_code": req.reason_code,
             "payload_digest": req.payload_digest,
+            "locator_uri": req.locator_uri,
+            "claimed_tier": req.claimed_tier,
+            "timestamp": worm_entry.get("timestamp_utc_iso8601"),
+            "entry_hash": worm_entry.get("entry_hash"),
         })
 
-        return {"status": "QUARANTINED", "quarantine_id": qid, "worm_entry_hash": worm_entry["entry_hash"]}
+        status_str = "QUARANTINED" if qid else "LOGGED"
+        return {"status": status_str, "quarantine_id": qid, "worm_entry_hash": worm_entry["entry_hash"]}
 
     # ---------------------------------------------------------
     # Server-Sent Events (SSE) Live Feed

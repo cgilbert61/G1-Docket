@@ -850,9 +850,47 @@ evtSource.onmessage = function(e) {
   const data = JSON.parse(e.data);
   const container = document.getElementById('live-event-container');
   const row = document.createElement('div');
-  row.className = 'border-b border-[#E2E8F0] pb-1';
-  row.innerHTML = `<span class="text-[#475569]">[${new Date().toISOString().substring(11, 19)}]</span> <span class="font-bold text-[#0F172A]">${data.event_type}</span>: <span class="text-[#475569]">${JSON.stringify(data.metadata || {})}</span>`;
+  row.className = 'border-b border-[#E2E8F0] py-1.5 flex items-start gap-2 text-xs font-mono-tabular';
+  
+  const timeStr = new Date().toISOString().substring(11, 19);
+  let badgeClass = 'text-[#16A34A] font-bold';
+  if (data.event_type === 'DOCKET_DENIAL' || data.event_type === 'COMBINE_THREAT_BLOCKED') {
+    badgeClass = 'text-[#DC2626] font-bold';
+  } else if (data.event_type === 'COMBINE_PII_REDACTED') {
+    badgeClass = 'text-[#D97706] font-bold';
+  } else if (data.event_type === 'CONNECTED') {
+    badgeClass = 'text-[#2563EB] font-bold';
+  }
+
+  let detail = '';
+  if (data.reason_code) {
+    detail = `[${data.reason_code}] loc: ${data.locator_uri || 'urn:prompt'} | tier: ${data.claimed_tier || 'n/a'}`;
+    if (data.quarantine_id) {
+      detail += ` | Quarantine: ${data.quarantine_id}`;
+    }
+  } else if (data.message) {
+    detail = data.message;
+  } else {
+    detail = JSON.stringify(data);
+  }
+
+  row.innerHTML = `<span class="text-[#64748B]">[${timeStr}]</span> <span class="${badgeClass}">${data.event_type}</span> <span class="text-[#0F172A]">${detail}</span>`;
   container.prepend(row);
+
+  // Dynamically increment stats counters
+  if (data.event_type !== 'CONNECTED') {
+    const wormCountElem = document.getElementById('stat-worm-count');
+    if (wormCountElem) {
+      wormCountElem.textContent = parseInt(wormCountElem.textContent || '0', 10) + 1;
+    }
+    if (data.quarantine_id) {
+      const qCountElem = document.getElementById('stat-quarantined');
+      if (qCountElem) {
+        qCountElem.textContent = parseInt(qCountElem.textContent || '0', 10) + 1;
+      }
+      refreshQuarantine();
+    }
+  }
 };
 </script>
 {% endblock %}
