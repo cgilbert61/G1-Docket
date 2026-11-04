@@ -332,7 +332,38 @@ print(f"Key ID: {signatures[0]['keyid']}")
 
 ---
 
-## 9. Asynchronous Client (`AsyncDocketClient`)
+## 9. Governance, WORM Audit & Compliance Exports
+
+Interact directly with the Governance Subsystem (port `18084`) to audit Merkle chains and export evidence for SOC 2 Type II / ISO 27001 compliance reviews:
+
+```python
+from docket import DocketClient
+
+client = DocketClient(governance_url="http://localhost:18084")
+
+# 1. Cryptographically verify the linear SHA-256 WORM hash-chain
+audit_result = client.verify_worm_chain()
+print("WORM Chain Integrity Valid:", audit_result["valid"])
+print("Total Verified Entries:", audit_result["total_entries"])
+print("Active Tip Hash:", audit_result["tip_hash"])
+
+# 2. Export the WORM ledger to JSON or CSV
+worm_json = client.export_worm_ledger(format="json")
+print(f"Exported {worm_json['total_events']} audit events.")
+
+worm_csv = client.export_worm_ledger(format="csv")
+with open("worm_audit_evidence.csv", "w", encoding="utf-8") as f:
+    f.write(worm_csv)
+
+# 3. Export quarantined security incidents to CSV
+quarantine_csv = client.export_quarantine(format="csv")
+with open("quarantine_evidence.csv", "w", encoding="utf-8") as f:
+    f.write(quarantine_csv)
+```
+
+---
+
+## 10. Asynchronous Client (`AsyncDocketClient`)
 
 For high-throughput `asyncio`, FastAPI, or Starlette applications:
 
@@ -349,6 +380,10 @@ async def main():
 
         # Wait for sync
         await client.wait_for_sync(min_sequence=1, timeout_sec=30)
+
+        # Audit WORM Chain
+        audit = await client.verify_worm_chain()
+        print("WORM Chain Valid:", audit["valid"])
 
         # OpenAI chat completion
         try:
@@ -371,7 +406,7 @@ if __name__ == "__main__":
 
 ---
 
-## 10. Client Initialization Options
+## 11. Client Initialization Options
 
 `DocketClient` and `AsyncDocketClient` accept the following configuration parameters:
 
@@ -380,13 +415,14 @@ if __name__ == "__main__":
 | `base_url` | `str` | `http://localhost:18082` | URL of the Prevalidator proxy service |
 | `registry_url` | `str` | `http://localhost:18080` | URL of the Authoritative Registry service |
 | `snapshot_url` | `str` | `http://localhost:18081` | URL of the Signed Snapshot Publisher service |
+| `governance_url`| `str` | `http://localhost:18084` | URL of the HITL Governance, WORM Ledger, and SIEM service |
 | `admin_key` | `str` | `pod-dev-admin-key` | Secret key sent in `X-POD-Admin-Key` header |
 | `default_caller_key`| `str` | `pod-key-public` | Default caller credential for `/v1/chat/completions` |
 | `timeout` | `float` | `30.0` | Global HTTP request timeout in seconds |
 
 ---
 
-## 11. Error Reference
+## 12. Error Reference
 
 All SDK errors inherit from `DocketError`:
 
