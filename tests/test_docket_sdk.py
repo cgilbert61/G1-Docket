@@ -378,4 +378,26 @@ def test_crewai_and_langgraph_integrations():
     assert "John Doe DOB 1980</pod:object>" in wrapped_content
 
 
+def test_autogen_hook_integration():
+    """Verify AutoGen message hook wrapper."""
+    from docket.integrations import DocketAutoGenHook
+
+    hook = DocketAutoGenHook(
+        locator_map={"CUST-901": "snowflake://corp/fin/crm"},
+        auto_hash=True,
+    )
+
+    # String message
+    msg_str = "Customer record for CUST-901: Elena Fisher Enterprise"
+    processed = hook.process_message(None, msg_str)
+    assert '<pod:object locator="snowflake://corp/fin/crm" sha256=' in processed
+    assert "CUST-901: Elena Fisher Enterprise</pod:object>" in processed
+
+    # Dict message
+    msg_dict = {"role": "assistant", "content": "Found data: CUST-901 active"}
+    processed_dict = hook.process_message(None, msg_dict)
+    assert '<pod:object locator="snowflake://corp/fin/crm" sha256=' in processed_dict["content"]
+
+
+
 

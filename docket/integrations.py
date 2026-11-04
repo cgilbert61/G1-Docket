@@ -459,3 +459,42 @@ def docket_langgraph_node(
     return decorator
 
 
+class DocketAutoGenHook:
+    """AutoGen-compatible message hook enforcing G1 Docket data provenance.
+
+    Can be registered with `agent.register_hook(hookable_method="process_message_before_send", ...)`
+    or used directly to wrap messages passed between AutoGen ConversableAgents.
+    """
+
+    def __init__(self, locator_map: dict[str, str] | None = None, auto_hash: bool = True) -> None:
+        self.locator_map = locator_map or {}
+        self.auto_hash = auto_hash
+
+    def process_message(
+        self,
+        sender: Any,
+        message: str | dict[str, Any],
+        recipient: Any = None,
+        silent: bool = False,
+    ) -> str | dict[str, Any]:
+        """Wrap untagged message text that matches registered database locators."""
+        if isinstance(message, str):
+            for pattern, loc in self.locator_map.items():
+                if pattern in message and "<pod:object" not in message:
+                    message = wrap_agent_tool_output(loc, message, auto_hash=self.auto_hash)
+            return message
+        elif isinstance(message, dict) and "content" in message:
+            content = str(message["content"])
+            for pattern, loc in self.locator_map.items():
+                if pattern in content and "<pod:object" not in content:
+                    content = wrap_agent_tool_output(loc, content, auto_hash=self.auto_hash)
+            updated = dict(message)
+            updated["content"] = content
+            return updated
+        return message
+
+    def __call__(self, sender: Any, message: Any, recipient: Any = None, silent: bool = False) -> Any:
+        return self.process_message(sender, message, recipient, silent)
+
+
+

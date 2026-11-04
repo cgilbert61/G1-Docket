@@ -12,6 +12,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 8: Snowflake Zero-Trust Admission Demo
   Phase 9: CrewAI Multi-Agent Team Zero-Trust Demo
   Phase 10: LangGraph Workflow State Admission Demo
+  Phase 11: AutoGen Multi-Agent Message Hook Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -133,6 +134,9 @@ def main() -> int:
 
     # Phase 10: LangGraph Workflow Admission Demo
     phases.append(run_phase(10, "LangGraph Workflow State Admission Demo", [sys.executable, "examples/langgraph_agent_demo.py"]))
+
+    # Phase 11: AutoGen Multi-Agent Message Hook Demo
+    phases.append(run_phase(11, "AutoGen Multi-Agent Message Hook Demo", [sys.executable, "examples/autogen_agent_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
