@@ -673,3 +673,64 @@ def test_databricks_unity_catalog_governance(tmp_path: Path):
     assert out_rest.allowed_to_forward is False
 
     registry.close()
+
+
+def test_iceberg_catalog_governance(tmp_path: Path):
+    """Test 10: Verify Apache Iceberg REST Catalog lakehouse crawl, multi-tier attestation, and in-memory Prevalidator admission control."""
+    from engine.pipeline import AttestationEngine
+    from engine.storage_connectors import EnterpriseDataStoreManager
+
+    db_url = f"sqlite:///{(tmp_path / 'adv10.db').as_posix()}"
+    registry = RegistryService(db_url=db_url, key_dir=tmp_path / "keys")
+    eng = AttestationEngine(registry=registry)
+    mgr = EnterpriseDataStoreManager(registry=registry, engine=eng, estate_dir=tmp_path)
+
+    # 1. Crawl and attest Apache Iceberg REST Catalog
+    iceberg_uri = "iceberg://polaris.us-east-1.lakehouse.net/finance_analytics"
+    res = mgr.crawl_and_attest_store(iceberg_uri)
+    assert res["total_files_found"] == 3
+    assert res["attested_active_count"] == 3
+    assert res["tier_counts"] == {"Public": 1, "Internal": 0, "Confidential": 1, "Restricted": 1}
+
+    # 2. Publish cryptographic snapshot
+    pub = SnapshotPublisher(registry=registry, snapshot_output_path=tmp_path / "snap.dsse.json")
+    env = pub.publish_snapshot()
+    store = InMemorySnapshotStore(registry.keyring)
+    store.load_from_envelope(env)
+    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce", strict_inline_hash=True)
+
+    # Scenario A: Public product hierarchy -> gpt-4o (ALLOW)
+    pub_loc = f"{iceberg_uri}/curated_product_hierarchy"
+    pub_text = "category:compute_instances | sku_prefix:CP-8X | tier:General_Purpose | compliance:ISO27001"
+    out_pub = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{pub_loc}">{pub_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+    assert out_pub.allowed_to_forward is True
+
+    # Scenario B: Confidential revenue ledger -> gpt-4o (DENY: EGRESS_DENIED)
+    conf_loc = f"{iceberg_uri}/fact_gl_revenue_ledger"
+    conf_text = "fiscal_quarter:2026-Q3 | revenue_usd:$42,150,000 | operating_margin:28.4% | region:Global"
+    out_conf = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{conf_loc}">{conf_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+    assert out_conf.allowed_to_forward is False
+
+    # Scenario C: Cleared confidential caller -> local-model (ALLOW)
+    out_local = enforcer.evaluate_request(
+        payload={"model": "local-model", "messages": [{"role": "user", "content": f'<pod:object locator="{conf_loc}">{conf_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-confidential"},
+    )
+    assert out_local.allowed_to_forward is True
+
+    # Scenario D: Restricted customer tax identifiers -> public caller (DENY: INSUFFICIENT_CLEARANCE)
+    rest_loc = f"{iceberg_uri}/customer_tax_identifiers"
+    rest_text = "account_id:ACT-9902 | tax_id:84-1928401 | ssn:622-14-8890 | routing:021000021"
+    out_rest = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{rest_loc}">{rest_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-analyst"},
+    )
+    assert out_rest.allowed_to_forward is False
+
+    registry.close()

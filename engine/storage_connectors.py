@@ -1,8 +1,8 @@
-"""Enterprise Data Store Connectors for G1 Docket (`s3://`, `azblob://`, `gs://`, `postgres://`, `snowflake://`, `bigquery://`, `databricks://`, `file://`).
+"""Enterprise Data Store Connectors for G1 Docket (`s3://`, `azblob://`, `gs://`, `postgres://`, `snowflake://`, `bigquery://`, `databricks://`, `iceberg://`, `file://`).
 
 Provides:
 1. Pluggable URI-based discovery, ETag/VersionId fast-path checks, and bounded streaming extraction for Object Stores & Data Lakes.
-2. Pushdown table & sample scanning for SQL Databases and Cloud Data Warehouses (`postgres://`, `snowflake://`, `bigquery://`, `databricks://`).
+2. Pushdown table & sample scanning for SQL Databases, Cloud Data Warehouses, and Open Lakehouses (`postgres://`, `snowflake://`, `bigquery://`, `databricks://`, `iceberg://`).
 3. Event-driven continuous attestation webhook (`POST /v1/events/storage`) supporting AWS S3 EventBridge, Azure Event Grid, and GCS Pub/Sub events.
 """
 
@@ -92,6 +92,7 @@ def is_enterprise_store_uri(path_or_uri: str | None) -> bool:
             "snowflake://",
             "bigquery://",
             "databricks://",
+            "iceberg://",
             "sharepoint://",
         )
     )
@@ -505,6 +506,62 @@ class EnterpriseDataStoreManager:
             ),
         ]
 
+        # 8. Apache Iceberg REST Catalog Open Lakehouse
+        iceberg_uri = "iceberg://polaris.us-east-1.lakehouse.net/finance_analytics"
+        self.stores[iceberg_uri] = DataStoreConnectionConfig(
+            store_id="apache-iceberg-catalog",
+            name="Apache Iceberg REST Catalog - finance_analytics Lakehouse",
+            uri=iceberg_uri,
+            provider="Apache Iceberg REST Catalog",
+            store_kind="warehouse",
+            region="us-east-1",
+            auth_mode="oauth_bearer",
+            owner="lakehouse-stewards@contoso.com",
+            created_at=now_iso,
+        )
+        self.store_objects[iceberg_uri] = [
+            _build_obj(
+                locator=f"{iceberg_uri}/curated_product_hierarchy",
+                display_name="finance_analytics.curated_product_hierarchy",
+                object_type="warehouse_table",
+                store_uri=iceberg_uri,
+                provider="Apache Iceberg REST Catalog",
+                sample_text="category:compute_instances | sku_prefix:CP-8X | tier:General_Purpose | compliance:ISO27001",
+                owner="lakehouse-stewards@contoso.com",
+                sensitivity_label="Public",
+                size_bytes=480000,
+                row_count=2100,
+            ),
+            _build_obj(
+                locator=f"{iceberg_uri}/fact_gl_revenue_ledger",
+                display_name="finance_analytics.fact_gl_revenue_ledger",
+                object_type="warehouse_table",
+                store_uri=iceberg_uri,
+                provider="Apache Iceberg REST Catalog",
+                sample_text="fiscal_quarter:2026-Q3 | revenue_usd:$42,150,000 | operating_margin:28.4% | region:Global",
+                owner="finance-controllership@contoso.com",
+                sensitivity_label="Confidential",
+                size_bytes=4200000,
+                row_count=1200,
+                extra_chunks=[
+                    "revenue_usd:$42,150,000 | operating_margin:28.4%",
+                    "fiscal_quarter:2026-Q3 | revenue_usd:$42,150,000",
+                ],
+            ),
+            _build_obj(
+                locator=f"{iceberg_uri}/customer_tax_identifiers",
+                display_name="finance_analytics.customer_tax_identifiers",
+                object_type="warehouse_table",
+                store_uri=iceberg_uri,
+                provider="Apache Iceberg REST Catalog",
+                sample_text="account_id:ACT-9902 | tax_id:84-1928401 | ssn:622-14-8890 | routing:021000021",
+                owner="compliance-officer@contoso.com",
+                sensitivity_label="Restricted",
+                size_bytes=28900000,
+                row_count=94000,
+            ),
+        ]
+
     def list_stores(self) -> list[dict[str, Any]]:
         """Return all registered enterprise data stores for the UI selector and API."""
         out: list[dict[str, Any]] = []
@@ -546,6 +603,7 @@ class EnterpriseDataStoreManager:
             "snowflake": ("Snowflake", "warehouse"),
             "bigquery": ("Google BigQuery", "warehouse"),
             "databricks": ("Databricks Unity Catalog", "warehouse"),
+            "iceberg": ("Apache Iceberg REST Catalog", "warehouse"),
             "sharepoint": ("SharePoint Online", "object_store"),
         }
         default_provider, default_kind = provider_map.get(scheme, ("Enterprise Cloud Store", "object_store"))

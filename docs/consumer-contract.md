@@ -85,8 +85,9 @@ To maintain zero-database sub-millisecond ($< 1\text{ ms}$) evaluation in-memory
 | Store Provider | Canonical Locator Scheme | Example Locator |
 | :--- | :--- | :--- |
 | **Snowflake** | `snowflake://<account>/<database>/<schema>/<table>` | `snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC/PUBLIC_PRODUCT_SKU_CATALOG` |
-| **Google BigQuery** | `bigquery://<project_id>/<dataset_id>/<table>` | `bigquery://contoso-gcp-analytics/enterprise_mart/public_release_benchmarks` |
 | **Databricks Unity Catalog** | `databricks://<workspace_host>/<catalog>/<schema>/<table>` | `databricks://adb-41920194.azuredatabricks.net/main/sales_analytics/gold_arr_executive_summary` |
+| **Apache Iceberg REST Catalog** | `iceberg://<catalog_host>/<namespace>/<table>` | `iceberg://polaris.us-east-1.lakehouse.net/finance_analytics/fact_gl_revenue_ledger` |
+| **Google BigQuery** | `bigquery://<project_id>/<dataset_id>/<table>` | `bigquery://contoso-gcp-analytics/enterprise_mart/public_release_benchmarks` |
 | **AWS S3** | `s3://<bucket>/<prefix>/<key>` | `s3://acme-corp-datalake-prod/rag-knowledge/public_reference_dataset.parquet` |
 | **Azure ADLS Gen2 / Blob** | `azblob://<account>.blob.core.windows.net/<container>/<blob>` | `azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge/press_releases/2026_product_launch_faq.docx` |
 | **Google Cloud Storage** | `gs://<bucket>/<prefix>/<object>` | `gs://contoso-vertex-lake-us/curated-zones/public_kb/sdk_quickstart_guide.md` |
