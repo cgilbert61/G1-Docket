@@ -13,6 +13,10 @@ spec:
       app.kubernetes.io/component: governance
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.governance.service.port | quote }}
+        prometheus.io/path: "/metrics"
       labels:
         {{- include "g1-docket.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: governance

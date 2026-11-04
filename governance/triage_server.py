@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from fastapi import Body, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
@@ -221,6 +221,35 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             "quarantine_pending": quarantine_store.count_by_status().get("QUARANTINED", 0),
             "worm_events": worm_ledger.count_events(),
         }
+
+    @app.get("/metrics", response_class=PlainTextResponse)
+    async def prometheus_metrics():
+        """Prometheus metrics exposition endpoint for WORM audit and quarantine telemetry."""
+        w_count = worm_ledger.count_events()
+        q_counts = quarantine_store.count_by_status()
+        dests = siem_forwarder.get_destination_status()
+        enabled_dests = sum(1 for d in dests if d.get("enabled", False))
+        disabled_dests = len(dests) - enabled_dests
+
+        lines = [
+            "# HELP g1_docket_governance_worm_events_total Total verified events in the append-only WORM Merkle ledger.",
+            "# TYPE g1_docket_governance_worm_events_total counter",
+            f"g1_docket_governance_worm_events_total {w_count}",
+            "",
+            "# HELP g1_docket_governance_quarantine_items Quarantine incidents broken down by status.",
+            "# TYPE g1_docket_governance_quarantine_items gauge",
+        ]
+        for st, count in sorted(q_counts.items()):
+            lines.append(f'g1_docket_governance_quarantine_items{{status="{st}"}} {count}')
+        lines.extend([
+            "",
+            "# HELP g1_docket_governance_siem_destinations Total SIEM forwarding destinations configured.",
+            "# TYPE g1_docket_governance_siem_destinations gauge",
+            f'g1_docket_governance_siem_destinations{{enabled="true"}} {enabled_dests}',
+            f'g1_docket_governance_siem_destinations{{enabled="false"}} {disabled_dests}',
+            "",
+        ])
+        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4; charset=utf-8")
 
     # ---------------------------------------------------------
     # REST APIs: Quarantine Management & Dual-Key Signoff
