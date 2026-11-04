@@ -11,3 +11,5 @@ data:
   POD_UPSTREAM_GATEWAY_URL: "http://litellm-gateway:14000"
   POD_STRICT_INLINE_HASH: "true"
   POD_GOVERNANCE_URL: "http://governance-triage:18084"
+  POD_ENABLE_ABAC_DATA_RESIDENCY: "true"
+  POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION: "true"
