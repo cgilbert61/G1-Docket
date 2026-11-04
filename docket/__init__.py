@@ -20,6 +20,14 @@ from docket.integrations import (
     wrap_rag_documents,
 )
 
+from docket.watermark import (
+    WatermarkPayload,
+    embed_invisible_watermark,
+    extract_invisible_watermark,
+    format_structural_watermark,
+    has_invisible_watermark,
+)
+
 __all__ = [
     "DocketClient",
     "AsyncDocketClient",
@@ -36,4 +44,9 @@ __all__ = [
     "wrap_rag_documents",
     "format_rag_prompt",
     "extract_prompt_locators",
+    "WatermarkPayload",
+    "embed_invisible_watermark",
+    "extract_invisible_watermark",
+    "has_invisible_watermark",
+    "format_structural_watermark",
 ]

@@ -460,6 +460,26 @@ class DocketClient:
         """Calculate SHA-256 for a local file."""
         return compute_file_sha256(path)
 
+    @staticmethod
+    def extract_watermark(text: str, secret_key: bytes | None = None) -> dict[str, Any] | None:
+        """Extract and verify an invisible cryptographic provenance watermark from text."""
+        from docket.watermark import DEFAULT_WATERMARK_SECRET, extract_invisible_watermark
+        key = secret_key or DEFAULT_WATERMARK_SECRET
+        payload = extract_invisible_watermark(text, secret_key=key)
+        return payload.to_dict() if payload else None
+
+    @staticmethod
+    def embed_watermark(
+        text: str,
+        snapshot_sequence: int,
+        caller_key: str,
+        secret_key: bytes | None = None,
+    ) -> str:
+        """Embed an invisible cryptographic provenance watermark into text."""
+        from docket.watermark import DEFAULT_WATERMARK_SECRET, embed_invisible_watermark
+        key = secret_key or DEFAULT_WATERMARK_SECRET
+        return embed_invisible_watermark(text, snapshot_sequence=snapshot_sequence, caller_key=caller_key, secret_key=key)
+
 
 class AsyncDocketClient:
     """Asynchronous client for G1 Docket Prevalidator, Registry, and Snapshot services."""
