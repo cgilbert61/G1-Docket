@@ -163,7 +163,7 @@ class EnterpriseDataStoreManager:
         s3_uri = "s3://contoso-ai-datalake-prod/rag-corpus"
         self.stores[s3_uri] = DataStoreConnectionConfig(
             store_id="aws-s3-rag-prod",
-            name="AWS S3 — Production AI & RAG Data Lake",
+            name="AWS S3 - Production AI & RAG Data Lake",
             uri=s3_uri,
             provider="AWS S3",
             store_kind="object_store",
@@ -230,7 +230,7 @@ class EnterpriseDataStoreManager:
         az_uri = "azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge"
         self.stores[az_uri] = DataStoreConnectionConfig(
             store_id="azure-adls-knowledge",
-            name="Azure ADLS Gen2 / Blob — Enterprise Knowledge Lake",
+            name="Azure ADLS Gen2 / Blob - Enterprise Knowledge Lake",
             uri=az_uri,
             provider="Azure ADLS Gen2 / Blob",
             store_kind="object_store",
@@ -246,7 +246,7 @@ class EnterpriseDataStoreManager:
                 object_type="document",
                 store_uri=az_uri,
                 provider="Azure ADLS Gen2 / Blob",
-                sample_text="Contoso 2026 Public Product Launch FAQ — Approved for external distribution and public LLM summarization.",
+                sample_text="Contoso 2026 Public Product Launch FAQ - Approved for external distribution and public LLM summarization.",
                 owner="comms@contoso.com",
                 sensitivity_label="Public",
                 size_bytes=94200,
@@ -282,7 +282,7 @@ class EnterpriseDataStoreManager:
         gs_uri = "gs://contoso-vertex-lake-us/curated-zones"
         self.stores[gs_uri] = DataStoreConnectionConfig(
             store_id="gcp-gcs-vertex-lake",
-            name="GCP Cloud Storage — Vertex AI Curated Data Lake",
+            name="GCP Cloud Storage - Vertex AI Curated Data Lake",
             uri=gs_uri,
             provider="GCP Cloud Storage",
             store_kind="object_store",
@@ -321,7 +321,7 @@ class EnterpriseDataStoreManager:
         pg_uri = "postgres://estate-db:5432/estate"
         self.stores[pg_uri] = DataStoreConnectionConfig(
             store_id="postgres-estate-db",
-            name="PostgreSQL — Enterprise Operational Database (Live SQL)",
+            name="PostgreSQL - Enterprise Operational Database (Live SQL)",
             uri=pg_uri,
             provider="PostgreSQL",
             store_kind="database",
@@ -335,7 +335,7 @@ class EnterpriseDataStoreManager:
         sf_uri = "snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC"
         self.stores[sf_uri] = DataStoreConnectionConfig(
             store_id="snowflake-finance-prod",
-            name="Snowflake — FINANCE_PROD Enterprise Data Warehouse",
+            name="Snowflake - FINANCE_PROD Enterprise Data Warehouse",
             uri=sf_uri,
             provider="Snowflake",
             store_kind="warehouse",
@@ -395,7 +395,7 @@ class EnterpriseDataStoreManager:
         bq_uri = "bigquery://contoso-gcp-analytics/enterprise_mart"
         self.stores[bq_uri] = DataStoreConnectionConfig(
             store_id="bigquery-enterprise-mart",
-            name="Google BigQuery — enterprise_mart Analytics Dataset",
+            name="Google BigQuery - enterprise_mart Analytics Dataset",
             uri=bq_uri,
             provider="Google BigQuery",
             store_kind="warehouse",
@@ -462,7 +462,7 @@ class EnterpriseDataStoreManager:
                     "etag_fast_path": cfg.etag_fast_path,
                     "event_webhook_enabled": cfg.event_webhook_enabled,
                     "object_count": len(objs) if cfg.store_kind != "database" else 3,
-                    "label": f"☁️ [{cfg.provider}] {cfg.uri} — {cfg.name}",
+                    "label": f" [{cfg.provider}] {cfg.uri} - {cfg.name}",
                 }
             )
         return out
@@ -489,7 +489,7 @@ class EnterpriseDataStoreManager:
         default_provider, default_kind = provider_map.get(scheme, ("Enterprise Cloud Store", "object_store"))
         provider = str(payload.get("provider") or default_provider)
         store_kind = str(payload.get("store_kind") or default_kind)
-        name = str(payload.get("name") or f"{provider} — {uri}")
+        name = str(payload.get("name") or f"{provider} - {uri}")
         region = str(payload.get("region") or "us-east-1")
         auth_mode = str(payload.get("auth_mode") or "iam_role")
         owner = str(payload.get("owner") or "data-platform@contoso.com")
