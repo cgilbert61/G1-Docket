@@ -15,6 +15,7 @@ build/
 # Local runtime state & keys
 .env
 .pod_keys/
+.pod_public_keys/
 data/
 *.jsonl
 examples/out_demo/

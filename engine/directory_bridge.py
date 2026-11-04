@@ -427,71 +427,76 @@ def _create_minimal_docx(path: Path, paragraphs: list[str]) -> None:
 def ensure_sample_pc_demo_folder(target_dir: str | Path) -> Path:
     """Create a sample folder with disparate file types (.md, .txt, .csv, .xlsx, .docx, .json) if it doesn't exist."""
     root = Path(target_dir)
-    root.mkdir(parents=True, exist_ok=True)
+    try:
+        if root.is_dir() and (root / "01_public_release_notes.md").exists():
+            return root
+        root.mkdir(parents=True, exist_ok=True)
 
-    (root / "01_public_release_notes.md").write_text(
-        "# Release Notes v2.4\n\n"
-        "Public feature summary and general availability documentation for customers.\n",
-        encoding="utf-8",
-    )
-
-    (root / "02_model_routing_config.json").write_text(
-        '{\n  "service": "ai-gateway",\n  "timeout_ms": 5000,\n  "retry_count": 2\n}\n',
-        encoding="utf-8",
-    )
-
-    (root / "03_internal_cluster_ops.txt").write_text(
-        "INTERNAL-ONLY Infrastructure Runbook\n"
-        "Project Identifier: PROJ-KUBE88\n"
-        "Internal Node IP: 10.42.19.105\n"
-        "On-Call Engineer ID: EMP-77310\n",
-        encoding="utf-8",
-    )
-
-    _create_docx_path = root / "04_architecture_review_memo.docx"
-    if not _create_docx_path.exists():
-        _create_minimal_docx(
-            _create_docx_path,
-            [
-                "Architecture Review Board Memo",
-                "Approved for public and internal reference.",
-                "Standard API contract version 0.1.",
-            ],
+        (root / "01_public_release_notes.md").write_text(
+            "# Release Notes v2.4\n\n"
+            "Public feature summary and general availability documentation for customers.\n",
+            encoding="utf-8",
         )
 
-    xlsx_path = root / "05_vendor_contacts_confidential.xlsx"
-    if not xlsx_path.exists():
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Contacts"
-        ws.append(["vendor_id", "contact_email", "phone", "contract_note"])
-        ws.append(["VND-01", "account.exec@example.com", "415-555-0133", "salary: $125,000"])
-        wb.save(xlsx_path)
-        wb.close()
+        (root / "02_model_routing_config.json").write_text(
+            '{\n  "service": "ai-gateway",\n  "timeout_ms": 5000,\n  "retry_count": 2\n}\n',
+            encoding="utf-8",
+        )
 
-    (root / "06_daily_latency_metrics.csv").write_text(
-        "date,endpoint,p50_ms,p99_ms\n"
-        "2026-10-28,/v1/chat/completions,0.14,0.42\n"
-        "2026-10-29,/v1/messages,0.16,0.48\n",
-        encoding="utf-8",
-    )
+        (root / "03_internal_cluster_ops.txt").write_text(
+            "INTERNAL-ONLY Infrastructure Runbook\n"
+            "Project Identifier: PROJ-KUBE88\n"
+            "Internal Node IP: 10.42.19.105\n"
+            "On-Call Engineer ID: EMP-77310\n",
+            encoding="utf-8",
+        )
 
-    purview_docx_path = root / "07_purview_labeled_board_strategy.docx"
-    from engine.dlp_connectors import create_purview_labeled_docx
-
-    if not purview_docx_path.exists():
-        try:
-            create_purview_labeled_docx(
-                purview_docx_path,
-                paragraphs=[
-                    "FY27 Corporate Strategy & Board Briefing",
-                    "This document contains no regex PII patterns, but carries an embedded Microsoft Purview MSIP Sensitivity Label (Confidential) in docProps/custom.xml.",
-                    "G1 Docket Stage 1 (Labels-First Fast Lane) reads the Purview sensitivity label directly off the file.",
+        _create_docx_path = root / "04_architecture_review_memo.docx"
+        if not _create_docx_path.exists():
+            _create_minimal_docx(
+                _create_docx_path,
+                [
+                    "Architecture Review Board Memo",
+                    "Approved for public and internal reference.",
+                    "Standard API contract version 0.1.",
                 ],
-                purview_label_name="Confidential",
             )
-        except Exception:
-            pass
+
+        xlsx_path = root / "05_vendor_contacts_confidential.xlsx"
+        if not xlsx_path.exists():
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Contacts"
+            ws.append(["vendor_id", "contact_email", "phone", "contract_note"])
+            ws.append(["VND-01", "account.exec@example.com", "415-555-0133", "salary: $125,000"])
+            wb.save(xlsx_path)
+            wb.close()
+
+        (root / "06_daily_latency_metrics.csv").write_text(
+            "date,endpoint,p50_ms,p99_ms\n"
+            "2026-10-28,/v1/chat/completions,0.14,0.42\n"
+            "2026-10-29,/v1/messages,0.16,0.48\n",
+            encoding="utf-8",
+        )
+
+        purview_docx_path = root / "07_purview_labeled_board_strategy.docx"
+        from engine.dlp_connectors import create_purview_labeled_docx
+
+        if not purview_docx_path.exists():
+            try:
+                create_purview_labeled_docx(
+                    purview_docx_path,
+                    paragraphs=[
+                        "FY27 Corporate Strategy & Board Briefing",
+                        "This document contains no regex PII patterns, but carries an embedded Microsoft Purview MSIP Sensitivity Label (Confidential) in docProps/custom.xml.",
+                        "G1 Docket Stage 1 (Labels-First Fast Lane) reads the Purview sensitivity label directly off the file.",
+                    ],
+                    purview_label_name="Confidential",
+                )
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     return root
 

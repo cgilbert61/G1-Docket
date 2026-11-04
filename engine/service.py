@@ -259,10 +259,16 @@ def create_engine_app() -> FastAPI:
         """List all selectable Enterprise Data Stores (`s3://`, `azblob://`, `gs://`, `postgres://`, `snowflake://`, `bigquery://`) plus local PC drives (`C:\\`, `D:\\`) and directories."""
         user_dir = Path("/host_user")
         if user_dir.is_dir():
-            ensure_sample_pc_demo_folder(user_dir / "pc_demo_folder")
+            try:
+                ensure_sample_pc_demo_folder(user_dir / "pc_demo_folder")
+            except Exception:
+                pass
         ws = Path("/host_workspace")
         if ws.is_dir():
-            ensure_sample_pc_demo_folder(ws / "pc_demo_folder")
+            try:
+                ensure_sample_pc_demo_folder(ws / "pc_demo_folder")
+            except Exception:
+                pass
 
         pc_items = discover_selectable_drives_and_directories()
         enterprise_items = [
