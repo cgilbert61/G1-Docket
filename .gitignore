@@ -44,6 +44,12 @@ scripts/*
 !scripts/generate_compliance_report.py
 !scripts/run_benchmark_600.py
 !scripts/run_all_verifications.py
+!scripts/export_soc2_evidence.py
+!scripts/docket_verify_standalone.py
+!scripts/forensic_extractor.py
+
+# Audit evidence exports
+audit_evidence_bundles/
 
 # Local test scratch files
 tests/debug_failures.py
