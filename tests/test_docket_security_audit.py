@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -304,44 +305,53 @@ def main() -> int:
     for r in ssg_container_rules:
         rule_args.extend(["--rule", r])
 
-    # Initial evaluation
-    eval_cmd = [
-        "oscap", "xccdf", "eval",
-        *rule_args,
-        "--results", str(scap_results_xml),
-        ds_path,
-    ]
-    initial_proc = run_cmd(eval_cmd)
-    initial_results = parse_xccdf_results(scap_results_xml)
-    failed_initial = [r for r in initial_results if r["result"] != "pass"]
-
-    # Remediate any non-compliant host/container configurations
-    if failed_initial:
-        print(f"    Applying OpenSCAP remediation for {len(failed_initial)} rule(s)...")
-        remediate_cmd = [
+    scap_rule_results: list[dict[str, str]] = []
+    if shutil.which("oscap"):
+        # Initial evaluation
+        eval_cmd = [
             "oscap", "xccdf", "eval",
-            "--remediate",
             *rule_args,
             "--results", str(scap_results_xml),
             ds_path,
         ]
-        run_cmd(remediate_cmd)
+        initial_proc = run_cmd(eval_cmd)
+        initial_results = parse_xccdf_results(scap_results_xml)
+        failed_initial = [r for r in initial_results if r["result"] != "pass"]
 
-    # Final verification pass
-    final_eval_cmd = [
-        "oscap", "xccdf", "eval",
-        *rule_args,
-        "--results", str(scap_results_xml),
-        "--report", str(scap_report_html),
-        ds_path,
-    ]
-    final_proc = run_cmd(final_eval_cmd)
-    scap_rule_results = parse_xccdf_results(scap_results_xml)
-    scap_passed = sum(1 for r in scap_rule_results if r["result"] in ("pass", "fixed"))
-    scap_total = len(scap_rule_results)
-    print(f"    OpenSCAP Final Rule Compliance: {scap_passed}/{scap_total} Rules Passed (100% compliant)")
-    for r in scap_rule_results:
-        print(f"      - [{r['result'].upper()}] {r['rule_id']}")
+        # Remediate any non-compliant host/container configurations
+        if failed_initial:
+            print(f"    Applying OpenSCAP remediation for {len(failed_initial)} rule(s)...")
+            remediate_cmd = [
+                "oscap", "xccdf", "eval",
+                "--remediate",
+                *rule_args,
+                "--results", str(scap_results_xml),
+                ds_path,
+            ]
+            run_cmd(remediate_cmd)
+
+        # Final verification pass
+        final_eval_cmd = [
+            "oscap", "xccdf", "eval",
+            *rule_args,
+            "--results", str(scap_results_xml),
+            "--report", str(scap_report_html),
+            ds_path,
+        ]
+        final_proc = run_cmd(final_eval_cmd)
+        scap_rule_results = parse_xccdf_results(scap_results_xml)
+        scap_passed = sum(1 for r in scap_rule_results if r["result"] in ("pass", "fixed"))
+        scap_total = len(scap_rule_results)
+        print(f"    OpenSCAP Final Rule Compliance: {scap_passed}/{scap_total} Rules Passed (100% compliant)")
+        for r in scap_rule_results:
+            print(f"      - [{r['result'].upper()}] {r['rule_id']}")
+    elif scap_results_xml.exists():
+        scap_rule_results = parse_xccdf_results(scap_results_xml)
+        scap_passed = sum(1 for r in scap_rule_results if r["result"] in ("pass", "fixed"))
+        scap_total = len(scap_rule_results)
+        print(f"    OpenSCAP Rule Compliance (from cached report): {scap_passed}/{scap_total} Rules Passed")
+    else:
+        print("    [NOTE] OpenSCAP binary ('oscap') not found on host path (runs in Linux container / CI matrix).")
 
     # 4. Parse OWASP ZAP DAST Reports
     print("\n[+] Aggregating OWASP ZAP DAST Scan Results...")
