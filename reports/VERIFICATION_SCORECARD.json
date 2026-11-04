@@ -1,9 +1,9 @@
 {
-  "timestamp_utc": "2026-11-04T22:18:46.744689+00:00",
-  "total_phases": 7,
-  "passed_phases": 7,
+  "timestamp_utc": "2026-11-04T22:46:45.382297+00:00",
+  "total_phases": 10,
+  "passed_phases": 10,
   "failed_phases": 0,
-  "total_duration_seconds": 108.15,
+  "total_duration_seconds": 152.41,
   "all_passed": true,
   "phases": [
     {
@@ -11,8 +11,8 @@
       "name": "Cluster Health & WORM Merkle Chain Audit",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m registry.cli doctor",
       "status": "PASS",
-      "duration_s": 5.07,
-      "output_snippet": "----------------------------------------------------------------------\n[PASS] WORM Audit Merkle Chain    -> Valid (4340 events verified) [123.4ms]\n======================================================================\n[OK] All cluster admission control services are operational.",
+      "duration_s": 7.11,
+      "output_snippet": "----------------------------------------------------------------------\n[PASS] WORM Audit Merkle Chain    -> Valid (6382 events verified) [155.8ms]\n======================================================================\n[OK] All cluster admission control services are operational.",
       "details": {
         "exit_code": 0
       }
@@ -22,8 +22,8 @@
       "name": "Core SDK, ABAC, and Prevalidator Test Suite",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest tests/ -q",
       "status": "PASS",
-      "duration_s": 31.23,
-      "output_snippet": "C:\\Users\\chuck\\Anaconda3\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\nfrom starlette.testclient import TestClient as TestClient  # noqa\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n57 passed, 1 warning in 28.05s",
+      "duration_s": 39.6,
+      "output_snippet": "C:\\Users\\chuck\\Anaconda3\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\nfrom starlette.testclient import TestClient as TestClient  # noqa\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n58 passed, 1 warning in 34.85s",
       "details": {
         "exit_code": 0
       }
@@ -33,8 +33,8 @@
       "name": "Consumer Conformance Test Suite",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest conformance/ -q",
       "status": "PASS",
-      "duration_s": 6.78,
-      "output_snippet": ".....                                                                    [100%]\n5 passed in 3.66s",
+      "duration_s": 9.17,
+      "output_snippet": ".....                                                                    [100%]\n5 passed in 4.65s",
       "details": {
         "exit_code": 0
       }
@@ -44,7 +44,7 @@
       "name": "Multi-Agent Cross-Clearance Admission Control",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe examples/multi_agent_orchestration_demo.py",
       "status": "PASS",
-      "duration_s": 2.35,
+      "duration_s": 2.98,
       "output_snippet": "[+] Quarantine Incidents Log : 50 incidents tracked\n================================================================================\n[SUCCESS] MULTI-AGENT ADMISSION CONTROL BENCHMARK COMPLETE (0 ERRORS)\n================================================================================",
       "details": {
         "exit_code": 0
@@ -55,8 +55,8 @@
       "name": "High-Concurrency Latency & Throughput Benchmark",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe benchmarks/benchmark_gateway_concurrency.py",
       "status": "PASS",
-      "duration_s": 58.01,
-      "output_snippet": "4. Dynamic In-Flight Masking (MASK 200) |   32.1 RPS |  232.0 us | 1675.8 us |   97.20% | 100.00%\n==========================================================================================\n[+] Benchmark summary exported to: D:\\attestation\\reports\\concurrency_benchmark_report.json\n[+] Markdown report exported to: D:\\attestation\\reports\\CONCURRENCY_BENCHMARK.md",
+      "duration_s": 82.2,
+      "output_snippet": "4. Dynamic In-Flight Masking (MASK 200) |   26.5 RPS |  243.7 us | 3248.8 us |   95.40% | 100.00%\n==========================================================================================\n[+] Benchmark summary exported to: D:\\attestation\\reports\\concurrency_benchmark_report.json\n[+] Markdown report exported to: D:\\attestation\\reports\\CONCURRENCY_BENCHMARK.md",
       "details": {
         "exit_code": 0
       }
@@ -66,8 +66,8 @@
       "name": "Forensic Watermarking & Provenance Verification",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest tests/test_watermark.py -q",
       "status": "PASS",
-      "duration_s": 3.66,
-      "output_snippet": ".....                                                                    [100%]\n5 passed in 0.32s",
+      "duration_s": 3.94,
+      "output_snippet": ".....                                                                    [100%]\n5 passed in 0.35s",
       "details": {
         "exit_code": 0
       }
@@ -77,8 +77,41 @@
       "name": "SOC 2 & ISO 27001 Cryptographic Audit Reporter",
       "command": "C:\\Users\\chuck\\Anaconda3\\python.exe scripts/generate_compliance_report.py",
       "status": "PASS",
-      "duration_s": 1.05,
+      "duration_s": 1.25,
       "output_snippet": "[*] Generating G1 Docket Cryptographic Compliance Audit Report...\n[+] Compliance Audit Report written to: reports\\COMPLIANCE_AUDIT_REPORT.md\n[+] Machine-readable Summary written to: reports\\compliance_audit_summary.json",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 8,
+      "name": "Snowflake Zero-Trust Admission Demo",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe examples/snowflake_rag_agent_demo.py",
+      "status": "PASS",
+      "duration_s": 1.97,
+      "output_snippet": "[+] Guarantee: Zero untagged / unpapered database context can be smuggled.\n================================================================================\nALL 6 SNOWFLAKE ZERO-TRUST VERIFICATIONS PASSED\n================================================================================",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 9,
+      "name": "CrewAI Multi-Agent Team Zero-Trust Demo",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe examples/crewai_agent_demo.py",
+      "status": "PASS",
+      "duration_s": 2.29,
+      "output_snippet": "Snapshot Seq: 3207 | Caller: pod-key-public\n================================================================================\nCREWAI ZERO-TRUST INTEGRATION DEMO PASSED\n================================================================================",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 10,
+      "name": "LangGraph Workflow State Admission Demo",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe examples/langgraph_agent_demo.py",
+      "status": "PASS",
+      "duration_s": 1.9,
+      "output_snippet": "[+] Redacted Graph Output: [Gateway (gpt-4o)]: CUST-901 | [REDACTED_EMAIL_ADDRESS] | phone: [REDACTED_PHONE_NUMBER] | segment: Enterprise\n================================================================================\nLANGGRAPH ZERO-TRUST INTEGRATION DEMO PASSED\n================================================================================",
       "details": {
         "exit_code": 0
       }

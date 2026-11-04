@@ -9,6 +9,9 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 5: High-Concurrency Latency & Throughput Benchmark (2,000 probes)
   Phase 6: Forensic Watermarking & Provenance Attribution Validation
   Phase 7: SOC 2 & ISO 27001 Cryptographic Compliance Audit Report
+  Phase 8: Snowflake Zero-Trust Admission Demo
+  Phase 9: CrewAI Multi-Agent Team Zero-Trust Demo
+  Phase 10: LangGraph Workflow State Admission Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -121,6 +124,15 @@ def main() -> int:
 
     # Phase 7: SOC 2 Compliance Report
     phases.append(run_phase(7, "SOC 2 & ISO 27001 Cryptographic Audit Reporter", [sys.executable, "scripts/generate_compliance_report.py"]))
+
+    # Phase 8: Snowflake Zero-Trust Admission Demo
+    phases.append(run_phase(8, "Snowflake Zero-Trust Admission Demo", [sys.executable, "examples/snowflake_rag_agent_demo.py"]))
+
+    # Phase 9: CrewAI Multi-Agent Team Demo
+    phases.append(run_phase(9, "CrewAI Multi-Agent Team Zero-Trust Demo", [sys.executable, "examples/crewai_agent_demo.py"]))
+
+    # Phase 10: LangGraph Workflow Admission Demo
+    phases.append(run_phase(10, "LangGraph Workflow State Admission Demo", [sys.executable, "examples/langgraph_agent_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
