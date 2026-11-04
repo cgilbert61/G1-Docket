@@ -129,6 +129,12 @@ python -m registry.cli lookup "file://estate/fileshare/product_overview_public.m
 python -m registry.cli publish-snapshot --output ./pod_snapshot.dsse.json
 ```
 
+### 4. Interactive Operator & Auditor Control Menu
+Launch the interactive terminal console to run any of the enterprise verification demos, benchmarks, or cluster diagnostics with a single keystroke:
+```bash
+python scripts/interactive_menu.py
+```
+
 ---
 
 ## One-Click Automated Docker Installers
