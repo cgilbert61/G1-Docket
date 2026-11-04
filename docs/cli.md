@@ -38,10 +38,38 @@ pod --help
 | **`revoke`** | Policy | Immediately revoke an attestation record |
 | **`review-list`** | HITL | List pending human review triage items |
 | **`review-approve`** | HITL | Approve and finalize classification for an object in review |
+| **`doctor`** | Diagnostics | Probe cluster endpoints, check latencies, and audit WORM chain |
 
 ---
 
-## 3. Cryptographic Key Management
+## 3. Cluster Diagnostics (`doctor`)
+
+Probe all core services across the admission control cluster, inspect active posture, and audit the cryptographic WORM Merkle chain in a single command:
+
+```bash
+docket doctor
+# or
+pod doctor
+```
+
+Example Output:
+```text
+======================================================================
+                 G1 DOCKET CLUSTER HEALTH & DIAGNOSTICS               
+======================================================================
+ [PASS] Prevalidator Gateway       -> Online (mode=enforce, seq=2998) [477.6ms]
+ [PASS] Governance & SIEM          -> Online (worm_events=134, quarantine=72) [6.3ms]
+ [PASS] Authoritative Registry     -> Online [38.1ms]
+ [PASS] Snapshot Publisher         -> Online [25.5ms]
+----------------------------------------------------------------------
+ [PASS] WORM Audit Merkle Chain    -> Valid (134 events verified) [20.7ms]
+======================================================================
+ [OK] All cluster admission control services are operational.
+```
+
+---
+
+## 4. Cryptographic Key Management
 
 ### Generate Initial Operator Keypair
 ```bash
@@ -56,7 +84,7 @@ docket keygen --rotate --key-dir ./.pod_keys
 
 ---
 
-## 4. Attesting Enterprise Assets
+## 5. Attesting Enterprise Assets
 
 ### Attest a Single File
 ```bash
@@ -81,7 +109,7 @@ docket attest "postgresql://user:pass@db:5432/corp_data" \
 
 ---
 
-## 5. Inspection & Verification
+## 6. Inspection & Verification
 
 ### Look Up Current Attestation State
 ```bash
@@ -97,7 +125,7 @@ docket verify ./attestation_q3.dsse.json \
 
 ---
 
-## 6. Snapshot Publishing (Zero-DB Deployment)
+## 7. Snapshot Publishing (Zero-DB Deployment)
 
 Publishes a monotonic DSSE snapshot containing all active attestation records. Prevalidator edge proxies poll or receive this snapshot for sub-millisecond in-memory zero-DB lookups:
 
@@ -109,7 +137,7 @@ docket publish-snapshot \
 
 ---
 
-## 7. Lifecycle & Four-Eyes Tier Downgrade
+## 8. Lifecycle & Four-Eyes Tier Downgrade
 
 ### Immediately Raise Classification Tier
 Elevates security tier to block unauthorized model egress immediately:
@@ -135,7 +163,7 @@ docket revoke "s3://lake/temp/dump.sql" \
 
 ---
 
-## 8. Expiration & Automated Renewal
+## 9. Expiration & Automated Renewal
 
 ### List Records Expiring Soon
 ```bash

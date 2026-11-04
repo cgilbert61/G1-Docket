@@ -87,12 +87,98 @@ def build_parser() -> argparse.ArgumentParser:
     p_snap.add_argument("--output", default="./pod_snapshot.dsse.json", help="Output path for the signed snapshot")
     p_snap.add_argument("--ttl-seconds", type=int, default=300, help="Snapshot TTL in seconds")
 
+    # doctor
+    p_doc = sub.add_parser("doctor", help="Run cluster health diagnostics and audit WORM chain integrity")
+    p_doc.add_argument("--prevalidator-url", default="http://localhost:18082", help="Prevalidator gateway URL")
+    p_doc.add_argument("--governance-url", default="http://localhost:18084", help="Governance triage server URL")
+    p_doc.add_argument("--registry-url", default="http://localhost:18080", help="Authoritative Registry URL")
+    p_doc.add_argument("--snapshot-url", default="http://localhost:18081", help="Snapshot Publisher URL")
+
     return parser
+
+
+def run_doctor_diagnostics(preval_url: str, gov_url: str, reg_url: str, snap_url: str) -> int:
+    """Probe all cluster services, report latency, and verify cryptographic WORM chain integrity."""
+    import time
+    import urllib.request
+
+    def check(name: str, url: str) -> tuple[bool, str, float]:
+        t0 = time.perf_counter()
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "G1-Doctor/1.0"})
+            with urllib.request.urlopen(req, timeout=3.0) as resp:
+                elapsed = (time.perf_counter() - t0) * 1000
+                data = json.loads(resp.read().decode("utf-8"))
+                details = []
+                if "mode" in data:
+                    details.append(f"mode={data['mode']}")
+                if "snapshot_sequence" in data:
+                    details.append(f"seq={data['snapshot_sequence']}")
+                if "worm_events" in data:
+                    details.append(f"worm_events={data['worm_events']}")
+                if "quarantine_pending" in data:
+                    details.append(f"quarantine={data['quarantine_pending']}")
+                detail_str = f" ({', '.join(details)})" if details else ""
+                return True, f"Online{detail_str}", elapsed
+        except Exception as exc:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return False, f"Offline ({exc})", elapsed
+
+    print("======================================================================")
+    print("                 G1 DOCKET CLUSTER HEALTH & DIAGNOSTICS               ")
+    print("======================================================================")
+
+    targets = [
+        ("Prevalidator Gateway", f"{preval_url.rstrip('/')}/healthz"),
+        ("Governance & SIEM", f"{gov_url.rstrip('/')}/healthz"),
+        ("Authoritative Registry", f"{reg_url.rstrip('/')}/healthz"),
+        ("Snapshot Publisher", f"{snap_url.rstrip('/')}/healthz"),
+    ]
+
+    all_ok = True
+    for name, url in targets:
+        ok, msg, ms = check(name, url)
+        status_tag = "[PASS]" if ok else "[FAIL]"
+        print(f" {status_tag} {name:<26} -> {msg} [{ms:.1f}ms]")
+        if not ok:
+            all_ok = False
+
+    # Check WORM ledger integrity
+    print("-" * 70)
+    try:
+        t0 = time.perf_counter()
+        req = urllib.request.Request(f"{gov_url.rstrip('/')}/api/worm/verify")
+        with urllib.request.urlopen(req, timeout=4.0) as resp:
+            v_data = json.loads(resp.read().decode("utf-8"))
+            elapsed = (time.perf_counter() - t0) * 1000
+            if v_data.get("valid"):
+                print(f" [PASS] WORM Audit Merkle Chain    -> Valid ({v_data.get('total_entries', 0)} events verified) [{elapsed:.1f}ms]")
+            else:
+                print(f" [FAIL] WORM Audit Merkle Chain    -> Chain broken: {v_data.get('error')}")
+                all_ok = False
+    except Exception as exc:
+        print(f" [WARN] WORM Audit Merkle Chain    -> Could not verify ({exc})")
+
+    print("======================================================================")
+    if all_ok:
+        print(" [OK] All cluster admission control services are operational.")
+        return 0
+    else:
+        print(" [!] One or more cluster services failed health verification.")
+        return 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "doctor":
+        return run_doctor_diagnostics(
+            preval_url=args.prevalidator_url,
+            gov_url=args.governance_url,
+            reg_url=args.registry_url,
+            snap_url=args.snapshot_url,
+        )
 
     if args.command == "keygen":
         keyring = Keyring(args.key_dir or "./.pod_keys")
