@@ -213,6 +213,15 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             },
         )
 
+    @app.get("/healthz")
+    async def health_check():
+        return {
+            "status": "healthy",
+            "service": "governance-triage",
+            "quarantine_pending": quarantine_store.count_by_status().get("QUARANTINED", 0),
+            "worm_events": worm_ledger.count_events(),
+        }
+
     # ---------------------------------------------------------
     # REST APIs: Quarantine Management & Dual-Key Signoff
     # ---------------------------------------------------------
