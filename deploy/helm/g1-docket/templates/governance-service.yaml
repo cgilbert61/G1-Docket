@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-governance
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: governance
+spec:
+  type: {{ .Values.governance.service.type }}
+  ports:
+    - port: {{ .Values.governance.service.port }}
+      targetPort: {{ .Values.governance.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "g1-docket.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: governance

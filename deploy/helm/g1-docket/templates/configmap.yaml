@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-config
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+data:
+  POD_GATEWAY_MODE: {{ .Values.prevalidator.mode | quote }}
+  POD_STRICT_INLINE_HASH: {{ .Values.prevalidator.strictInlineHash | quote }}
+  POD_ENABLE_PRESIDIO_FALLBACK: {{ .Values.prevalidator.enablePresidioFallback | quote }}
+  POD_SNAPSHOT_PUBLISHER_URL: "http://{{ include "g1-docket.fullname" . }}-publisher:{{ .Values.snapshotPublisher.service.port }}"
+  POD_ENGINE_URL: "http://{{ include "g1-docket.fullname" . }}-engine:{{ .Values.engine.service.port }}"
+  POD_GOVERNANCE_URL: "http://{{ include "g1-docket.fullname" . }}-governance:{{ .Values.governance.service.port }}"

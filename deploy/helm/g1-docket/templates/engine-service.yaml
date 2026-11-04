@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-engine
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engine
+spec:
+  type: {{ .Values.engine.service.type }}
+  ports:
+    - port: {{ .Values.engine.service.port }}
+      targetPort: {{ .Values.engine.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "g1-docket.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: engine

@@ -1,0 +1,18 @@
+{{- if .Values.governance.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-worm-pvc
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: governance
+spec:
+  accessModes:
+    {{- toYaml .Values.governance.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.governance.persistence.size }}
+  {{- if .Values.governance.persistence.storageClass }}
+  storageClassName: {{ .Values.governance.persistence.storageClass }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,121 @@
+# Default values for g1-docket.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  environment: "production"
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: g1-docket
+  security.g1.io/tier: institutional
+
+# Prevalidator Admission Gateway
+prevalidator:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/cgilbert61/g1-docket-prevalidator
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18082
+    targetPort: 8082
+  mode: "enforce" # "enforce" (active blocking) | "observe" (audit-only)
+  strictInlineHash: true
+  enablePresidioFallback: true
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# HITL Governance Console & WORM Audit SIEM
+governance:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/cgilbert61/g1-docket-governance
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18084
+    targetPort: 8084
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+
+# Authoritative Cryptographic Snapshot Publisher
+snapshotPublisher:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/cgilbert61/g1-docket-publisher
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18081
+    targetPort: 8081
+
+# Attestation & DLP Classification Engine
+engine:
+  replicaCount: 2
+  image:
+    repository: ghcr.io/cgilbert61/g1-docket-engine
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18083
+    targetPort: 8083
+
+# Secrets & Tokens (can be replaced with external secrets operator or Vault)
+secrets:
+  adminApiKey: "change-me-in-production-admin-key"
+  controlPlaneToken: "change-me-in-production-token"
+  jwtSecret: "change-me-in-production-jwt-secret-at-least-32-chars"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "180"
+  hosts:
+    - host: docket.internal.corp
+      paths:
+        - path: /v1
+          pathType: Prefix
+          service: prevalidator
+        - path: /governance
+          pathType: Prefix
+          service: governance
+  tls:
+    - secretName: g1-docket-tls
+      hosts:
+        - docket.internal.corp

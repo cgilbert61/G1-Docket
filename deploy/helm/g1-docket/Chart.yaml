@@ -1,0 +1,16 @@
+apiVersion: v2
+name: g1-docket
+description: Production-grade Helm chart for G1 Docket Cryptographic Data Attestation & AI Prevalidator
+type: application
+version: 0.2.0
+appVersion: "4.0.0"
+keywords:
+  - ai-gateway
+  - data-attestation
+  - security
+  - zero-trust
+  - in-toto
+  - dlp
+maintainers:
+  - name: G1163RT Security Labs
+    email: security@g1docket.dev

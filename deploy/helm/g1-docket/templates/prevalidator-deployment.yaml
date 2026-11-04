@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-prevalidator
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prevalidator
+spec:
+  {{- if not .Values.prevalidator.autoscaling.enabled }}
+  replicas: {{ .Values.prevalidator.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "g1-docket.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: prevalidator
+  template:
+    metadata:
+      labels:
+        {{- include "g1-docket.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: prevalidator
+    spec:
+      containers:
+        - name: prevalidator
+          image: "{{ .Values.prevalidator.image.repository }}:{{ .Values.prevalidator.image.tag }}"
+          imagePullPolicy: {{ .Values.prevalidator.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.prevalidator.service.targetPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "g1-docket.fullname" . }}-config
+            - secretRef:
+                name: {{ include "g1-docket.fullname" . }}-secrets
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.prevalidator.resources | nindent 12 }}
+      {{- with .Values.prevalidator.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prevalidator.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.prevalidator.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
