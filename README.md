@@ -26,10 +26,9 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `governance/` — Cryptographic WORM audit ledger, multi-target SIEM forwarders, and HITL Dual-Key triage GUI & server
 - `conformance/` — Reference consumer simulator and Consumer Conformance Test Suite
 - `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`), CLI aliases (`docket` / `pod doctor`), prompt-audit callback handlers (`DocketLangChainCallbackHandler`), ingestion components (`DocketTransformComponent`), and RAG framework adapters (`wrap_rag_documents`, `DocketDocumentTransformer`, `DocketLlamaIndexPostprocessor`, `@attested_tool`)
-- `examples/` — Interactive Quickstart Notebook (`quickstart_interactive.ipynb`), Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, reproducible end-to-end demo (`run_demo.py`), Docker stack verification (`verify_docker_stack.py`), live Enterprise Governance & Dual-Key simulation (`simulate_enterprise_governance.py`), RAG agent retrieval pipeline walkthrough (`rag_agent_walkthrough.py`), Snowflake SQL Agent walkthrough (`snowflake_agent_demo.py`), Databricks Unity Catalog AI Agent walkthrough (`databricks_agent_demo.py`), and Federated Multi-Cloud Warehouse Agent walkthrough (`multicloud_warehouse_agent.py`)
+- `examples/` — Interactive Quickstart Notebook (`quickstart_interactive.ipynb`), Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, reproducible end-to-end demo (`run_demo.py`), Docker stack verification (`verify_docker_stack.py`), live Enterprise Governance & Dual-Key simulation (`simulate_enterprise_governance.py`), RAG agent retrieval pipeline walkthrough (`rag_agent_walkthrough.py`), Snowflake SQL Agent walkthrough (`snowflake_agent_demo.py`), Databricks Unity Catalog AI Agent walkthrough (`databricks_agent_demo.py`), Apache Iceberg Lakehouse walkthrough (`iceberg_agent_demo.py`), Google BigQuery walkthrough (`bigquery_agent_demo.py`), Dynamic In-Flight Field Masking walkthrough (`dynamic_masking_agent_demo.py`), and Federated Multi-Cloud Warehouse Agent walkthrough (`multicloud_warehouse_agent.py`)
 - `docs/` — [Hyperscale Architecture (100M+ Objects)](docs/hyperscale-architecture.md), [Audit Period Determination Guide](docs/audit-period-determination.md), [Governance Subsystem](docs/governance-subsystem.md), [Operator CLI Reference](docs/cli.md), [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
-- `deploy/` — [Kubernetes Manifests & Edge Sidecar Patterns](deploy/k8s/README.md) for production deployment across AWS EKS, Google GKE, Azure AKS, and on-premise clusters
-- `charts/` — [Official Production Helm Chart](charts/g1-docket/README.md) for turnkey Kubernetes & GitOps deployment
+- `deploy/` — [Production Helm Chart](deploy/helm/g1-docket/README.md) and [Kubernetes Manifests & Edge Sidecar Patterns](deploy/k8s/README.md) for production deployment across AWS EKS, Google GKE, Azure AKS, and on-premise clusters with built-in Horizontal Pod Autoscaling (HPA) and Prometheus `/metrics` scraping
 
 ---
 
@@ -321,3 +320,15 @@ This project relies on and incorporates open-source libraries and standards. We 
 | **DSSE Specification** | `v1.0` | **Apache-2.0** | [secure-systems-lab/dsse](https://github.com/secure-systems-lab/dsse) | Dead Simple Signing Envelope for multi-key detached signatures |
 | **LiteLLM** | `>=1.0.0` | **MIT** | [BerriAI/litellm](https://github.com/BerriAI/litellm) | Upstream AI gateway and OpenAI/Anthropic protocol translation |
 | **SQLite** | `v3` | **Public Domain** | [sqlite.org](https://www.sqlite.org/) | Embedded transactional storage for WORM ledger, quarantine queue, and SIEM buffer |
+
+---
+
+## Production Observability & Prometheus Metrics
+
+G1 Docket exposes standard Prometheus text exposition format (`text/plain; version=0.0.4; charset=utf-8`) for monitoring, alerting, and SLA tracking:
+
+| Subsystem | Port | Endpoint | Metrics Exported |
+| :--- | :--- | :--- | :--- |
+| **Prevalidator Gateway** | `:18082` | `GET /metrics` | `g1_docket_mode`, `g1_docket_evaluations_total`, `g1_docket_evaluations_by_decision_total{decision="allow\|deny\|strip\|mask"}`, `g1_docket_policy_denials_by_reason_total`, `g1_docket_evaluation_duration_seconds{quantile="0.5\|0.95\|0.99"}`, `g1_docket_active_snapshot_sequence`, `g1_docket_active_snapshot_entries` |
+| **HITL Governance & SIEM** | `:18084` | `GET /metrics` | `g1_docket_governance_worm_events_total`, `g1_docket_governance_quarantine_items{status="QUARANTINED\|RELEASED\|REJECTED"}`, `g1_docket_governance_siem_destinations{enabled="true\|false"}` |
+
