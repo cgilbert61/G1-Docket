@@ -227,14 +227,14 @@ default
 ├── GET  /v1/browse-dir               Browse host drives and directories for estate targeting
 ├── POST /v1/attest-selected          Trigger cryptographic attestation across selected drive or path
 ├── GET  /v1/pc-folders               List auto-discovered workstation directories & document stores
-├── GET  /v1/datastores               Query registered enterprise data stores (S3, Azure, GCS, Snowflake, BigQuery)
+├── GET  /v1/datastores               Query registered enterprise data stores (S3, Azure, GCS, Snowflake, BigQuery, Databricks)
 ├── POST /v1/datastores               Register new enterprise cloud data lake or warehouse connection
 └── GET  /v1/datastores/objects       Enumerate discovered objects and partitions within enterprise datastores
 ```
 
 - **`GET /v1/browse-dir`**: Takes `?path=` query parameter to navigate the host filesystem, reporting directory entries, file counts, and accessibility.
 - **`POST /v1/attest-selected`**: Initiates discovery, DLP classification (Presidio + Purview metadata extraction), and cryptographic DSSE envelope issuance over all scannable files in the path.
-- **`GET /v1/datastores` & `POST /v1/datastores`**: Configures enterprise cloud data stores with zero-secret credentials (AWS IAM roles, Azure Managed Identity, GCP Workload Identity / ADC, Snowflake key-pair) and runs partition-level attestation.
+- **`GET /v1/datastores` & `POST /v1/datastores`**: Configures enterprise cloud data stores with zero-secret credentials (AWS IAM roles, Azure Managed Identity, GCP Workload Identity / ADC, Snowflake key-pair, Databricks OAuth M2M) and runs partition-level attestation.
 
 ---
 
