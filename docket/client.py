@@ -292,6 +292,28 @@ class DocketClient:
         res = self._client.post(f"{self.base_url}/v1/admin/reload-snapshot", headers=self._admin_headers())
         return self._handle_response(res)
 
+    def list_policy_hooks(self) -> dict[str, Any]:
+        """List active ABAC policy hooks and sovereign boundaries on the Prevalidator."""
+        res = self._client.get(f"{self.base_url}/v1/admin/policies/hooks", headers=self._admin_headers())
+        return self._handle_response(res)
+
+    def configure_policy_hook(
+        self,
+        hook_type: str,
+        action: str = "enable",
+        allowed_regions: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Dynamically enable, disable, or configure an ABAC policy hook (e.g. data_residency, departmental_isolation)."""
+        payload: dict[str, Any] = {"hook_type": hook_type, "action": action}
+        if allowed_regions is not None:
+            payload["allowed_regions"] = allowed_regions
+        res = self._client.post(
+            f"{self.base_url}/v1/admin/policies/hooks",
+            headers=self._admin_headers(),
+            json=payload,
+        )
+        return self._handle_response(res)
+
     def get_snapshot_view(self) -> dict[str, Any]:
         """Inspect the active in-memory snapshot state on the Prevalidator."""
         res = self._client.get(f"{self.base_url}/v1/admin/snapshot-view", headers=self._admin_headers())
@@ -729,4 +751,26 @@ class AsyncDocketClient:
         res = await self._client.get(f"{self.governance_url}/api/quarantine/export", params={"format": format})
         if format.lower() == "csv":
             return res.text
+        return self._handle_response(res)
+
+    async def list_policy_hooks(self) -> dict[str, Any]:
+        """List active ABAC policy hooks and sovereign boundaries on the Prevalidator asynchronously."""
+        res = await self._client.get(f"{self.base_url}/v1/admin/policies/hooks", headers=self._admin_headers())
+        return self._handle_response(res)
+
+    async def configure_policy_hook(
+        self,
+        hook_type: str,
+        action: str = "enable",
+        allowed_regions: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Dynamically enable, disable, or configure an ABAC policy hook asynchronously."""
+        payload: dict[str, Any] = {"hook_type": hook_type, "action": action}
+        if allowed_regions is not None:
+            payload["allowed_regions"] = allowed_regions
+        res = await self._client.post(
+            f"{self.base_url}/v1/admin/policies/hooks",
+            headers=self._admin_headers(),
+            json=payload,
+        )
         return self._handle_response(res)

@@ -890,6 +890,8 @@ def create_data_residency_hook(default_allowed_regions: list[str] | None = None)
                 return "deny", [REASON_DATA_RESIDENCY_VIOLATION]
         return "allow", []
 
+    _residency_hook.__name__ = "data_residency"
+    _residency_hook.__doc__ = "Enforces GDPR and sovereign region boundaries"
     return _residency_hook
 
 
@@ -908,5 +910,7 @@ def create_departmental_isolation_hook():
                 return "deny", [REASON_DEPARTMENTAL_ISOLATION_VIOLATION]
         return "allow", []
 
+    _dept_hook.__name__ = "departmental_isolation"
+    _dept_hook.__doc__ = "Enforces departmental isolation and prevent cross-team data access"
     return _dept_hook
 

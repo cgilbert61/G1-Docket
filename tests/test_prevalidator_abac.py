@@ -232,3 +232,49 @@ def test_abac_environment_variable_auto_registration(monkeypatch, abac_env):
     auto_enforcer = PrevalidatorEnforcer(snapshot_store=snap_store, mode="enforce")
 
     assert len(auto_enforcer.custom_policy_hooks) == 2
+
+
+def test_dynamic_policy_hooks_api_endpoint(abac_env):
+    """Verify runtime dynamic management of ABAC policy hooks via /v1/admin/policies/hooks."""
+    client = abac_env["client"]
+    admin_header = {"X-POD-Admin-Key": "pod-dev-admin-key"}
+
+    # 1. Initially empty hooks
+    res = client.get("/v1/admin/policies/hooks", headers=admin_header)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_hooks"] == 0
+    assert data["data_residency_enabled"] is False
+
+    # 2. Dynamically enable Data Residency
+    enable_res = client.post(
+        "/v1/admin/policies/hooks",
+        headers=admin_header,
+        json={"hook_type": "data_residency", "action": "enable", "allowed_regions": ["eu-central-1"]},
+    )
+    assert enable_res.status_code == 200
+    assert enable_res.json()["status"] == "ok"
+    assert enable_res.json()["total_hooks"] == 1
+
+    # Verify listing reflects enabled hook
+    res2 = client.get("/v1/admin/policies/hooks", headers=admin_header)
+    assert res2.json()["total_hooks"] == 1
+    assert res2.json()["data_residency_enabled"] is True
+
+    # 3. Dynamically enable Departmental Isolation
+    enable_dept = client.post(
+        "/v1/admin/policies/hooks",
+        headers=admin_header,
+        json={"hook_type": "departmental_isolation", "action": "enable"},
+    )
+    assert enable_dept.status_code == 200
+    assert enable_dept.json()["total_hooks"] == 2
+
+    # 4. Clear all hooks
+    clear_res = client.post(
+        "/v1/admin/policies/hooks",
+        headers=admin_header,
+        json={"hook_type": "clear"},
+    )
+    assert clear_res.status_code == 200
+    assert clear_res.json()["total_hooks"] == 0

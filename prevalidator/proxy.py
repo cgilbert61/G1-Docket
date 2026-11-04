@@ -1646,4 +1646,54 @@ def create_prevalidator_app(
             pred = enforcer.snapshot_store.load_from_file(path)
         return {"loaded": True, "snapshot_id": pred["snapshot_id"], "sequence_number": pred["sequence_number"]}
 
+    @app.get("/v1/admin/policies/hooks")
+    def list_policy_hooks(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:
+        if x_pod_admin_key != admin_key:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
+        hooks_meta = []
+        for idx, h in enumerate(enforcer.custom_policy_hooks):
+            name = getattr(h, "__name__", getattr(h, "name", f"hook_{idx}"))
+            doc = getattr(h, "__doc__", "")
+            hooks_meta.append({"index": idx, "name": name, "description": doc.strip() if doc else ""})
+        return {
+            "total_hooks": len(enforcer.custom_policy_hooks),
+            "hooks": hooks_meta,
+            "data_residency_enabled": any("data_residency" in getattr(h, "__name__", "") for h in enforcer.custom_policy_hooks),
+            "departmental_isolation_enabled": any("departmental_isolation" in getattr(h, "__name__", "") for h in enforcer.custom_policy_hooks),
+        }
+
+    @app.post("/v1/admin/policies/hooks")
+    async def configure_policy_hook(
+        request: Request,
+        x_pod_admin_key: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        if x_pod_admin_key != admin_key:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
+        body = await request.json()
+        hook_type = body.get("hook_type")
+        action = body.get("action", "enable")  # "enable" | "disable"
+
+        if hook_type == "data_residency":
+            from prevalidator.enforcer import create_data_residency_hook
+            allowed_regions = body.get("allowed_regions")
+            enforcer.custom_policy_hooks = [h for h in enforcer.custom_policy_hooks if "data_residency" not in getattr(h, "__name__", "")]
+            if action == "enable":
+                hook = create_data_residency_hook(default_allowed_regions=allowed_regions)
+                enforcer.register_policy_hook(hook)
+            return {"status": "ok", "hook_type": "data_residency", "action": action, "total_hooks": len(enforcer.custom_policy_hooks)}
+
+        elif hook_type == "departmental_isolation":
+            from prevalidator.enforcer import create_departmental_isolation_hook
+            enforcer.custom_policy_hooks = [h for h in enforcer.custom_policy_hooks if "departmental_isolation" not in getattr(h, "__name__", "")]
+            if action == "enable":
+                hook = create_departmental_isolation_hook()
+                enforcer.register_policy_hook(hook)
+            return {"status": "ok", "hook_type": "departmental_isolation", "action": action, "total_hooks": len(enforcer.custom_policy_hooks)}
+
+        elif hook_type == "clear":
+            enforcer.custom_policy_hooks.clear()
+            return {"status": "ok", "action": "cleared", "total_hooks": 0}
+
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported hook_type: {hook_type}")
+
     return app
