@@ -195,3 +195,40 @@ def test_cli_lifecycle_end_to_end(tmp_path: Path):
     assert cli_main(["--db-url", db_url, "--key-dir", key_dir, "list-expiring", "--within-days", "365"]) == 0
     assert cli_main(["--db-url", db_url, "--key-dir", key_dir, "publish-snapshot", "--output", str(snap_out)]) == 0
     assert cli_main(["--db-url", db_url, "--key-dir", key_dir, "revoke", loc, "--reason", "Test complete"]) == 0
+
+
+def test_engine_etl_webhook(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test ETL completion webhook (/v1/events/etl) for dbt, Airflow, and data pipelines."""
+    from fastapi.testclient import TestClient
+    from engine.service import create_engine_app
+
+    monkeypatch.setenv("POD_REGISTRY_DB_URL", f"sqlite:///{(tmp_path / 'engine_reg.db').as_posix()}")
+    monkeypatch.setenv("POD_SNAPSHOT_FILE", (tmp_path / "snapshot.json").as_posix())
+    monkeypatch.setenv("POD_ESTATE_DIR", tmp_path.as_posix())
+    monkeypatch.setenv("POD_SNAPSHOT_PUBLISHER_URL", "")
+
+    app = create_engine_app()
+    client = TestClient(app)
+
+    res = client.post(
+        "/v1/events/etl",
+        json={
+            "pipeline": "dbt-cloud",
+            "run_id": "test-run-001",
+            "status": "success",
+            "outputs": [
+                "snowflake://acme.snowflakecomputing.com/FINANCE/PUBLIC/Q3_REVENUE",
+                "s3://lake/mart/sales.parquet",
+            ],
+            "trigger_immediate_snapshot": False,
+        },
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["processed"] is True
+    assert data["pipeline"] == "dbt-cloud"
+    assert data["run_id"] == "test-run-001"
+    assert data["status"] == "success"
+    assert data["assets_registered"] == 2
+    assert "timestamp" in data
+

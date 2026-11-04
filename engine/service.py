@@ -840,4 +840,42 @@ def create_engine_app() -> FastAPI:
         state.lineage_events_ingested += 1
         return {"ingested": True, "links_recorded": count}
 
+    @app.post("/v1/events/etl")
+    def ingest_etl_event(payload: dict[str, Any], request: Request) -> dict[str, Any]:
+        """Real-time webhook intake for ETL & data orchestrator callbacks (dbt Cloud, Airflow, Dagster, Prefect).
+
+        Accepts pipeline completion metadata with modified table/object locators.
+        When `trigger_immediate_snapshot` is True (default), triggers an immediate
+        attestation snapshot publication and reloads the Prevalidator gateway in-memory.
+        """
+        pipeline = str(payload.get("pipeline") or "generic_etl")
+        run_id = str(payload.get("run_id") or uuid.uuid4())
+        status = str(payload.get("status") or "completed").lower()
+        outputs = payload.get("outputs") or []
+        trigger_snapshot = bool(payload.get("trigger_immediate_snapshot", True))
+
+        delta_count = 0
+        with scan_lock:
+            for out in outputs:
+                loc = out.get("locator") if isinstance(out, dict) else str(out)
+                if loc:
+                    delta_count += 1
+
+            env = None
+            if trigger_snapshot:
+                env = _publish_and_reload_prevalidator()
+                state.last_scan_at = format_iso8601(datetime.now(timezone.utc))
+                state.scans_completed += 1
+
+        return {
+            "processed": True,
+            "pipeline": pipeline,
+            "run_id": run_id,
+            "status": status,
+            "assets_registered": delta_count,
+            "snapshot_published": bool(env),
+            "signatures_count": len(env.get("signatures", [])) if env else 0,
+            "timestamp": format_iso8601(datetime.now(timezone.utc)),
+        }
+
     return app
