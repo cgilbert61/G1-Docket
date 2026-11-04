@@ -86,16 +86,19 @@ def test_docket_client_mock_success():
     assert client.wait_for_sync(min_sequence=5, timeout_sec=2, interval_sec=0.1) is True
 
 
-@pytest.mark.asyncio
-async def test_async_docket_client_mock():
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/healthz":
-            return httpx.Response(200, json={"status": "ok", "mode": "enforce", "snapshot_sequence": 5})
-        return httpx.Response(200, json={"status": "received"})
+def test_async_docket_client_mock():
+    async def _run():
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/healthz":
+                return httpx.Response(200, json={"status": "ok", "mode": "enforce", "snapshot_sequence": 5})
+            return httpx.Response(200, json={"status": "received"})
 
-    transport = httpx.MockTransport(handler)
-    async with AsyncDocketClient() as client:
-        client._client = httpx.AsyncClient(transport=transport)
-        health = await client.get_health()
-        assert health["status"] == "ok"
-        assert await client.wait_for_sync(min_sequence=5, timeout_sec=2, interval_sec=0.1) is True
+        transport = httpx.MockTransport(handler)
+        async with AsyncDocketClient() as client:
+            client._client = httpx.AsyncClient(transport=transport)
+            health = await client.get_health()
+            assert health["status"] == "ok"
+            assert await client.wait_for_sync(min_sequence=5, timeout_sec=2, interval_sec=0.1) is True
+
+    import asyncio
+    asyncio.run(_run())
