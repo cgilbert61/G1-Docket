@@ -1280,6 +1280,8 @@
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('restricted')">3. Refuse (Restricted)</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('unattested')">4. Refuse (Unattested)</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('snowflake')">5. Snowflake Gate</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('gdpr')">6. GDPR Sovereign Gate</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('department')">7. Dept Isolation Gate</button>
           </div>
 
           <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
@@ -1305,6 +1307,28 @@
                 <option value="gpt-4o">gpt-4o (public_api)</option>
                 <option value="vpc-model">vpc-model (private_cloud)</option>
                 <option value="local-model">local-model (local_only)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 10px; margin-top: 10px;">
+            <div>
+              <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Caller Department (ABAC Context)</label>
+              <select id="callerDeptSelect">
+                <option value="">Default / Unspecified</option>
+                <option value="Compliance">Compliance &amp; Legal</option>
+                <option value="Finance">Finance &amp; Executive</option>
+                <option value="Engineering">Engineering &amp; DevOps</option>
+                <option value="Marketing">Marketing (External)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Target Egress Region (Sovereignty)</label>
+              <select id="targetRegionSelect">
+                <option value="us-east-1">us-east-1 (US Standard)</option>
+                <option value="eu-central-1">eu-central-1 (EU Sovereign Enclave)</option>
+                <option value="eu-west-1">eu-west-1 (EU Sovereign Enclave)</option>
+                <option value="ap-southeast-1">ap-southeast-1 (APAC Enclave)</option>
               </select>
             </div>
           </div>
@@ -2081,6 +2105,20 @@
         document.getElementById('callerKey').value = 'pod-key-public';
         document.getElementById('modelSelect').value = 'gpt-4o';
         document.getElementById('promptInput').value = 'Summarize customer profile from Snowflake warehouse:\n<pod:object locator="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC/DIM_CUSTOMER_CONTACTS">CUST-901 | elena.fisher@example.com | phone: 312-555-0199 | segment: Enterprise</pod:object>';
+      } else if (name === 'gdpr') {
+        document.getElementById('endpointSelect').value = '/v1/chat/completions';
+        document.getElementById('callerKey').value = 'pod-key-public';
+        if (document.getElementById('callerDeptSelect')) document.getElementById('callerDeptSelect').value = 'Compliance';
+        if (document.getElementById('targetRegionSelect')) document.getElementById('targetRegionSelect').value = 'us-east-1';
+        document.getElementById('modelSelect').value = 'gpt-4o';
+        document.getElementById('promptInput').value = 'Process EU citizen data:\n<pod:object locator="file://corp-lake/eu/gdpr_eu_user_registry.csv">user_id,eu_vat_id,country\nEU-001,DE999123,Germany\n</pod:object>';
+      } else if (name === 'department') {
+        document.getElementById('endpointSelect').value = '/v1/chat/completions';
+        document.getElementById('callerKey').value = 'pod-key-confidential';
+        if (document.getElementById('callerDeptSelect')) document.getElementById('callerDeptSelect').value = 'Marketing';
+        if (document.getElementById('targetRegionSelect')) document.getElementById('targetRegionSelect').value = 'us-east-1';
+        document.getElementById('modelSelect').value = 'local-model';
+        document.getElementById('promptInput').value = 'Extract executive payroll summary:\n<pod:object locator="file://corp-lake/finance/q4_payroll_allocations.csv">dept,payroll_q4\nEngineering,$4200000\nFinance,$980000\n</pod:object>';
       }
     }
 
@@ -2258,9 +2296,14 @@
       const key = document.getElementById('callerKey').value;
       const model = document.getElementById('modelSelect').value;
       const content = document.getElementById('promptInput').value;
+      const dept = document.getElementById('callerDeptSelect')?.value || '';
+      const region = document.getElementById('targetRegionSelect')?.value || '';
+      const headers = { 'Content-Type': 'application/json', 'X-POD-Caller-Key': key };
+      if (dept) headers['X-POD-Caller-Dept'] = dept;
+      if (region) headers['X-POD-Target-Region'] = region;
       const resp = await fetch(ep, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-POD-Caller-Key': key },
+        headers,
         body: JSON.stringify({ model, messages: [{ role: 'user', content }] })
       });
       const data = await resp.json();

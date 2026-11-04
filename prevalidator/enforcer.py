@@ -192,6 +192,10 @@ class PrevalidatorEnforcer:
         )
         self.classifier = PresidioClassifier()
         self.custom_policy_hooks: list[Any] = []
+        if os.environ.get("POD_ENABLE_ABAC_DATA_RESIDENCY", "false").lower() in ("1", "true", "yes"):
+            self.register_policy_hook(create_data_residency_hook())
+        if os.environ.get("POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION", "false").lower() in ("1", "true", "yes"):
+            self.register_policy_hook(create_departmental_isolation_hook())
         self.audit_log: list[AuditLogEntry] = []
         self.latency_samples_ms: list[float] = []
         self.total_evaluations: int = 0
