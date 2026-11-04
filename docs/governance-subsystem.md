@@ -82,6 +82,13 @@ The G1 Governance Subsystem provides the downstream compliance, tamper-evident a
   7. **AWS CloudWatch Logs**: Formatted for direct CloudWatch Logs PutLogEvents ingestion.
 - **Resilience & Local Buffering**: If a downstream SIEM endpoint drops offline, events are buffered in a local SQLite queue (`siem_buffer.db`) and automatically drained upon reconnection.
 
+### 2.4 Compliance Evidence Exports (`/api/worm/export` & `/api/quarantine/export`)
+For automated SOC 2 Type II, ISO 27001, and HIPAA audit reviews, the governance server provides turnkey JSON and CSV audit evidence exports:
+- **`GET /api/worm/export?format=json|csv`**: Streams the entire linear SHA-256 Merkle-chained audit ledger with chronological sequence IDs, event types, payloads, and tip hashes.
+- **`GET /api/quarantine/export?format=json|csv`**: Exports quarantined security incidents, including violation codes (`UNATTESTED`, `HASH_DRIFT`, `EGRESS_DENIED`), staged key justifications, and approver signatures.
+- **UI Download Buttons**: Dedicated `Export CSV` and `Export JSON` buttons are integrated directly into the WORM Audit and Quarantine tables on the Governance Console (`:18084`).
+
+
 ---
 
 ## 3. Interactive Web & OpenAPI Documentation
