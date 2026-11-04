@@ -239,6 +239,47 @@
     }
     .btn-danger { background: #FFFFFF; color: var(--danger); border: 1px solid #FECACA; }
     .btn-danger:hover { background: #FEF2F2; border-color: var(--danger); }
+    /* Audit Runway Drawer Styles */
+    .audit-win-btn {
+      background: #FFFFFF;
+      border: none;
+      border-right: 1px solid #CBD5E1;
+      padding: 4px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .audit-win-btn:last-child {
+      border-right: none;
+    }
+    .audit-win-btn:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+    }
+    .audit-win-btn.active-win {
+      background: #EFF6FF;
+      color: #1D4ED8;
+      font-weight: 700;
+    }
+    .recommendation-banner-progress {
+      background: #FFFBEB;
+      border: 1px solid #FDE68A;
+      border-left: 4px solid #D97706;
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .recommendation-banner-ready {
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-left: 4px solid #059669;
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
     textarea, select, input[type="text"], input[type="password"] { width: 100%; background: #FFFFFF; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 7px 10px; font-size: 12.5px; margin-bottom: 10px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
     pre { background: var(--bg); color: var(--text); padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 12px; border: 1px solid var(--border); margin: 0; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
     .links a { color: var(--link); text-decoration: none; margin-left: 10px; font-size: 12.5px; font-weight: 500; }
@@ -357,6 +398,7 @@
       <button id="btnContinuousScanner" class="btn btn-config" onclick="toggleEnterpriseScannerDrawer()">Continuous Scanner Config</button>
       <button id="btnEnterpriseStores" class="btn btn-config" onclick="toggleEnterpriseStoresDrawer()">Enterprise Data Stores</button>
       <button id="btnLlmConfig" class="btn btn-config" onclick="toggleLlmConfig()">LLM Provider Config</button>
+      <button id="btnAuditMonitor" class="btn btn-config" onclick="toggleAuditRunwayDrawer()">Audit Monitor</button>
       <span style="display: inline-block; width: 1px; height: 24px; background: #CBD5E1; margin: 0 6px; align-self: center;"></span>
       <button id="toggleModeBtn" class="btn-mode-enforce" onclick="toggleMode()" title="Gateway is actively blocking unauthorized egress. Click to switch to Audit-Only Observe Mode.">
         <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85;">Mode</span>
@@ -373,6 +415,230 @@
       <a href="http://localhost:18081/docs" target="_blank">Snapshot API (:18081)</a>
     </div>
   </header>
+
+  <!-- AUDIT RUNWAY & GO-LIVE READINESS MONITOR DRAWER -->
+  <div id="auditRunwayDrawer" class="card" style="display: none; margin-top: 18px; border-left: 4px solid var(--primary);">
+    <h2>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span>Audit Runway &amp; Go-Live Readiness Monitor</span>
+        <span class="badge badge-Internal" style="font-size: 11px; text-transform: none; font-weight: 500;">docs/audit-period-determination.md</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <!-- FIRM SCALE SELECTOR -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase;">Scale Tier:</span>
+          <select id="auditFirmScaleSelect" onchange="changeAuditFirmScale()" style="width: auto; padding: 4px 8px; font-size: 12px; margin-bottom: 0; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px;">
+            <option value="mid_size" selected>Mid-Size Firm (30 Days · 100K–1M objects)</option>
+            <option value="large_enterprise">Large Enterprise (60 Days · 1M–10M objects)</option>
+            <option value="hyperscale">Hyperscale / Multi-Cloud (90 Days · 10M–100M objects)</option>
+            <option value="sovereign">Global Mega / Sovereign (180 Days · 100M–1B objects)</option>
+          </select>
+        </div>
+        <!-- TIME WINDOW SELECTOR -->
+        <div style="display: inline-flex; border: 1px solid #CBD5E1; border-radius: 4px; overflow: hidden; background: #FFFFFF;">
+          <button type="button" class="audit-win-btn" id="btnWin24h" onclick="setAuditWindow('24h')">Last 24 Hours</button>
+          <button type="button" class="audit-win-btn" id="btnWin7d" onclick="setAuditWindow('7d')">Last 7 Days</button>
+          <button type="button" class="audit-win-btn active-win" id="btnWin30d" onclick="setAuditWindow('30d')">Last 30 Days</button>
+          <button type="button" class="audit-win-btn" id="btnWinAll" onclick="setAuditWindow('all')">Full Audit Run</button>
+        </div>
+        <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleAuditRunwayDrawer()">Close</button>
+      </div>
+    </h2>
+
+    <!-- 1. RECOMMENDATION BANNER & OVERALL GO-LIVE PROGRESS METER -->
+    <div id="auditRecommendationBanner" class="recommendation-banner-progress">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+        <div>
+          <div style="font-size: 14.5px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); display: flex; align-items: center; gap: 8px;">
+            <span id="auditBannerStatusDot" style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #D97706;"></span>
+            <span id="auditBannerHeadline">AUDIT IN PROGRESS: Day 18 of 30</span>
+            <span id="auditStatusPill" class="badge badge-Confidential" style="font-size: 11px;">OBSERVE ONLY</span>
+          </div>
+          <div id="auditBannerSubtext" style="font-size: 12.5px; color: var(--muted); margin-top: 4px; max-width: 85ch; line-height: 1.55;">
+            Observing live periodic estate traffic across month-end close. Zero live traffic blocked. Enforcement flip is coverage-gated upon meeting all 3 empirical exit criteria below.
+          </div>
+        </div>
+        <div style="text-align: right; min-width: 180px;">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600;">Overall Go-Live Readiness</div>
+          <div id="auditReadinessScoreVal" style="font-size: 24px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; font-variant-numeric: tabular-nums; color: var(--text);">
+            --%
+          </div>
+        </div>
+      </div>
+      <!-- Progress Bar Track -->
+      <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; margin-top: 12px;">
+        <div id="auditProgressBar" style="width: 0%; height: 100%; background: #2563EB; border-radius: 4px; transition: width 0.35s ease;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums;">
+        <span id="auditProgressFootnote">Target: One full month-end close &bull; 13,700 full sweeps/day capability</span>
+        <span id="auditFlipStatusFootnote">Flip to ENFORCE: Safe upon 3/3 exit criteria satisfied</span>
+      </div>
+    </div>
+
+    <!-- 2. THE 3 EMPIRICAL EXIT CRITERIA -->
+    <div style="margin-bottom: 18px;">
+      <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 8px;">
+        Three Empirical Exit Criteria (docs/audit-period-determination.md &bull; When to Flip to ENFORCE)
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
+        <!-- CRITERION 1: COVERAGE -->
+        <div class="score-box" style="padding: 14px; background: #FFFFFF; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="lbl">1. Live Traffic Coverage</span>
+            <span id="badgeCritCoverage" class="badge badge-PASS">MET</span>
+          </div>
+          <div id="valCritCoverage" class="num" style="color: #15803D;">--%</div>
+          <div style="font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums;">
+            TARGET: &ge; 99.0% OF REQUEST OBJECTS
+          </div>
+          <div id="descCritCoverage" style="font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.5;">
+            % of live request objects carrying valid, unexpired DSSE attestation records. Evaluated in-memory in microseconds.
+          </div>
+        </div>
+
+        <!-- CRITERION 2: DENIAL STABILITY -->
+        <div class="score-box" style="padding: 14px; background: #FFFFFF; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="lbl">2. Denial Stability</span>
+            <span id="badgeCritStability" class="badge badge-PASS">MET</span>
+          </div>
+          <div id="valCritStability" class="num" style="color: #15803D;">--</div>
+          <div style="font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums;">
+            TARGET: FLAT 7 CONSECUTIVE DAYS &bull; 0 NEW CATEGORIES
+          </div>
+          <div id="descCritStability" style="font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.5;">
+            Rolling 7-day velocity of would-denials and category discovery rate. Proves all periodic traffic patterns have surfaced.
+          </div>
+          <!-- 7-day sparkline bar -->
+          <div id="sparklineStability" style="display: flex; gap: 4px; align-items: flex-end; height: 22px; margin-top: 8px;"></div>
+        </div>
+
+        <!-- CRITERION 3: TRIAGE DISPOSITION -->
+        <div class="score-box" style="padding: 14px; background: #FFFFFF; border: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span class="lbl">3. Triage Disposition</span>
+            <span id="badgeCritTriage" class="badge badge-PASS">MET</span>
+          </div>
+          <div id="valCritTriage" class="num" style="color: #15803D;">--%</div>
+          <div style="font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums;">
+            TARGET: 100% OF WOULD-DENIALS TRIAGED
+          </div>
+          <div id="descCritTriage" style="font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.5;">
+            % of would-denials reviewed and resolved in the HITL triage ledger (data attested, tier corrected, or denial accepted).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. WOULD-DENY BREAKDOWN BY REASON CODE -->
+    <div style="margin-bottom: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <span style="font-size: 12.5px; font-weight: 600; color: var(--text);">
+            Aggregate Would-Denial Distribution by Reason Code
+          </span>
+          <span style="font-size: 11.5px; color: var(--muted); margin-left: 8px;">
+            (What inline ENFORCE mode would have blocked)
+          </span>
+        </div>
+        <div style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;">
+          Total Would-Denials in Window: <strong id="bdTotalDenials" style="color: var(--text);">0</strong>
+        </div>
+      </div>
+
+      <!-- Segmented Bar -->
+      <div style="display: flex; width: 100%; height: 8px; border-radius: 4px; overflow: hidden; background: #E2E8F0; margin-bottom: 12px;" id="bdSegmentedBar">
+        <div id="barSegUnattested" style="width: 25%; background: #64748B;" title="Unattested Object"></div>
+        <div id="barSegHash" style="width: 25%; background: #E11D48;" title="Hash Drift"></div>
+        <div id="barSegClearance" style="width: 25%; background: #D97706;" title="Clearance Violation"></div>
+        <div id="barSegEgress" style="width: 25%; background: #7C3AED;" title="Egress Violation"></div>
+      </div>
+
+      <!-- 4 Core Metric Tiles -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+        <div style="background: #FFFFFF; border: 1px solid var(--border); border-left: 3px solid #64748B; border-radius: 4px; padding: 10px 12px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;">Unattested Object</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+            <div id="bdCountUnattested" style="font-size: 20px; font-weight: 600; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;">0</div>
+            <div id="bdPctUnattested" style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;">0.0%</div>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">No signed DSSE statement</div>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid var(--border); border-left: 3px solid #E11D48; border-radius: 4px; padding: 10px 12px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;">Hash Drift</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+            <div id="bdCountHash" style="font-size: 20px; font-weight: 600; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;">0</div>
+            <div id="bdPctHash" style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;">0.0%</div>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Tampered / Modified payload</div>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid var(--border); border-left: 3px solid #D97706; border-radius: 4px; padding: 10px 12px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;">Clearance Violation</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+            <div id="bdCountClearance" style="font-size: 20px; font-weight: 600; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;">0</div>
+            <div id="bdPctClearance" style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;">0.0%</div>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Insufficient caller tier</div>
+        </div>
+
+        <div style="background: #FFFFFF; border: 1px solid var(--border); border-left: 3px solid #7C3AED; border-radius: 4px; padding: 10px 12px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 600;">Egress Violation</div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px;">
+            <div id="bdCountEgress" style="font-size: 20px; font-weight: 600; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;">0</div>
+            <div id="bdPctEgress" style="font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums;">0.0%</div>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">Disallowed LLM destination</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. RECENT AUDIT RECORDS & WORM LEDGER STREAM TABLE -->
+    <div style="background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <span style="font-size: 12.5px; font-weight: 600; color: var(--text);">
+            Recent Audit Evaluations &amp; WORM Intercept Stream
+          </span>
+          <span style="font-size: 11.5px; color: var(--muted); margin-left: 6px;">
+            (Chronological audit feed in selected window)
+          </span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-dark" style="font-size: 11.5px; padding: 4px 10px;" onclick="fetchAuditRunwayTelemetry()">
+            &circlearrowright; Refresh Telemetry
+          </button>
+          <a href="http://localhost:18084/" target="_blank" class="btn btn-dark" style="font-size: 11.5px; padding: 4px 10px; text-decoration: none;">
+            Open HITL Triage Console (:18084) &rarr;
+          </a>
+        </div>
+      </div>
+
+      <div style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 140px;">Timestamp (UTC)</th>
+              <th style="width: 80px;">Mode</th>
+              <th style="width: 110px;">Verdict</th>
+              <th style="width: 150px;">Category</th>
+              <th>Object Locator URI</th>
+              <th style="width: 90px;">Clearance</th>
+              <th style="width: 100px;">Disposition</th>
+            </tr>
+          </thead>
+          <tbody id="auditEventsTableBody">
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--muted); padding: 16px;">
+                Loading audit runway telemetry...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- ENTERPRISE CONTINUOUS DELTA SCANNER CONFIGURATION DRAWER -->
   <div id="enterpriseScannerDrawer" class="card" style="display: none; margin-top: 18px;">
@@ -2596,6 +2862,263 @@
           setTimeout(() => { banner.innerHTML = prev; }, 2000);
         }
       } catch (e) {}
+    }
+
+    let currentAuditWindow = '30d';
+    let currentAuditScale = 'mid_size';
+    let auditRunwayTimer = null;
+
+    function toggleAuditRunwayDrawer() {
+      const drawer = document.getElementById('auditRunwayDrawer');
+      const btn = document.getElementById('btnAuditMonitor');
+      if (!drawer) return;
+      const isOpen = drawer.style.display !== 'none' && drawer.style.display !== '';
+      if (!isOpen) {
+        drawer.style.display = 'block';
+        if (btn) btn.classList.add('active');
+        fetchAuditRunwayTelemetry();
+        if (!auditRunwayTimer) {
+          auditRunwayTimer = setInterval(fetchAuditRunwayTelemetry, 8000);
+        }
+      } else {
+        drawer.style.display = 'none';
+        if (btn) btn.classList.remove('active');
+        if (auditRunwayTimer) {
+          clearInterval(auditRunwayTimer);
+          auditRunwayTimer = null;
+        }
+      }
+    }
+
+    function setAuditWindow(win) {
+      currentAuditWindow = win;
+      ['btnWin24h', 'btnWin7d', 'btnWin30d', 'btnWinAll'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.classList.remove('active-win');
+      });
+      const activeBtn = document.getElementById(
+        win === '24h' ? 'btnWin24h' : (win === '7d' ? 'btnWin7d' : (win === '30d' ? 'btnWin30d' : 'btnWinAll'))
+      );
+      if (activeBtn) activeBtn.classList.add('active-win');
+      fetchAuditRunwayTelemetry();
+    }
+
+    function changeAuditFirmScale() {
+      const sel = document.getElementById('auditFirmScaleSelect');
+      if (sel) {
+        currentAuditScale = sel.value;
+      }
+      fetchAuditRunwayTelemetry();
+    }
+
+    async function fetchAuditRunwayTelemetry() {
+      const drawer = document.getElementById('auditRunwayDrawer');
+      if (!drawer || (drawer.style.display === 'none')) return;
+      try {
+        const resp = await fetch(`/v1/admin/audit-runway?window=${currentAuditWindow}&firm_scale=${currentAuditScale}`, {
+          headers: { 'X-POD-Admin-Key': ADMIN_KEY }
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderAuditRunwayTelemetry(data);
+      } catch (e) {
+        console.error('Failed to fetch audit runway telemetry:', e);
+      }
+    }
+
+    function renderAuditRunwayTelemetry(data) {
+      if (!data) return;
+
+      // 1. Recommendation Banner & Readiness Meter
+      const banner = document.getElementById('auditRecommendationBanner');
+      const dot = document.getElementById('auditBannerStatusDot');
+      const headline = document.getElementById('auditBannerHeadline');
+      const pill = document.getElementById('auditStatusPill');
+      const sub = document.getElementById('auditBannerSubtext');
+      const scoreVal = document.getElementById('auditReadinessScoreVal');
+      const bar = document.getElementById('auditProgressBar');
+      const footnote = document.getElementById('auditProgressFootnote');
+      const flipFootnote = document.getElementById('auditFlipStatusFootnote');
+
+      if (data.is_go_live_ready) {
+        if (banner) {
+          banner.className = 'recommendation-banner-ready';
+        }
+        if (dot) dot.style.background = '#059669';
+        if (headline) headline.textContent = data.recommendation;
+        if (pill) {
+          pill.className = 'badge badge-PASS';
+          pill.textContent = 'GO-LIVE READY';
+        }
+        if (bar) bar.style.background = '#059669';
+        if (flipFootnote) {
+          flipFootnote.innerHTML = '<strong style="color:#059669;">&#10004; Criteria Satisfied: Safe to switch to ENFORCE mode</strong>';
+        }
+      } else {
+        if (banner) {
+          banner.className = 'recommendation-banner-progress';
+        }
+        if (dot) dot.style.background = '#D97706';
+        if (headline) headline.textContent = data.recommendation;
+        if (pill) {
+          pill.className = 'badge badge-Confidential';
+          pill.textContent = 'AUDIT IN PROGRESS';
+        }
+        if (bar) bar.style.background = '#2563EB';
+        if (flipFootnote) {
+          flipFootnote.textContent = 'Flip to ENFORCE: Safe upon 3/3 exit criteria satisfied';
+        }
+      }
+
+      if (sub) sub.textContent = data.recommendation_sub;
+      if (scoreVal) scoreVal.textContent = `${Number(data.readiness_score || 0).toFixed(1)}%`;
+      if (bar) bar.style.width = `${Math.min(100, Math.max(3, Number(data.readiness_score || 0)))}%`;
+      if (footnote && data.scale_config) {
+        footnote.textContent = `Target Cadence: ${data.scale_config.cadence_requirement} • In-Memory Sweep Rate: ${data.scale_config.daily_sweep_rate}`;
+      }
+
+      // 2. The 3 Exit Criteria
+      const crit = data.exit_criteria || {};
+
+      // Criterion 1: Coverage
+      const cov = crit.coverage || {};
+      const valCov = document.getElementById('valCritCoverage');
+      const badgeCov = document.getElementById('badgeCritCoverage');
+      const descCov = document.getElementById('descCritCoverage');
+      if (valCov) valCov.textContent = `${Number(cov.current_pct || 0).toFixed(1)}%`;
+      if (badgeCov) {
+        badgeCov.className = 'badge ' + (cov.met ? 'badge-PASS' : 'badge-Confidential');
+        badgeCov.textContent = cov.met ? 'MET' : 'PENDING';
+      }
+      if (descCov) {
+        descCov.textContent = `${cov.valid_objects || 0} of ${cov.total_objects || 0} observed request objects verified with valid unexpired DSSE attestation.`;
+      }
+
+      // Criterion 2: Stability
+      const stab = crit.denial_stability || {};
+      const valStab = document.getElementById('valCritStability');
+      const badgeStab = document.getElementById('badgeCritStability');
+      const descStab = document.getElementById('descCritStability');
+      const sparkStab = document.getElementById('sparklineStability');
+      if (valStab) {
+        valStab.textContent = stab.met ? 'Flat (7d)' : `${stab.days_stable || 0}/7d Flat`;
+      }
+      if (badgeStab) {
+        badgeStab.className = 'badge ' + (stab.met ? 'badge-PASS' : 'badge-Confidential');
+        badgeStab.textContent = stab.met ? 'MET' : 'PENDING';
+      }
+      if (descStab) {
+        descStab.textContent = `${stab.new_categories_count || 0} new denial categories in last 7 days. Daily would-deny velocity ${stab.met ? 'flat for 7 consecutive days' : 'stabilizing'}.`;
+      }
+      if (sparkStab && Array.isArray(stab.daily_trend)) {
+        sparkStab.innerHTML = '';
+        const maxVal = Math.max(1, ...stab.daily_trend.map(d => d.would_denials || 0));
+        stab.daily_trend.forEach(d => {
+          const h = Math.max(14, Math.round(((d.would_denials || 0) / maxVal) * 100));
+          const col = document.createElement('div');
+          col.title = `${d.day_label}: ${d.would_denials} would-denials`;
+          col.style.cssText = `flex:1; height:${h}%; background:${stab.met ? '#15803D' : '#D97706'}; border-radius:2px 2px 0 0; min-width:6px; cursor:pointer;`;
+          sparkStab.appendChild(col);
+        });
+      }
+
+      // Criterion 3: Triage Disposition
+      const tri = crit.triage_disposition || {};
+      const valTri = document.getElementById('valCritTriage');
+      const badgeTri = document.getElementById('badgeCritTriage');
+      const descTri = document.getElementById('descCritTriage');
+      if (valTri) valTri.textContent = `${Number(tri.disposition_pct || 0).toFixed(1)}%`;
+      if (badgeTri) {
+        badgeTri.className = 'badge ' + (tri.met ? 'badge-PASS' : 'badge-Confidential');
+        badgeTri.textContent = tri.met ? 'MET' : 'PENDING';
+      }
+      if (descTri) {
+        descTri.textContent = `${tri.resolved_count || 0} resolved, ${tri.pending_count || 0} pending in HITL triage ledger (${tri.total_would_denials || 0} total would-denials).`;
+      }
+
+      // 3. Would-Deny Reason Code Breakdown
+      const bd = data.would_deny_breakdown || {};
+      const cats = bd.categories || {};
+      const totalDenials = bd.total_would_denials || 0;
+
+      const totalDenEl = document.getElementById('bdTotalDenials');
+      if (totalDenEl) totalDenEl.textContent = totalDenials.toLocaleString();
+
+      const uObj = cats.unattested_object || { count: 0, pct: 0 };
+      const hObj = cats.hash_drift || { count: 0, pct: 0 };
+      const cObj = cats.clearance_violation || { count: 0, pct: 0 };
+      const eObj = cats.egress_violation || { count: 0, pct: 0 };
+
+      const cUn = document.getElementById('bdCountUnattested');
+      const pUn = document.getElementById('bdPctUnattested');
+      if (cUn) cUn.textContent = (uObj.count || 0).toLocaleString();
+      if (pUn) pUn.textContent = `${Number(uObj.pct || 0).toFixed(1)}%`;
+
+      const cHs = document.getElementById('bdCountHash');
+      const pHs = document.getElementById('bdPctHash');
+      if (cHs) cHs.textContent = (hObj.count || 0).toLocaleString();
+      if (pHs) pHs.textContent = `${Number(hObj.pct || 0).toFixed(1)}%`;
+
+      const cCl = document.getElementById('bdCountClearance');
+      const pCl = document.getElementById('bdPctClearance');
+      if (cCl) cCl.textContent = (cObj.count || 0).toLocaleString();
+      if (pCl) pCl.textContent = `${Number(cObj.pct || 0).toFixed(1)}%`;
+
+      const cEg = document.getElementById('bdCountEgress');
+      const pEg = document.getElementById('bdPctEgress');
+      if (cEg) cEg.textContent = (eObj.count || 0).toLocaleString();
+      if (pEg) pEg.textContent = `${Number(eObj.pct || 0).toFixed(1)}%`;
+
+      // Segmented Bar
+      const segUn = document.getElementById('barSegUnattested');
+      const segHs = document.getElementById('barSegHash');
+      const segCl = document.getElementById('barSegClearance');
+      const segEg = document.getElementById('barSegEgress');
+      if (totalDenials > 0) {
+        if (segUn) segUn.style.width = `${uObj.pct}%`;
+        if (segHs) segHs.style.width = `${hObj.pct}%`;
+        if (segCl) segCl.style.width = `${cObj.pct}%`;
+        if (segEg) segEg.style.width = `${eObj.pct}%`;
+      } else {
+        if (segUn) segUn.style.width = '25%';
+        if (segHs) segHs.style.width = '25%';
+        if (segCl) segCl.style.width = '25%';
+        if (segEg) segEg.style.width = '25%';
+      }
+
+      // 4. Recent Audit Events Table
+      const tbody = document.getElementById('auditEventsTableBody');
+      if (tbody) {
+        const events = data.recent_audit_events || [];
+        if (!events.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:16px;">No audit would-denials or intercepts recorded in ${currentAuditWindow} window.</td></tr>`;
+        } else {
+          tbody.innerHTML = events.map(ev => {
+            const isResolved = ev.disposition === 'RESOLVED';
+            const dispBadge = isResolved
+              ? '<span class="badge badge-PASS">RESOLVED</span>'
+              : (ev.disposition === 'PENDING' ? '<span class="badge badge-Confidential">PENDING</span>' : '<span class="badge badge-Internal">N/A</span>');
+            const verdictBadge = ev.decision === 'WOULD_DENY'
+              ? '<span class="badge badge-FAIL">WOULD DENY</span>'
+              : '<span class="badge badge-Confidential">STRIP</span>';
+            const safeLoc = String(ev.locator || '').replace(/'/g, "\\'");
+            const locHtml = ev.locator && ev.locator.startsWith('file://')
+              ? `<a class="file-link" onclick="openFileInspector('${safeLoc}')">${ev.locator}</a>`
+              : `<code>${ev.locator || '-'}</code>`;
+            return `
+              <tr>
+                <td><code style="font-size:11px;">${ev.timestamp}</code></td>
+                <td><span class="badge badge-Internal">${ev.mode}</span></td>
+                <td>${verdictBadge}</td>
+                <td><strong style="font-size:11.5px;">${ev.category_label || ev.category}</strong><br/><code style="font-size:10px; color:var(--muted);">${ev.reason_code}</code></td>
+                <td style="word-break:break-all;">${locHtml}</td>
+                <td><span class="badge badge-${ev.caller_clearance || 'Public'}">${ev.caller_clearance || 'Public'}</span></td>
+                <td>${dispBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
     }
 
     loadPreset('allow');

@@ -45,6 +45,8 @@ class AttestationEngine:
         locator_override: str | None = None,
         environment: str = "production",
         force_rescan: bool = False,
+        jurisdiction: str | None = None,
+        org_unit: str | None = None,
     ) -> dict[str, Any]:
         """Extract, classify, and attest a single file or spreadsheet."""
         doc = self.extractor.extract_file(file_path)
@@ -106,6 +108,8 @@ class AttestationEngine:
             extracted_text_sha256=doc.extracted_text_sha256,
             chunk_hashes=doc.chunk_hashes,
             classifier_engine=verdict.classifier_engine,
+            jurisdiction=jurisdiction,
+            org_unit=org_unit,
         )
 
     def crawl_file_share(

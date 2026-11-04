@@ -81,6 +81,9 @@ class SnapshotPublisher:
             pred_obj = rec["statement"].get("predicate", {})
             redact_cats = pred_obj.get("handling", {}).get("redaction_categories", [])
             integrity_obj = pred_obj.get("integrity", {})
+            owner_obj = pred_obj.get("ownership", {})
+            jurisdiction = owner_obj.get("jurisdiction")
+            owner_dept = owner_obj.get("org_unit")
 
             entries[rec["locator"]] = {
                 "record_id": rec["record_id"],
@@ -96,6 +99,8 @@ class SnapshotPublisher:
                 "record_expires_at": rec["expires_at"],
                 "revoked_at": rec["revoked_at"],
                 "redaction_categories": redact_cats,
+                "jurisdiction": jurisdiction,
+                "owner_department": owner_dept,
             }
 
         self._sequence_number += 1

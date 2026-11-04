@@ -33,6 +33,8 @@ REASON_HASH_MISMATCH = "REASON_HASH_MISMATCH"
 REASON_UNVERIFIED_INLINE_CONTENT = "REASON_UNVERIFIED_INLINE_CONTENT"
 REASON_MALFORMED_POD_TAG = "REASON_MALFORMED_POD_TAG"
 REASON_UNATTESTED_CONTEXT_OVERFLOW = "REASON_UNATTESTED_CONTEXT_OVERFLOW"
+REASON_DATA_RESIDENCY_VIOLATION = "DATA_RESIDENCY_VIOLATION"
+REASON_DEPARTMENTAL_ISOLATION_VIOLATION = "DEPARTMENTAL_ISOLATION_VIOLATION"
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
@@ -189,6 +191,7 @@ class PrevalidatorEnforcer:
             else int(os.environ.get("POD_MAX_UNTAGGED_CHARS", "2000"))
         )
         self.classifier = PresidioClassifier()
+        self.custom_policy_hooks: list[Any] = []
         self.audit_log: list[AuditLogEntry] = []
         self.latency_samples_ms: list[float] = []
         self.total_evaluations: int = 0
@@ -286,6 +289,52 @@ class PrevalidatorEnforcer:
                 if model_name.startswith(prefix):
                     return egress
         return self.default_egress_class
+
+    def register_policy_hook(self, hook: Any) -> None:
+        """Register a custom policy hook with signature `hook(entry: dict, context: dict) -> tuple[str, list[str]]`.
+        
+        The hook receives the attested entry metadata and resolved caller context, returning
+        `('allow' | 'strip' | 'deny', [reason_codes])`.
+        """
+        self.custom_policy_hooks.append(hook)
+
+    def resolve_caller_context(
+        self,
+        headers: dict[str, str],
+        payload: dict[str, Any],
+        caller_clearance: str,
+        target_egress: str,
+    ) -> dict[str, Any]:
+        """Resolve enriched caller context (claims, department, jurisdiction, tenant) for ABAC evaluation."""
+        norm_headers = {k.lower(): v for k, v in headers.items()}
+        ctx: dict[str, Any] = {
+            "caller_clearance": caller_clearance,
+            "target_egress": target_egress,
+            "model": payload.get("model", ""),
+            "caller_id": norm_headers.get("x-pod-caller-id", norm_headers.get("x-pod-caller-key", "anonymous")),
+            "department": norm_headers.get("x-pod-caller-dept", ""),
+            "jurisdiction": norm_headers.get("x-pod-caller-region", norm_headers.get("x-pod-caller-jurisdiction", "")),
+            "target_region": norm_headers.get("x-pod-target-region", ""),
+            "tenant_id": norm_headers.get("x-pod-tenant-id", ""),
+        }
+
+        # Enrich from verified JWT claims if present
+        jwt_token = norm_headers.get("x-pod-caller-token")
+        if jwt_token:
+            try:
+                decoded = jwt.decode(jwt_token, self.jwt_secret, algorithms=["HS256"])
+                if "sub" in decoded and not ctx["caller_id"]:
+                    ctx["caller_id"] = decoded["sub"]
+                if "dept" in decoded and not ctx["department"]:
+                    ctx["department"] = decoded["dept"]
+                if "tenant_id" in decoded and not ctx["tenant_id"]:
+                    ctx["tenant_id"] = decoded["tenant_id"]
+                if "jurisdiction" in decoded and not ctx["jurisdiction"]:
+                    ctx["jurisdiction"] = decoded["jurisdiction"]
+            except Exception:
+                pass
+
+        return ctx
 
     @staticmethod
     def _validate_pod_tag_structure(text: str) -> tuple[bool, list[tuple[int, int, str, str | None, str]]]:
@@ -398,6 +447,7 @@ class PrevalidatorEnforcer:
         now_dt: datetime,
         inner_text: str | None = None,
         verify_inline_text: bool | None = None,
+        caller_context: dict[str, Any] | None = None,
     ) -> tuple[str, list[str]]:
         """Return `(action, reason_codes)` where action is `'allow' | 'strip' | 'deny'`."""
         entry = entries.get(locator)
@@ -434,6 +484,20 @@ class PrevalidatorEnforcer:
         ai_elig = entry["ai_eligibility"]
         if ai_elig == "deny":
             return "deny", ["EGRESS_DENIED"]
+
+        # Check registered Custom ABAC Policy Hooks (Data Residency, Departmental Isolation, Project boundaries)
+        if self.custom_policy_hooks:
+            ctx = caller_context or {
+                "caller_clearance": caller_clearance,
+                "target_egress": target_egress,
+            }
+            for hook in self.custom_policy_hooks:
+                hook_action, hook_reasons = hook(entry, ctx)
+                if hook_action == "deny":
+                    return "deny", hook_reasons or ["CUSTOM_POLICY_DENIAL"]
+                elif hook_action == "strip" and ai_elig != "deny":
+                    ai_elig = "strip"
+
         if ai_elig == "strip":
             return "strip", []
         return "allow", []
@@ -465,6 +529,7 @@ class PrevalidatorEnforcer:
 
         caller_clearance = self.resolve_caller_clearance(hdrs)
         target_egress = self.resolve_target_egress(payload.get("model"))
+        caller_context = self.resolve_caller_context(hdrs, payload, caller_clearance, target_egress)
 
         snapshot = self.snapshot_store.get_active_snapshot(now=now_dt)
         if snapshot is None:
@@ -534,6 +599,7 @@ class PrevalidatorEnforcer:
                     now_dt=now_dt,
                     inner_text=inner_content,
                     verify_inline_text=effective_strict_inline,
+                    caller_context=caller_context,
                 )
                 if action == "deny":
                     reason_codes.extend(r_codes)
@@ -622,6 +688,7 @@ class PrevalidatorEnforcer:
                     now_dt=now_dt,
                     inner_text=None,
                     verify_inline_text=effective_strict_inline,
+                    caller_context=caller_context,
                 )
                 if action == "deny":
                     reason_codes.extend(r_codes)
@@ -702,3 +769,48 @@ class PrevalidatorEnforcer:
             decision_latency_ms=lat_ms,
             decision_latency_us=lat_us,
         )
+
+
+def create_data_residency_hook(default_allowed_regions: list[str] | None = None):
+    """Enforce sovereign data boundaries (e.g. GDPR).
+    
+    If an object's jurisdiction is 'EU' / 'EEA' / 'GDPR', blocks egress to non-EU model regions.
+    """
+    allowed = set(r.lower() for r in (default_allowed_regions or ["eu-central-1", "eu-west-1", "eu-west-3", "eu-north-1"]))
+
+    def _residency_hook(entry: dict[str, Any], ctx: dict[str, Any]) -> tuple[str, list[str]]:
+        obj_jurisdiction = str(
+            entry.get("jurisdiction")
+            or entry.get("metadata", {}).get("jurisdiction")
+            or entry.get("organizational_unit", {}).get("jurisdiction", "")
+        ).upper()
+
+        if obj_jurisdiction in ("EU", "EEA", "GDPR"):
+            target_reg = str(ctx.get("target_region") or "").lower()
+            if target_reg and target_reg not in allowed:
+                return "deny", [REASON_DATA_RESIDENCY_VIOLATION]
+            # If targeting an unpartitioned public model with no sovereign region guarantee
+            if ctx.get("target_egress") == "public_api" and not target_reg:
+                return "deny", [REASON_DATA_RESIDENCY_VIOLATION]
+        return "allow", []
+
+    return _residency_hook
+
+
+def create_departmental_isolation_hook():
+    """Enforce strict departmental compartmentalization (e.g. HR / Finance data isolated to authorized teams)."""
+    def _dept_hook(entry: dict[str, Any], ctx: dict[str, Any]) -> tuple[str, list[str]]:
+        owner_dept = str(
+            entry.get("owner_department")
+            or entry.get("metadata", {}).get("department")
+            or ""
+        ).lower()
+
+        if owner_dept:
+            caller_dept = str(ctx.get("department") or "").lower()
+            if caller_dept and caller_dept != owner_dept and caller_dept != "security-audit":
+                return "deny", [REASON_DEPARTMENTAL_ISOLATION_VIOLATION]
+        return "allow", []
+
+    return _dept_hook
+

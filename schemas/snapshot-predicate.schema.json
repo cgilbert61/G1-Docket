@@ -115,6 +115,12 @@
               "type": "string",
               "pattern": "^[a-f0-9]{64}$"
             }
+          },
+          "jurisdiction": {
+            "type": ["string", "null"]
+          },
+          "owner_department": {
+            "type": ["string", "null"]
           }
         }
       }
