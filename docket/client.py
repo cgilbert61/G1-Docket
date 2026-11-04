@@ -92,6 +92,8 @@ class DocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, str]:
         headers = {
             "X-POD-Caller-Key": caller_key or self.default_caller_key,
@@ -105,6 +107,10 @@ class DocketClient:
             headers["X-POD-Caller-Id"] = caller_id
         if jwt_token:
             headers["X-POD-Caller-Token"] = jwt_token
+        if permit_masked:
+            headers["X-POD-Permit-Masked"] = "true"
+        if extra_headers:
+            headers.update(extra_headers)
         return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
@@ -164,6 +170,8 @@ class DocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        headers: dict[str, str] | None = None,
         stream: bool = False,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -185,6 +193,8 @@ class DocketClient:
                 target_region=target_region,
                 caller_id=caller_id,
                 jwt_token=jwt_token,
+                permit_masked=permit_masked,
+                extra_headers=headers,
             ),
             json=payload,
         )
@@ -199,6 +209,8 @@ class DocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        headers: dict[str, str] | None = None,
         max_tokens: int = 1024,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -220,6 +232,8 @@ class DocketClient:
                 target_region=target_region,
                 caller_id=caller_id,
                 jwt_token=jwt_token,
+                permit_masked=permit_masked,
+                extra_headers=headers,
             ),
             json=payload,
         )
@@ -492,6 +506,8 @@ class AsyncDocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, str]:
         headers = {
             "X-POD-Caller-Key": caller_key or self.default_caller_key,
@@ -505,6 +521,10 @@ class AsyncDocketClient:
             headers["X-POD-Caller-Id"] = caller_id
         if jwt_token:
             headers["X-POD-Caller-Token"] = jwt_token
+        if permit_masked:
+            headers["X-POD-Permit-Masked"] = "true"
+        if extra_headers:
+            headers.update(extra_headers)
         return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
@@ -561,6 +581,8 @@ class AsyncDocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        headers: dict[str, str] | None = None,
         stream: bool = False,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -579,6 +601,8 @@ class AsyncDocketClient:
                 target_region=target_region,
                 caller_id=caller_id,
                 jwt_token=jwt_token,
+                permit_masked=permit_masked,
+                extra_headers=headers,
             ),
             json=payload,
         )
@@ -593,6 +617,8 @@ class AsyncDocketClient:
         target_region: str | None = None,
         caller_id: str | None = None,
         jwt_token: str | None = None,
+        permit_masked: bool = False,
+        headers: dict[str, str] | None = None,
         max_tokens: int = 1024,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -611,6 +637,8 @@ class AsyncDocketClient:
                 target_region=target_region,
                 caller_id=caller_id,
                 jwt_token=jwt_token,
+                permit_masked=permit_masked,
+                extra_headers=headers,
             ),
             json=payload,
         )
