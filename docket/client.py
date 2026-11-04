@@ -83,11 +83,27 @@ class DocketClient:
             "Content-Type": "application/json",
         }
 
-    def _caller_headers(self, caller_key: str | None = None) -> dict[str, str]:
-        return {
+    def _caller_headers(
+        self,
+        caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
+    ) -> dict[str, str]:
+        headers = {
             "X-POD-Caller-Key": caller_key or self.default_caller_key,
             "Content-Type": "application/json",
         }
+        if caller_dept:
+            headers["X-POD-Caller-Dept"] = caller_dept
+        if target_region:
+            headers["X-POD-Target-Region"] = target_region
+        if caller_id:
+            headers["X-POD-Caller-Id"] = caller_id
+        if jwt_token:
+            headers["X-POD-Caller-Token"] = jwt_token
+        return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
         if response.status_code == 403:
@@ -142,6 +158,10 @@ class DocketClient:
         messages: Sequence[Mapping[str, Any]],
         model: str = "gpt-4o",
         caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
         stream: bool = False,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -157,7 +177,13 @@ class DocketClient:
         }
         res = self._client.post(
             f"{self.base_url}/v1/chat/completions",
-            headers=self._caller_headers(caller_key),
+            headers=self._caller_headers(
+                caller_key=caller_key,
+                caller_dept=caller_dept,
+                target_region=target_region,
+                caller_id=caller_id,
+                jwt_token=jwt_token,
+            ),
             json=payload,
         )
         return self._handle_response(res)
@@ -167,6 +193,10 @@ class DocketClient:
         messages: Sequence[Mapping[str, Any]],
         model: str = "claude-3-5-sonnet",
         caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
         max_tokens: int = 1024,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -182,7 +212,13 @@ class DocketClient:
         }
         res = self._client.post(
             f"{self.base_url}/v1/messages",
-            headers=self._caller_headers(caller_key),
+            headers=self._caller_headers(
+                caller_key=caller_key,
+                caller_dept=caller_dept,
+                target_region=target_region,
+                caller_id=caller_id,
+                jwt_token=jwt_token,
+            ),
             json=payload,
         )
         return self._handle_response(res)
@@ -422,11 +458,27 @@ class AsyncDocketClient:
             "Content-Type": "application/json",
         }
 
-    def _caller_headers(self, caller_key: str | None = None) -> dict[str, str]:
-        return {
+    def _caller_headers(
+        self,
+        caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
+    ) -> dict[str, str]:
+        headers = {
             "X-POD-Caller-Key": caller_key or self.default_caller_key,
             "Content-Type": "application/json",
         }
+        if caller_dept:
+            headers["X-POD-Caller-Dept"] = caller_dept
+        if target_region:
+            headers["X-POD-Target-Region"] = target_region
+        if caller_id:
+            headers["X-POD-Caller-Id"] = caller_id
+        if jwt_token:
+            headers["X-POD-Caller-Token"] = jwt_token
+        return headers
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
         if response.status_code == 403:
@@ -478,6 +530,10 @@ class AsyncDocketClient:
         messages: Sequence[Mapping[str, Any]],
         model: str = "gpt-4o",
         caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
         stream: bool = False,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -490,7 +546,13 @@ class AsyncDocketClient:
         }
         res = await self._client.post(
             f"{self.base_url}/v1/chat/completions",
-            headers=self._caller_headers(caller_key),
+            headers=self._caller_headers(
+                caller_key=caller_key,
+                caller_dept=caller_dept,
+                target_region=target_region,
+                caller_id=caller_id,
+                jwt_token=jwt_token,
+            ),
             json=payload,
         )
         return self._handle_response(res)
@@ -500,6 +562,10 @@ class AsyncDocketClient:
         messages: Sequence[Mapping[str, Any]],
         model: str = "claude-3-5-sonnet",
         caller_key: str | None = None,
+        caller_dept: str | None = None,
+        target_region: str | None = None,
+        caller_id: str | None = None,
+        jwt_token: str | None = None,
         max_tokens: int = 1024,
         **extra_kwargs: Any,
     ) -> dict[str, Any]:
@@ -512,7 +578,13 @@ class AsyncDocketClient:
         }
         res = await self._client.post(
             f"{self.base_url}/v1/messages",
-            headers=self._caller_headers(caller_key),
+            headers=self._caller_headers(
+                caller_key=caller_key,
+                caller_dept=caller_dept,
+                target_region=target_region,
+                caller_id=caller_id,
+                jwt_token=jwt_token,
+            ),
             json=payload,
         )
         return self._handle_response(res)

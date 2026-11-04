@@ -102,3 +102,19 @@ def test_async_docket_client_mock():
 
     import asyncio
     asyncio.run(_run())
+
+
+def test_docket_sdk_abac_headers():
+    client = DocketClient()
+    headers = client._caller_headers(
+        caller_key="pod-key-confidential",
+        caller_dept="Finance",
+        target_region="eu-central-1",
+        caller_id="agent-007",
+        jwt_token="mock-jwt",
+    )
+    assert headers["X-POD-Caller-Key"] == "pod-key-confidential"
+    assert headers["X-POD-Caller-Dept"] == "Finance"
+    assert headers["X-POD-Target-Region"] == "eu-central-1"
+    assert headers["X-POD-Caller-Id"] == "agent-007"
+    assert headers["X-POD-Caller-Token"] == "mock-jwt"
