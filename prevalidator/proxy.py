@@ -15,7 +15,7 @@ from typing import Any, AsyncIterator
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
 
 from engine.directory_bridge import (
     compute_bytes_sha256_hex,
@@ -1139,6 +1139,12 @@ def create_prevalidator_app(
             "snapshot_sequence": snap["sequence_number"] if snap else None,
             "latency": enforcer.get_latency_telemetry(),
         }
+
+    @app.get("/metrics", response_class=PlainTextResponse)
+    def prometheus_metrics() -> PlainTextResponse:
+        """Prometheus metrics exposition endpoint for Kubernetes scraping and monitoring."""
+        metrics_text = enforcer.generate_prometheus_metrics()
+        return PlainTextResponse(metrics_text, media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @app.post("/v1/admin/latency-benchmark")
     async def run_latency_benchmark_endpoint(

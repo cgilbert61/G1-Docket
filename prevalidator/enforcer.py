@@ -263,6 +263,73 @@ class PrevalidatorEnforcer:
             "last_directory_scan": self.last_directory_scan_metrics,
         }
 
+    def generate_prometheus_metrics(self) -> str:
+        """Render standard Prometheus exposition format text for monitoring & telemetry."""
+        lines: list[str] = [
+            "# HELP g1_docket_mode Gateway posture mode (1 for enforce, 0 for observe).",
+            "# TYPE g1_docket_mode gauge",
+            f'g1_docket_mode{{mode="{self.mode}"}} 1',
+            "",
+            "# HELP g1_docket_evaluations_total Total admission evaluations performed.",
+            "# TYPE g1_docket_evaluations_total counter",
+            f'g1_docket_evaluations_total{{mode="{self.mode}"}} {self.total_evaluations}',
+            "",
+        ]
+
+        decisions: dict[str, int] = {"allow": 0, "deny": 0, "strip": 0, "mask": 0}
+        reasons: dict[str, int] = {}
+        for entry in self.audit_log:
+            dec = entry.decision.lower()
+            decisions[dec] = decisions.get(dec, 0) + 1
+            for r in entry.reason_codes:
+                reasons[r] = reasons.get(r, 0) + 1
+
+        lines.extend([
+            "# HELP g1_docket_evaluations_by_decision_total Evaluations broken down by decision.",
+            "# TYPE g1_docket_evaluations_by_decision_total counter",
+        ])
+        for dec, count in sorted(decisions.items()):
+            lines.append(f'g1_docket_evaluations_by_decision_total{{decision="{dec}"}} {count}')
+        lines.append("")
+
+        if reasons:
+            lines.extend([
+                "# HELP g1_docket_policy_denials_by_reason_total Total policy denials by specific reason code.",
+                "# TYPE g1_docket_policy_denials_by_reason_total counter",
+            ])
+            for r, count in sorted(reasons.items()):
+                lines.append(f'g1_docket_policy_denials_by_reason_total{{reason="{r}"}} {count}')
+            lines.append("")
+
+        telemetry = self.get_latency_telemetry()
+        samples = list(self.latency_samples_ms)
+        lines.extend([
+            "# HELP g1_docket_evaluation_duration_seconds Evaluation latency summary in seconds.",
+            "# TYPE g1_docket_evaluation_duration_seconds summary",
+            f'g1_docket_evaluation_duration_seconds{{quantile="0.5"}} {round(telemetry["p50_ms"] / 1000.0, 6)}',
+            f'g1_docket_evaluation_duration_seconds{{quantile="0.95"}} {round(telemetry["p95_ms"] / 1000.0, 6)}',
+            f'g1_docket_evaluation_duration_seconds{{quantile="0.99"}} {round(telemetry["p99_ms"] / 1000.0, 6)}',
+            f'g1_docket_evaluation_duration_seconds_sum {round(sum(samples) / 1000.0, 6)}',
+            f'g1_docket_evaluation_duration_seconds_count {len(samples)}',
+            "",
+        ])
+
+        snap = self.snapshot_store.get_active_snapshot()
+        seq = snap["sequence_number"] if snap else 0
+        entries_count = len(snap.get("entries", {})) if snap else 0
+        lines.extend([
+            "# HELP g1_docket_active_snapshot_sequence Current active DSSE signed snapshot sequence number.",
+            "# TYPE g1_docket_active_snapshot_sequence gauge",
+            f"g1_docket_active_snapshot_sequence {seq}",
+            "",
+            "# HELP g1_docket_active_snapshot_entries Number of active attested entries in the active snapshot.",
+            "# TYPE g1_docket_active_snapshot_entries gauge",
+            f"g1_docket_active_snapshot_entries {entries_count}",
+            "",
+        ])
+
+        return "\n".join(lines) + "\n"
+
     def resolve_caller_clearance(self, headers: dict[str, str]) -> str:
         """Resolve caller clearance from verified JWT or configured caller API key (defaults to 'Public')."""
         norm_headers = {k.lower(): v for k, v in headers.items()}

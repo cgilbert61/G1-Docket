@@ -816,3 +816,40 @@ def test_dynamic_in_flight_field_masking(tmp_path: Path):
     assert out_override.audit_entry.decision == "mask"
 
     registry.close()
+
+
+def test_prometheus_metrics_exposition(tmp_path: Path):
+    """Test 11: Verify standard Prometheus /metrics exposition format and telemetry."""
+    from fastapi.testclient import TestClient
+    from prevalidator.proxy import create_prevalidator_app
+
+    db_url = f"sqlite:///{(tmp_path / 'metrics_test.db').as_posix()}"
+    registry = RegistryService(db_url=db_url, key_dir=tmp_path / "keys")
+    pub = SnapshotPublisher(registry=registry, snapshot_output_path=tmp_path / "snap.dsse.json")
+    env = pub.publish_snapshot()
+    store = InMemorySnapshotStore(registry.keyring)
+    store.load_from_envelope(env)
+    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce", strict_inline_hash=True)
+
+    # 1. Generate text directly from enforcer
+    enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": "Hello world"}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+    metrics_str = enforcer.generate_prometheus_metrics()
+    assert 'g1_docket_mode{mode="enforce"} 1' in metrics_str
+    assert 'g1_docket_evaluations_total{mode="enforce"} 1' in metrics_str
+    assert 'g1_docket_active_snapshot_sequence' in metrics_str
+    assert 'g1_docket_evaluation_duration_seconds' in metrics_str
+
+    # 2. Test HTTP GET /metrics via TestClient
+    app = create_prevalidator_app(enforcer=enforcer)
+    client = TestClient(app)
+    resp = client.get("/metrics")
+    assert resp.status_code == 200
+    assert "text/plain" in resp.headers["content-type"]
+    assert "g1_docket_evaluations_total" in resp.text
+    assert "g1_docket_active_snapshot_sequence" in resp.text
+
+    registry.close()
+

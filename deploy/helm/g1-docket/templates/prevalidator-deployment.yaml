@@ -15,6 +15,10 @@ spec:
       app.kubernetes.io/component: prevalidator
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.prevalidator.service.port | quote }}
+        prometheus.io/path: "/metrics"
       labels:
         {{- include "g1-docket.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: prevalidator
