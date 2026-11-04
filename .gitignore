@@ -19,6 +19,8 @@ build/
 data/
 *.jsonl
 examples/out_demo/
+examples/out_phase0/
+examples/out_*/
 *.priv.pem
 *.db
 *.sqlite
