@@ -280,8 +280,10 @@ class PrevalidatorEnforcer:
         if route_override and route_override in EGRESS_ORDER:
             return route_override
         if model_name:
-            for prefix, egress in self.route_egress_map.items():
-                if model_name == prefix or model_name.startswith(prefix):
+            if model_name in self.route_egress_map:
+                return self.route_egress_map[model_name]
+            for prefix, egress in sorted(self.route_egress_map.items(), key=lambda kv: len(kv[0]), reverse=True):
+                if model_name.startswith(prefix):
                     return egress
         return self.default_egress_class
 
