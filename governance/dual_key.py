@@ -52,9 +52,10 @@ class DualKeyGovernanceManager:
         self.inference_gateway_url = inference_gateway_url.rstrip("/")
 
         if keyring is None:
-            # Default to local pod keys directory
-            key_dir = Path(os.environ.get("POD_KEY_DIR", ".pod_keys"))
-            self.keyring = Keyring(public_key_dir=key_dir, private_key_dir=key_dir)
+            # Respect separate public and private key directories if defined
+            pub_dir = Path(os.environ.get("POD_PUBLIC_KEY_DIR") or os.environ.get("POD_KEY_DIR", ".pod_keys"))
+            priv_dir = Path(os.environ.get("POD_PRIVATE_KEY_DIR") or os.environ.get("POD_KEY_DIR", ".pod_keys"))
+            self.keyring = Keyring(public_key_dir=pub_dir, private_key_dir=priv_dir)
         else:
             self.keyring = keyring
 

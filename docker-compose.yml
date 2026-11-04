@@ -179,12 +179,15 @@ services:
       GOVERNANCE_HOST: "0.0.0.0"
       GOVERNANCE_PORT: "8084"
       INFERENCE_GATEWAY_URL: "http://prevalidator:8082"
+      POD_PUBLIC_KEY_DIR: /var/lib/pod/public_keys
+      POD_PRIVATE_KEY_DIR: /var/lib/pod/private_keys
       POD_KEY_DIR: /var/lib/pod/public_keys
       WORM_SQLITE_PATH: /var/lib/pod/state/worm_ledger.db
       WORM_JSONL_PATH: /var/lib/pod/state/worm_ledger.jsonl
       QUARANTINE_DB_PATH: /var/lib/pod/state/quarantine.db
       SIEM_BUFFER_DB_PATH: /var/lib/pod/state/siem_buffer.db
     volumes:
+      - pod_private_keys:/var/lib/pod/private_keys:ro
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state
       - d:/attestation:/host_workspace
