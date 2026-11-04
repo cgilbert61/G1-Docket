@@ -43,6 +43,7 @@ scripts/*benchmark*
 scripts/*
 !scripts/demo_walkthrough.py
 !scripts/run_prevalidator.py
+!scripts/generate_compliance_report.py
 tests/*benchmark*
 tests/data/
 tests/debug_failures.py

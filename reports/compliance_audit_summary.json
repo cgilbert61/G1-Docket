@@ -1,0 +1,26 @@
+{
+  "timestamp_utc": "2026-11-04 17:57:52 UTC",
+  "mode": "ENFORCE",
+  "chain_valid": true,
+  "total_objects": 618,
+  "tier_distribution": {
+    "Public": 563,
+    "Internal": 8,
+    "Confidential": 34,
+    "Restricted": 13,
+    "Other": 0
+  },
+  "provider_distribution": {
+    "Local/Filesystem": 593,
+    "AWS S3": 8,
+    "Azure ADLS": 1,
+    "GCP GCS": 2,
+    "Snowflake": 3,
+    "BigQuery": 4,
+    "PostgreSQL": 3,
+    "Other": 4
+  },
+  "worm_records": 0,
+  "active_quarantined": 50,
+  "tip_hash": "1683fa6c28d428ec80584b2795112ed28d4676eb0e510dfac18de24aefd365d4"
+}
