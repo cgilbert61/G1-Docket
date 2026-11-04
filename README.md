@@ -25,7 +25,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `prevalidator/` — OpenAI & Anthropic Prevalidator proxy (Enforce & Observe modes)
 - `governance/` — Cryptographic WORM audit ledger, multi-target SIEM forwarders, and HITL Dual-Key triage GUI & server
 - `conformance/` — Reference consumer simulator and Consumer Conformance Test Suite
-- `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`)
+- `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`) and AI Agent / RAG framework integrations (`wrap_rag_documents`, `format_rag_prompt`, `DocketRAGDocument`)
 - `examples/` — Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, reproducible end-to-end demo (`run_demo.py`), Docker stack verification (`verify_docker_stack.py`), and live Enterprise Governance & Dual-Key simulation (`simulate_enterprise_governance.py`)
 - `docs/` — [Hyperscale Architecture (100M+ Objects)](docs/hyperscale-architecture.md), [Audit Period Determination Guide](docs/audit-period-determination.md), [Governance Subsystem](docs/governance-subsystem.md), [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
 - `deploy/` — [Kubernetes Manifests & Edge Sidecar Patterns](deploy/k8s/README.md) for production deployment across AWS EKS, Google GKE, Azure AKS, and on-premise clusters
