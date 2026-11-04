@@ -75,3 +75,22 @@ In **Enforce Mode**, whenever a request is refused for *any* reason above, the c
 ```
 
 Specific reason codes (`UNATTESTED`, `EXPIRED`, `REVOKED`, `INSUFFICIENT_CLEARANCE`, `EGRESS_DENIED`) are written exclusively to the operator's internal audit log.
+
+---
+
+## 5. Canonical Multi-Cloud Enterprise Data Store Locator Schemes
+
+To maintain zero-database sub-millisecond ($< 1\text{ ms}$) evaluation in-memory across federated enterprise data architectures, G1 Docket standardizes data store locators into canonical URI schemes:
+
+| Store Provider | Canonical Locator Scheme | Example Locator |
+| :--- | :--- | :--- |
+| **Snowflake** | `snowflake://<account>/<database>/<schema>/<table>` | `snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC/PUBLIC_PRODUCT_SKU_CATALOG` |
+| **Google BigQuery** | `bigquery://<project_id>/<dataset_id>/<table>` | `bigquery://contoso-gcp-analytics/enterprise_mart/public_release_benchmarks` |
+| **Databricks Unity Catalog** | `databricks://<workspace_host>/<catalog>/<schema>/<table>` | `databricks://adb-41920194.azuredatabricks.net/main/sales_analytics/gold_arr_executive_summary` |
+| **AWS S3** | `s3://<bucket>/<prefix>/<key>` | `s3://acme-corp-datalake-prod/rag-knowledge/public_reference_dataset.parquet` |
+| **Azure ADLS Gen2 / Blob** | `azblob://<account>.blob.core.windows.net/<container>/<blob>` | `azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge/press_releases/2026_product_launch_faq.docx` |
+| **Google Cloud Storage** | `gs://<bucket>/<prefix>/<object>` | `gs://contoso-vertex-lake-us/curated-zones/public_kb/sdk_quickstart_guide.md` |
+| **PostgreSQL** | `postgres://<host>:<port>/<database>/<table>` | `postgres://estate-db:5432/estate/public.customer_accounts` |
+
+All cloud storage connectors emit canonical statements hashed with either `table_schema_and_canonical_rows_sha256` (warehouses) or `raw_bytes_sha256` (object stores).
+
