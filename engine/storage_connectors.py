@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -68,6 +69,11 @@ class DataStoreConnectionConfig:
     etag_fast_path: bool = True
     event_webhook_enabled: bool = True
     created_at: str = ""
+
+
+def _slugify(val: str) -> str:
+    """Deterministic URI-to-slug helper for store IDs."""
+    return re.sub(r"[^a-zA-Z0-9_-]+", "-", (val or "").lower()).strip("-")[:48]
 
 
 def is_enterprise_store_uri(path_or_uri: str | None) -> bool:
@@ -495,7 +501,7 @@ class EnterpriseDataStoreManager:
         owner = str(payload.get("owner") or "data-platform@contoso.com")
         endpoint_url = payload.get("endpoint_url")
 
-        store_id = re.sub_slug(uri)
+        store_id = _slugify(uri)
         cfg = DataStoreConnectionConfig(
             store_id=store_id,
             name=name,
@@ -920,11 +926,3 @@ class EnterpriseDataStoreManager:
         }
         self.event_history.append(evt_record)
         return evt_record
-
-
-class re:
-    @staticmethod
-    def sub_slug(val: str) -> str:
-        import re as _re
-
-        return _re.sub(r"[^a-zA-Z0-9_-]+", "-", val.lower()).strip("-")[:48]
