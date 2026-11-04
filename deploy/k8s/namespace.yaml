@@ -1,0 +1,8 @@
+# Namespace for G1 Docket Zero-Trust AI Admission Control
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: g1-docket
+  labels:
+    app.kubernetes.io/name: g1-docket
+    app.kubernetes.io/part-of: g1-docket-system

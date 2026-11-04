@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-docket-prevalidator
+  namespace: g1-docket
+  labels:
+    app.kubernetes.io/name: prevalidator
+    app.kubernetes.io/part-of: g1-docket
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prevalidator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prevalidator
+    spec:
+      containers:
+        - name: prevalidator
+          image: ghcr.io/cgilbert61/g1-docket-prevalidator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 18082
+              name: http-proxy
+          envFrom:
+            - configMapRef:
+                name: g1-docket-config
+          env:
+            - name: POD_ADMIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: g1-docket-secrets
+                  key: admin-api-key
+                  optional: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "2000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: trusted-public-keys
+              mountPath: /var/lib/pod/public_keys
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 18082
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 18082
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+        - name: trusted-public-keys
+          configMap:
+            name: g1-docket-trusted-keys
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prevalidator
+  namespace: g1-docket
+  labels:
+    app.kubernetes.io/name: prevalidator
+spec:
+  type: ClusterIP
+  ports:
+    - port: 18082
+      targetPort: 18082
+      name: http-proxy
+  selector:
+    app.kubernetes.io/name: prevalidator

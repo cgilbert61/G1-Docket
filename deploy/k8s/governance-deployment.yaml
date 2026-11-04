@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-docket-governance
+  namespace: g1-docket
+  labels:
+    app.kubernetes.io/name: governance-triage
+    app.kubernetes.io/part-of: g1-docket
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: governance-triage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: governance-triage
+    spec:
+      containers:
+        - name: governance
+          image: ghcr.io/cgilbert61/g1-docket-governance:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 18084
+              name: triage-ui
+          env:
+            - name: POD_GOVERNANCE_CONFIG
+              value: "governance/config.yaml"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          volumeMounts:
+            - name: worm-storage
+              mountPath: /var/lib/pod/governance
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 18084
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: worm-storage
+          persistentVolumeClaim:
+            claimName: g1-docket-worm-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: governance-triage
+  namespace: g1-docket
+  labels:
+    app.kubernetes.io/name: governance-triage
+spec:
+  type: ClusterIP
+  ports:
+    - port: 18084
+      targetPort: 18084
+      name: triage-ui
+  selector:
+    app.kubernetes.io/name: governance-triage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: g1-docket-worm-pvc
+  namespace: g1-docket
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

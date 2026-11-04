@@ -1,0 +1,69 @@
+# Reusable Sidecar Pattern for AI Inference Pods
+# Inject this container spec into any AI Agent, vLLM, or LangChain deployment
+# to enforce zero-trust data admission control directly over localhost:18082.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ai-agent-with-docket-sidecar
+  namespace: g1-docket
+  labels:
+    app: secure-ai-agent
+spec:
+  containers:
+    # 1. Main Application / AI Agent Container
+    - name: ai-agent
+      image: python:3.11-slim
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "AI Agent started. Routing LLM requests through http://127.0.0.1:18082..."
+          sleep 3600
+      env:
+        # Route all OpenAI API calls to the local Prevalidator sidecar
+        - name: OPENAI_BASE_URL
+          value: "http://127.0.0.1:18082/v1"
+        - name: POD_CALLER_KEY
+          value: "pod-key-internal"
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "512Mi"
+
+    # 2. G1 Docket Sub-Millisecond Prevalidator Sidecar
+    - name: docket-prevalidator-sidecar
+      image: ghcr.io/cgilbert61/g1-docket-prevalidator:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 18082
+          name: local-proxy
+      env:
+        - name: POD_GATEWAY_MODE
+          value: "enforce"
+        - name: POD_UPSTREAM_GATEWAY_URL
+          value: "https://api.openai.com/v1" # Or internal LiteLLM / vLLM cluster
+        - name: POD_SNAPSHOT_URL
+          value: "http://snapshot-publisher.g1-docket.svc.cluster.local:18081/v1/snapshot"
+        - name: POD_PUBLIC_KEY_DIR
+          value: "/var/lib/pod/public_keys"
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "1000m"
+          memory: "512Mi"
+      volumeMounts:
+        - name: dshm
+          mountPath: /dev/shm
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 18082
+        initialDelaySeconds: 2
+        periodSeconds: 10
+
+  volumes:
+    - name: dshm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 256Mi

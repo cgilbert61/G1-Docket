@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: g1-docket-config
+  namespace: g1-docket
+data:
+  POD_GATEWAY_MODE: "enforce"
+  POD_SNAPSHOT_URL: "http://snapshot-publisher:18081/v1/snapshot"
+  POD_PUBLIC_KEY_DIR: "/var/lib/pod/public_keys"
+  POD_PREVALIDATOR_PORT: "18082"
+  POD_UPSTREAM_GATEWAY_URL: "http://litellm-gateway:14000"
+  POD_STRICT_INLINE_HASH: "true"
+  POD_GOVERNANCE_URL: "http://governance-triage:18084"
