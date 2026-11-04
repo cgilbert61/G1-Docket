@@ -221,3 +221,14 @@ def test_abac_custom_callable_hook(abac_env):
     )
     assert r_allow.status_code == 200
     assert enforcer.audit_log[-1].decision == "allow"
+
+
+def test_abac_environment_variable_auto_registration(monkeypatch, abac_env):
+    """Verify enforcer auto-registers residency and departmental hooks from environment variables."""
+    monkeypatch.setenv("POD_ENABLE_ABAC_DATA_RESIDENCY", "1")
+    monkeypatch.setenv("POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION", "true")
+
+    snap_store = abac_env["enforcer"].snapshot_store
+    auto_enforcer = PrevalidatorEnforcer(snapshot_store=snap_store, mode="enforce")
+
+    assert len(auto_enforcer.custom_policy_hooks) == 2
