@@ -118,3 +118,42 @@ def test_docket_sdk_abac_headers():
     assert headers["X-POD-Target-Region"] == "eu-central-1"
     assert headers["X-POD-Caller-Id"] == "agent-007"
     assert headers["X-POD-Caller-Token"] == "mock-jwt"
+
+
+def test_docket_rag_integrations():
+    from docket.integrations import (
+        DocketRAGDocument,
+        extract_prompt_locators,
+        format_rag_prompt,
+        wrap_rag_documents,
+    )
+
+    doc1 = DocketRAGDocument(
+        locator="s3://lake/doc1.md",
+        content="Fact 1",
+    )
+    assert doc1.to_pod_tag() == '<pod:object locator="s3://lake/doc1.md">Fact 1</pod:object>'
+
+    docs = [
+        doc1,
+        {"locator": "snowflake://corp/tbl", "content": "Row A | Row B"},
+        {"page_content": "Page content text", "source": "file://corp/policy.pdf"},
+        ("gs://vertex/data.csv", "id,val\n1,100"),
+    ]
+    wrapped = wrap_rag_documents(docs)
+    assert '<pod:object locator="s3://lake/doc1.md">Fact 1</pod:object>' in wrapped
+    assert '<pod:object locator="snowflake://corp/tbl">Row A | Row B</pod:object>' in wrapped
+    assert '<pod:object locator="file://corp/policy.pdf">Page content text</pod:object>' in wrapped
+    assert '<pod:object locator="gs://vertex/data.csv">id,val\n1,100</pod:object>' in wrapped
+
+    tpl = "Context:\n{context}\n\nQuestion: What is X?"
+    prompt = format_rag_prompt(tpl, docs)
+    assert "Context:\n<pod:object" in prompt
+
+    locators = extract_prompt_locators(prompt)
+    assert locators == [
+        "s3://lake/doc1.md",
+        "snowflake://corp/tbl",
+        "file://corp/policy.pdf",
+        "gs://vertex/data.csv",
+    ]
