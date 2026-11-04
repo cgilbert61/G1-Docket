@@ -400,6 +400,7 @@
       <button id="btnEnterpriseStores" class="btn btn-config" onclick="toggleEnterpriseStoresDrawer()">Enterprise Data Stores</button>
       <button id="btnLlmConfig" class="btn btn-config" onclick="toggleLlmConfig()">LLM Provider Config</button>
       <button id="btnAuditMonitor" class="btn btn-config" onclick="toggleAuditRunwayDrawer()">Audit Monitor</button>
+      <button id="btnAbacHooks" class="btn btn-config" onclick="toggleAbacHooksDrawer()">ABAC Policies</button>
       <span style="display: inline-block; width: 1px; height: 24px; background: #CBD5E1; margin: 0 6px; align-self: center;"></span>
       <button id="toggleModeBtn" class="btn-mode-enforce" onclick="toggleMode()" title="Gateway is actively blocking unauthorized egress. Click to switch to Audit-Only Observe Mode.">
         <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85;">Mode</span>
@@ -883,6 +884,60 @@
       <button class="btn btn-dark" onclick="testLlmConfig()">Test Connection &amp; Discover Models</button>
       <div id="llmConfigStatus" style="font-size: 12.5px; color: var(--muted); margin-left: 8px;">
         Active Provider: Built-in G1 Gateway (http://litellm-gateway:4000)
+      </div>
+    </div>
+  </div>
+
+  <!-- ABAC POLICY HOOKS & SOVEREIGN BOUNDARIES DRAWER -->
+  <div id="abacHooksDrawer" class="card" style="display: none; margin-top: 18px; border-left: 4px solid var(--primary);">
+    <h2>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span>Attribute-Based Access Control (ABAC) &amp; Sovereign Data Residency</span>
+        <span class="badge badge-Internal" style="font-size: 11px; text-transform: none; font-weight: 500;">Zero-Trust Dynamic Policies</span>
+      </div>
+      <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleAbacHooksDrawer()">Close</button>
+    </h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 12px;">
+      <!-- CARD 1: DATA RESIDENCY & SOVEREIGN BOUNDARIES -->
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.025em;">
+              1. Sovereign Data Residency (GDPR / EU Enclaves)
+            </div>
+            <div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">
+              Blocks EU/GDPR sovereign data from egressing to non-EU model regions.
+            </div>
+          </div>
+          <span id="abacResidencyBadge" class="badge badge-Restricted" style="font-size: 11px;">Disabled</span>
+        </div>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+          <button id="btnToggleResidency" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="togglePolicyHook('data_residency')">
+            Enable Data Residency
+          </button>
+          <span style="font-size: 11px; color: var(--muted);">Regions: eu-central-1, eu-west-1, eu-west-3, eu-north-1</span>
+        </div>
+      </div>
+
+      <!-- CARD 2: DEPARTMENTAL ISOLATION -->
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.025em;">
+              2. Departmental Isolation &amp; Need-to-Know Compartments
+            </div>
+            <div style="font-size: 11.5px; color: var(--muted); margin-top: 2px;">
+              Prevents callers outside owning department (e.g. Marketing vs Finance) from accessing records.
+            </div>
+          </div>
+          <span id="abacDeptBadge" class="badge badge-Restricted" style="font-size: 11px;">Disabled</span>
+        </div>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+          <button id="btnToggleDept" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="togglePolicyHook('departmental_isolation')">
+            Enable Departmental Isolation
+          </button>
+          <span style="font-size: 11px; color: var(--muted);">Auditor bypass: security-audit</span>
+        </div>
       </div>
     </div>
   </div>
@@ -3031,6 +3086,77 @@
           clearInterval(auditRunwayTimer);
           auditRunwayTimer = null;
         }
+      }
+    }
+
+    function toggleAbacHooksDrawer() {
+      const drawer = document.getElementById('abacHooksDrawer');
+      const btn = document.getElementById('btnAbacHooks');
+      if (!drawer) return;
+      const isOpen = drawer.style.display !== 'none' && drawer.style.display !== '';
+      if (!isOpen) {
+        drawer.style.display = 'block';
+        if (btn) btn.classList.add('active');
+        refreshAbacHooks();
+      } else {
+        drawer.style.display = 'none';
+        if (btn) btn.classList.remove('active');
+      }
+    }
+
+    async function refreshAbacHooks() {
+      try {
+        const res = await fetch('/v1/admin/policies/hooks', {
+          headers: { 'X-POD-Admin-Key': 'pod-dev-admin-key' }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const resBadge = document.getElementById('abacResidencyBadge');
+        const resBtn = document.getElementById('btnToggleResidency');
+        if (data.data_residency_enabled) {
+          if (resBadge) { resBadge.textContent = 'Active (Enforcing)'; resBadge.className = 'badge badge-Public'; }
+          if (resBtn) { resBtn.textContent = 'Disable Data Residency'; resBtn.className = 'btn btn-dark'; }
+        } else {
+          if (resBadge) { resBadge.textContent = 'Disabled'; resBadge.className = 'badge badge-Restricted'; }
+          if (resBtn) { resBtn.textContent = 'Enable Data Residency'; resBtn.className = 'btn btn-primary'; }
+        }
+
+        const deptBadge = document.getElementById('abacDeptBadge');
+        const deptBtn = document.getElementById('btnToggleDept');
+        if (data.departmental_isolation_enabled) {
+          if (deptBadge) { deptBadge.textContent = 'Active (Enforcing)'; deptBadge.className = 'badge badge-Public'; }
+          if (deptBtn) { deptBtn.textContent = 'Disable Departmental Isolation'; deptBtn.className = 'btn btn-dark'; }
+        } else {
+          if (deptBadge) { deptBadge.textContent = 'Disabled'; deptBadge.className = 'badge badge-Restricted'; }
+          if (deptBtn) { deptBtn.textContent = 'Enable Departmental Isolation'; deptBtn.className = 'btn btn-primary'; }
+        }
+      } catch (err) {
+        console.error('Failed to load ABAC hooks:', err);
+      }
+    }
+
+    async function togglePolicyHook(hookType) {
+      try {
+        const getRes = await fetch('/v1/admin/policies/hooks', {
+          headers: { 'X-POD-Admin-Key': 'pod-dev-admin-key' }
+        });
+        const currentData = await getRes.json();
+        const isEnabled = hookType === 'data_residency' ? currentData.data_residency_enabled : currentData.departmental_isolation_enabled;
+        const nextAction = isEnabled ? 'disable' : 'enable';
+
+        const postRes = await fetch('/v1/admin/policies/hooks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-POD-Admin-Key': 'pod-dev-admin-key'
+          },
+          body: JSON.stringify({ hook_type: hookType, action: nextAction })
+        });
+        if (postRes.ok) {
+          refreshAbacHooks();
+        }
+      } catch (err) {
+        console.error('Failed to toggle policy hook:', err);
       }
     }
 
