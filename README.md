@@ -27,7 +27,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `conformance/` — Reference consumer simulator and Consumer Conformance Test Suite
 - `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`)
 - `examples/` — Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, and reproducible end-to-end demo
-- `docs/` — [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
+- `docs/` — [Audit Period Determination Guide](docs/audit-period-determination.md), [Governance Subsystem](docs/governance-subsystem.md), [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
 
 ---
 
