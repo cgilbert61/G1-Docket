@@ -190,3 +190,20 @@ siem_destinations: []
     assert resp_verify.status_code == 200
     assert resp_verify.json()["valid"] is True
     assert resp_verify.json()["total_entries"] >= 2
+
+    # 7. Test Export APIs (JSON and CSV)
+    resp_worm_json = client.get("/api/worm/export?format=json")
+    assert resp_worm_json.status_code == 200
+    assert "events" in resp_worm_json.json()
+
+    resp_worm_csv = client.get("/api/worm/export?format=csv")
+    assert resp_worm_csv.status_code == 200
+    assert "entry_id,timestamp_utc_iso8601" in resp_worm_csv.text
+
+    resp_q_json = client.get("/api/quarantine/export?format=json")
+    assert resp_q_json.status_code == 200
+    assert "items" in resp_q_json.json()
+
+    resp_q_csv = client.get("/api/quarantine/export?format=csv")
+    assert resp_q_csv.status_code == 200
+    assert "quarantine_id,timestamp_utc" in resp_q_csv.text

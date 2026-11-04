@@ -229,6 +229,38 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     async def list_quarantine(status: Optional[str] = None, limit: int = 50, offset: int = 0):
         return quarantine_store.list_items(status=status, limit=limit, offset=offset)
 
+    @app.get("/api/quarantine/export")
+    async def export_quarantine_items(format: str = "json"):
+        """Export all quarantined records as downloadable CSV or JSON for compliance audits."""
+        import csv
+        import io
+        items = quarantine_store.list_items(limit=10000)
+        if format.lower() == "csv":
+            out = io.StringIO()
+            writer = csv.writer(out)
+            writer.writerow(["quarantine_id", "timestamp_utc", "event_type", "reason_code", "status", "locator_uri", "claimed_tier", "payload_digest"])
+            for it in items:
+                writer.writerow([
+                    it.get("quarantine_id"),
+                    it.get("timestamp_utc"),
+                    it.get("event_type"),
+                    it.get("reason_code"),
+                    it.get("status"),
+                    it.get("locator_uri"),
+                    it.get("claimed_tier"),
+                    it.get("payload_digest"),
+                ])
+            return Response(
+                content=out.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=quarantine_export.csv"},
+            )
+        return Response(
+            content=json.dumps({"total_items": len(items), "items": items}, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=quarantine_export.json"},
+        )
+
     @app.get("/api/quarantine/{quarantine_id}")
     async def get_quarantine_item(quarantine_id: str):
         item = quarantine_store.get_item(quarantine_id)
@@ -300,6 +332,38 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     @app.get("/api/worm/events")
     async def get_worm_events(limit: int = 50, offset: int = 0, event_type: Optional[str] = None):
         return worm_ledger.get_events(limit=limit, offset=offset, event_type=event_type)
+
+    @app.get("/api/worm/export")
+    async def export_worm_ledger(format: str = "json"):
+        """Export the cryptographic WORM audit ledger as downloadable CSV or JSON."""
+        import csv
+        import io
+        events = worm_ledger.get_events(limit=10000)
+        tip = worm_ledger.get_tip_hash()
+        if format.lower() == "csv":
+            out = io.StringIO()
+            writer = csv.writer(out)
+            writer.writerow(["entry_id", "timestamp_utc_iso8601", "event_type", "actor_identity", "payload_digest", "entry_hash", "prev_hash"])
+            for e in events:
+                writer.writerow([
+                    e.get("entry_id"),
+                    e.get("timestamp_utc_iso8601"),
+                    e.get("event_type"),
+                    e.get("actor_identity"),
+                    e.get("payload_digest"),
+                    e.get("entry_hash"),
+                    e.get("prev_hash"),
+                ])
+            return Response(
+                content=out.getvalue(),
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename=worm_ledger_export_{tip[:8]}.csv"},
+            )
+        return Response(
+            content=json.dumps({"tip_hash": tip, "total_events": len(events), "events": events}, indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": f"attachment; filename=worm_ledger_export_{tip[:8]}.json"},
+        )
 
     # ---------------------------------------------------------
     # REST APIs: SIEM Destinations & Management
