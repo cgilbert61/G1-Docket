@@ -1,0 +1,25 @@
+{{- if .Values.prevalidator.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-prevalidator
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prevalidator
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "g1-docket.fullname" . }}-prevalidator
+  minReplicas: {{ .Values.prevalidator.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.prevalidator.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.prevalidator.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.prevalidator.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+{{- end }}
