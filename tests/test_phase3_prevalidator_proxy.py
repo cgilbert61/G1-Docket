@@ -734,3 +734,85 @@ def test_iceberg_catalog_governance(tmp_path: Path):
     assert out_rest.allowed_to_forward is False
 
     registry.close()
+
+
+def test_dynamic_in_flight_field_masking(tmp_path: Path):
+    """Test 11: Verify Dynamic In-Flight Field-Level Masking & Redaction without prompt rejection."""
+    from engine.pipeline import AttestationEngine
+    from engine.storage_connectors import EnterpriseDataStoreManager
+
+    db_url = f"sqlite:///{(tmp_path / 'adv11.db').as_posix()}"
+    registry = RegistryService(db_url=db_url, key_dir=tmp_path / "keys")
+    eng = AttestationEngine(registry=registry)
+    mgr = EnterpriseDataStoreManager(registry=registry, engine=eng, estate_dir=tmp_path)
+
+    # 1. Register a data store with a customer identity table configured for dynamic field masking
+    masked_store_uri = "iceberg://polaris.us-east-1.lakehouse.net/customer_lake"
+    mgr.register_store(
+        {
+            "provider": "Apache Iceberg REST Catalog",
+            "uri": masked_store_uri,
+            "name": "Customer Identity Lakehouse",
+            "auth_mode": "oauth_bearer",
+            "region": "us-east-1",
+        }
+    )
+    crawl = mgr.crawl_and_attest_store(masked_store_uri)
+    assert crawl["attested_active_count"] >= 1
+
+    # Update one of the records to explicitly set ai_eligibility = "mask"
+    crm_loc = f"{masked_store_uri}/CUSTOMER_CRM_RECORDS"
+    rec = registry.lookup_by_locator(crm_loc)
+    assert rec is not None
+    # Mint attestation record with ai_eligibility="mask"
+    registry.issue_or_queue_finding(
+        locator=crm_loc,
+        content_sha256=rec["content_sha256"],
+        tier=rec["tier"],
+        owner=rec["owner"],
+        confidence=rec["confidence"],
+        policy={"ai_eligibility": "mask", "minimum_clearance": "Confidential", "egress_class": "public_api"},
+        extracted_text_sha256=rec.get("extracted_text_sha256"),
+        chunk_hashes=rec.get("chunk_hashes"),
+    )
+
+    # 2. Publish cryptographic snapshot
+    pub = SnapshotPublisher(registry=registry, snapshot_output_path=tmp_path / "snap.dsse.json")
+    env = pub.publish_snapshot()
+    store = InMemorySnapshotStore(registry.keyring)
+    store.load_from_envelope(env)
+    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce", strict_inline_hash=True)
+
+    # 3. Test inline prompt with sensitive fields: email & phone number
+    crm_text = "customer_email: alice.vance@example.org | phone: 415-555-0133 | revenue_tier: Enterprise"
+    prompt = f'Customer Profile: <pod:object locator="{crm_loc}">{crm_text}</pod:object>'
+
+    out = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": prompt}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+
+    # Verify request is ALLOWED to forward, but PII fields are masked deterministically
+    assert out.allowed_to_forward is True
+    assert out.audit_entry.decision == "mask"
+    assert crm_loc in out.masked_locators
+
+    forwarded_content = out.transformed_payload["messages"][0]["content"]
+    assert "[REDACTED_EMAIL_ADDRESS]" in forwarded_content
+    assert "[REDACTED_PHONE_NUMBER]" in forwarded_content
+    assert "revenue_tier: Enterprise" in forwarded_content
+    assert "alice.vance@example.org" not in forwarded_content
+    assert "<pod:object" not in forwarded_content
+    assert "</pod:object>" not in forwarded_content
+
+    # 4. Test X-POD-Permit-Masked header override on a Confidential object
+    conf_loc = f"{masked_store_uri}/PUBLIC_REFERENCE_DATASET"
+    # Even if an object requires higher clearance, X-POD-Permit-Masked triggers dynamic sanitization
+    out_override = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": prompt}]},
+        headers={"X-POD-Caller-Key": "pod-key-public", "X-POD-Permit-Masked": "true"},
+    )
+    assert out_override.allowed_to_forward is True
+    assert out_override.audit_entry.decision == "mask"
+
+    registry.close()

@@ -1332,10 +1332,15 @@ def create_prevalidator_app(
             }
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
 
-        if outcome.audit_entry and (outcome.audit_entry.decision == "strip" or outcome.audit_entry.stripped_locators):
+        if outcome.audit_entry and (
+            outcome.audit_entry.decision in ("strip", "mask")
+            or outcome.audit_entry.stripped_locators
+            or getattr(outcome.audit_entry, "masked_locators", [])
+        ):
+            is_masked = bool(getattr(outcome.audit_entry, "masked_locators", []))
             emit_governance_event_background(
                 event_type="COMBINE_PII_REDACTED",
-                reason_code="CONFIDENTIAL_BLOCK_STRIPPED",
+                reason_code="CONFIDENTIAL_BLOCK_MASKED" if is_masked else "CONFIDENTIAL_BLOCK_STRIPPED",
                 payload_digest=p_digest,
                 raw_payload=outcome.transformed_payload,
                 locator_uri=loc_uri,
@@ -1451,10 +1456,15 @@ def create_prevalidator_app(
             }
             return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
 
-        if outcome.audit_entry and (outcome.audit_entry.decision == "strip" or outcome.audit_entry.stripped_locators):
+        if outcome.audit_entry and (
+            outcome.audit_entry.decision in ("strip", "mask")
+            or outcome.audit_entry.stripped_locators
+            or getattr(outcome.audit_entry, "masked_locators", [])
+        ):
+            is_masked = bool(getattr(outcome.audit_entry, "masked_locators", []))
             emit_governance_event_background(
                 event_type="COMBINE_PII_REDACTED",
-                reason_code="CONFIDENTIAL_BLOCK_STRIPPED",
+                reason_code="CONFIDENTIAL_BLOCK_MASKED" if is_masked else "CONFIDENTIAL_BLOCK_STRIPPED",
                 payload_digest=p_digest,
                 raw_payload=outcome.transformed_payload,
                 locator_uri=loc_uri,

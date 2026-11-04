@@ -62,6 +62,7 @@ class AuditLogEntry:
     caller_clearance: str
     target_egress: str
     stripped_locators: list[str] = field(default_factory=list)
+    masked_locators: list[str] = field(default_factory=list)
     decision_latency_ms: float = 0.0
     decision_latency_us: float = 0.0
 
@@ -75,6 +76,7 @@ class AuditLogEntry:
             "caller_clearance": self.caller_clearance,
             "target_egress": self.target_egress,
             "stripped_locators": self.stripped_locators,
+            "masked_locators": self.masked_locators,
             "decision_latency_ms": self.decision_latency_ms,
             "decision_latency_us": self.decision_latency_us,
         }
@@ -88,6 +90,7 @@ class EnforcementOutcome:
     transformed_payload: dict[str, Any]
     client_denial_body: dict[str, Any] | None
     audit_entry: AuditLogEntry
+    masked_locators: list[str] = field(default_factory=list)
     decision_latency_ms: float = 0.0
     decision_latency_us: float = 0.0
 
@@ -320,6 +323,10 @@ class PrevalidatorEnforcer:
             "jurisdiction": norm_headers.get("x-pod-caller-region", norm_headers.get("x-pod-caller-jurisdiction", "")),
             "target_region": norm_headers.get("x-pod-target-region", ""),
             "tenant_id": norm_headers.get("x-pod-tenant-id", ""),
+            "permit_masked": (
+                norm_headers.get("x-pod-permit-masked", "").lower() in ("true", "1", "yes")
+                or norm_headers.get("x-pod-transform", "").lower() in ("mask", "redact")
+            ),
         }
 
         # Enrich from verified JWT claims if present
@@ -477,14 +484,18 @@ class PrevalidatorEnforcer:
         # Check caller clearance against record minimum_clearance
         req_clearance = entry["minimum_clearance"]
         if CLEARANCE_ORDER[caller_clearance] < CLEARANCE_ORDER[req_clearance]:
+            if entry.get("ai_eligibility") in ("mask", "redact") or (caller_context and caller_context.get("permit_masked")):
+                return "mask", []
             return "deny", ["INSUFFICIENT_CLEARANCE"]
 
         # Check destination egress class against record egress_class
         allowed_egress = entry["egress_class"]
         if EGRESS_ORDER[target_egress] > EGRESS_ORDER[allowed_egress]:
+            if entry.get("ai_eligibility") in ("mask", "redact") or (caller_context and caller_context.get("permit_masked")):
+                return "mask", []
             return "deny", ["EGRESS_DENIED"]
 
-        # Check AI eligibility ('allow' | 'strip' | 'deny')
+        # Check AI eligibility ('allow' | 'strip' | 'mask' | 'deny')
         ai_elig = entry["ai_eligibility"]
         if ai_elig == "deny":
             return "deny", ["EGRESS_DENIED"]
@@ -501,7 +512,11 @@ class PrevalidatorEnforcer:
                     return "deny", hook_reasons or ["CUSTOM_POLICY_DENIAL"]
                 elif hook_action == "strip" and ai_elig != "deny":
                     ai_elig = "strip"
+                elif hook_action in ("mask", "redact") and ai_elig != "deny":
+                    ai_elig = "mask"
 
+        if ai_elig in ("mask", "redact"):
+            return "mask", []
         if ai_elig == "strip":
             return "strip", []
         return "allow", []
@@ -565,6 +580,7 @@ class PrevalidatorEnforcer:
         locators_seen: list[str] = []
         inline_verified_locators: set[str] = set()
         stripped_locators: list[str] = []
+        masked_locators: list[str] = []
         total_untagged_chars = 0
         has_inline_pod_tags = False
 
@@ -572,7 +588,7 @@ class PrevalidatorEnforcer:
         new_payload = json.loads(json.dumps(payload))
 
         def process_text(text: str) -> str:
-            nonlocal reason_codes, locators_seen, stripped_locators, total_untagged_chars, has_inline_pod_tags
+            nonlocal reason_codes, locators_seen, stripped_locators, masked_locators, total_untagged_chars, has_inline_pod_tags
 
             is_valid_structure, parsed_blocks = self._validate_pod_tag_structure(text)
             if not is_valid_structure:
@@ -615,6 +631,13 @@ class PrevalidatorEnforcer:
                         out_segments.append(inner_content)
                     else:
                         out_segments.append("[POD:STRIPPED]")
+                elif action in ("mask", "redact"):
+                    masked_locators.append(loc)
+                    if self.mode == "observe":
+                        out_segments.append(inner_content)
+                    else:
+                        masked_content, _ = self.classifier.mask_text_spans(inner_content)
+                        out_segments.append(masked_content)
                 else:
                     # Allowed -> unwrap <pod:object> tags and forward clean content
                     out_segments.append(inner_content)
@@ -751,7 +774,7 @@ class PrevalidatorEnforcer:
             )
 
         lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns)
-        decision_str = "strip" if stripped_locators else "allow"
+        decision_str = "strip" if stripped_locators else ("mask" if masked_locators else "allow")
         audit = AuditLogEntry(
             timestamp=now_str,
             mode=self.mode,
@@ -761,6 +784,7 @@ class PrevalidatorEnforcer:
             caller_clearance=caller_clearance,
             target_egress=target_egress,
             stripped_locators=stripped_locators,
+            masked_locators=masked_locators,
             decision_latency_ms=lat_ms,
             decision_latency_us=lat_us,
         )
@@ -770,6 +794,7 @@ class PrevalidatorEnforcer:
             transformed_payload=new_payload,
             client_denial_body=None,
             audit_entry=audit,
+            masked_locators=masked_locators,
             decision_latency_ms=lat_ms,
             decision_latency_us=lat_us,
         )

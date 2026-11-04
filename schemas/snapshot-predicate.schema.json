@@ -83,7 +83,7 @@
           },
           "ai_eligibility": {
             "type": "string",
-            "enum": ["allow", "strip", "deny"]
+            "enum": ["allow", "strip", "mask", "deny"]
           },
           "minimum_clearance": {
             "type": "string",

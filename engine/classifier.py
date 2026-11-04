@@ -138,6 +138,54 @@ class PresidioClassifier:
             for cat, cnt in sorted(counts.items())
         ]
 
+    def mask_text_spans(
+        self,
+        text: str,
+        categories: set[str] | None = None,
+    ) -> tuple[str, list[str]]:
+        """Mask sensitive entity spans in text with deterministic placeholders like `[REDACTED_{CATEGORY}]`.
+
+        Returns `(masked_text, list_of_masked_categories)`.
+        """
+        if not text or not text.strip():
+            return text, []
+
+        target_cats = categories or (RESTRICTED_CATEGORIES | CONFIDENTIAL_CATEGORIES)
+        found_categories: set[str] = set()
+
+        # Collect all spans to mask across all matching recognizers
+        spans: list[tuple[int, int, str]] = []
+        for entity_name, regex_pat, _ in RECOGNIZER_DEFINITIONS:
+            if entity_name not in target_cats:
+                continue
+            flags = re.IGNORECASE if entity_name == "SALARY_COMPENSATION" else 0
+            for m in re.finditer(regex_pat, text, flags=flags):
+                spans.append((m.start(), m.end(), entity_name))
+                found_categories.add(entity_name)
+
+        if not spans:
+            return text, []
+
+        # Sort spans by start index, resolve overlaps
+        spans.sort(key=lambda s: (s[0], -(s[1] - s[0])))
+        merged_spans: list[tuple[int, int, str]] = []
+        current_end = -1
+        for start, end, cat in spans:
+            if start >= current_end:
+                merged_spans.append((start, end, cat))
+                current_end = end
+
+        # Reconstruct string with [REDACTED_{CATEGORY}] placeholders
+        out: list[str] = []
+        last_idx = 0
+        for start, end, cat in merged_spans:
+            out.append(text[last_idx:start])
+            out.append(f"[REDACTED_{cat}]")
+            last_idx = end
+        out.append(text[last_idx:])
+
+        return "".join(out), sorted(found_categories)
+
     def classify_text(self, text: str, metadata_hints: dict[str, Any] | None = None) -> ClassificationVerdict:
         """Classify extracted document text and metadata into a POD tier and category summary."""
         findings = self.scan_text_segment(text)

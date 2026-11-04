@@ -256,8 +256,8 @@
           "properties": {
             "ai_eligibility": {
               "type": "string",
-              "enum": ["allow", "strip", "deny"],
-              "description": "Whether the object may be forwarded to AI models ('allow'), stripped from prompts ('strip'), or causes request refusal ('deny')."
+              "enum": ["allow", "strip", "mask", "deny"],
+              "description": "Whether the object may be forwarded to AI models ('allow'), stripped ('strip'), dynamically field-masked ('mask'), or causes request refusal ('deny')."
             },
             "minimum_clearance": {
               "type": "string",

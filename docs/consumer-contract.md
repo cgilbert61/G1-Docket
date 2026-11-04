@@ -21,7 +21,7 @@ To allow consumers to distinguish `UNATTESTED`, `EXPIRED`, and `REVOKED` states 
 - `status`: `"active"` | `"expired"` | `"revoked"`
 - `content_sha256`: 64-character hex SHA-256 digest
 - `tier`: `"Public"` | `"Internal"` | `"Confidential"` | `"Restricted"`
-- `ai_eligibility`: `"allow"` | `"strip"` | `"deny"`
+- `ai_eligibility`: `"allow"` | `"strip"` | `"mask"` | `"deny"`
 - `minimum_clearance`: `"Public"` | `"Internal"` | `"Confidential"` | `"Restricted"`
 - `egress_class`: `"local_only"` | `"private_cloud"` | `"public_api"`
 - `record_expires_at`: ISO-8601 UTC timestamp
@@ -32,7 +32,7 @@ To allow consumers to distinguish `UNATTESTED`, `EXPIRED`, and `REVOKED` states 
 
 Callers bind LLM context segments to attested objects in two ways:
 
-1. **Inline `<pod:object>` Content Blocks** (supports `allow`, `strip`, and `deny`):
+1. **Inline `<pod:object>` Content Blocks** (supports `allow`, `strip`, `mask`, and `deny`):
    ```xml
    <pod:object locator="file://estate/fileshare/product_overview_public.md" sha256="e3b0c442...">
    Document text or RAG chunk content...
@@ -40,6 +40,7 @@ Callers bind LLM context segments to attested objects in two ways:
    ```
    - On `allow`: the consumer strips the `<pod:object ...>` and `</pod:object>` wrapper tags and forwards the inner content cleanly.
    - On `strip`: the consumer replaces the entire `<pod:object>...</pod:object>` block with `[POD:STRIPPED]` and forwards the remainder of the request.
+   - On `mask`: the consumer dynamically redacts sensitive entity spans (`[REDACTED_US_SSN]`, `[REDACTED_EMAIL_ADDRESS]`, etc.) in-flight, strips the wrapper tags, and forwards the sanitized text with non-sensitive analytical fields preserved.
    - On `deny`: the consumer refuses the request.
 
 2. **Request-Level Header (`X-POD-Locators`)**:
