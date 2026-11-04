@@ -15,6 +15,8 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 11: AutoGen Multi-Agent Message Hook Demo
   Phase 12: SOC 2 Evidence Export & Standalone Air-Gapped Verifier
   Phase 13: Vector Database & Chunk-Level RAG Admission Demo
+  Phase 14: LlamaIndex Zero-Trust RAG Admission Demo
+  Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -145,6 +147,12 @@ def main() -> int:
 
     # Phase 13: Vector Database & Chunk-Level RAG Admission Demo
     phases.append(run_phase(13, "Vector Database & Chunk-Level RAG Admission Demo", [sys.executable, "examples/vector_rag_agent_demo.py"]))
+
+    # Phase 14: LlamaIndex Zero-Trust RAG Admission Demo
+    phases.append(run_phase(14, "LlamaIndex Zero-Trust RAG Admission Demo", [sys.executable, "examples/llamaindex_rag_agent_demo.py"]))
+
+    # Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
+    phases.append(run_phase(15, "Multi-Agent Swarm Attestation Delegation", [sys.executable, "examples/multi_agent_swarm_delegation_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)

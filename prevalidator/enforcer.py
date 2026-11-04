@@ -35,6 +35,8 @@ REASON_MALFORMED_POD_TAG = "REASON_MALFORMED_POD_TAG"
 REASON_UNATTESTED_CONTEXT_OVERFLOW = "REASON_UNATTESTED_CONTEXT_OVERFLOW"
 REASON_DATA_RESIDENCY_VIOLATION = "DATA_RESIDENCY_VIOLATION"
 REASON_DEPARTMENTAL_ISOLATION_VIOLATION = "DEPARTMENTAL_ISOLATION_VIOLATION"
+REASON_CLEARANCE_ESCALATION_BLOCKED = "CLEARANCE_ESCALATION_BLOCKED"
+REASON_DELEGATION_VIOLATION = "DELEGATION_VIOLATION"
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
@@ -47,6 +49,12 @@ POD_ANY_TAG_TOKEN_RE = re.compile(r"<\s*/?\s*pod:object\b[^>]*>?|<\s*/?\s*pod:ob
 POD_OBJECT_TAG_RE = re.compile(
     r'<pod:object\s+locator="([^"<>]+)"(?:\s+sha256="([a-fA-F0-9]{64})")?\s*>(.*?)</pod:object>',
     re.DOTALL,
+)
+
+# Regex matching balanced inline <pod:delegate ...>...</pod:delegate> blocks for multi-agent swarm handoffs
+POD_DELEGATE_TAG_RE = re.compile(
+    r'<pod:delegate\s+([^>]+)>(.*?)</pod:delegate>',
+    re.IGNORECASE | re.DOTALL,
 )
 
 
@@ -654,8 +662,38 @@ class PrevalidatorEnforcer:
         # 1. Evaluate and transform message texts (strict `<pod:object>` parser + live inner-text SHA-256 + fallback Presidio)
         new_payload = json.loads(json.dumps(payload))
 
+        def process_delegates(text_val: str) -> str:
+            nonlocal reason_codes
+            if "pod:delegate" not in text_val.lower():
+                return text_val
+
+            def replace_delegate(m: re.Match[str]) -> str:
+                attrs_str = m.group(1)
+                inner_body = m.group(2)
+                tier_match = re.search(r'parent_tier=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
+                parent_tier = tier_match.group(1).capitalize() if tier_match else "Restricted"
+
+                req_level = CLEARANCE_ORDER.get(parent_tier, 2)
+                caller_level = CLEARANCE_ORDER.get(caller_clearance, 0)
+                if caller_level < req_level:
+                    reason_codes.append(REASON_CLEARANCE_ESCALATION_BLOCKED)
+                    reason_codes.append(REASON_DELEGATION_VIOLATION)
+                    return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                allowed_egress = "allow_external" if parent_tier == "Public" else "internal_only"
+                if EGRESS_ORDER.get(target_egress, 0) > EGRESS_ORDER.get(allowed_egress, 0):
+                    reason_codes.append(REASON_CLEARANCE_ESCALATION_BLOCKED)
+                    reason_codes.append("EGRESS_DENIED")
+                    return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                return inner_body
+
+            return POD_DELEGATE_TAG_RE.sub(replace_delegate, text_val)
+
         def process_text(text: str) -> str:
             nonlocal reason_codes, locators_seen, stripped_locators, masked_locators, total_untagged_chars, has_inline_pod_tags
+
+            text = process_delegates(text)
 
             is_valid_structure, parsed_blocks = self._validate_pod_tag_structure(text)
             if not is_valid_structure:

@@ -289,6 +289,23 @@ default
 
 ---
 
+## Enterprise AI Agent & RAG Framework Ecosystem
+
+G1 Docket provides turnkey zero-trust admission control adapters for all leading AI agent and RAG frameworks via `docket.integrations`:
+
+| Framework / Source | Adapter Class / Decorator | Primary Role & Guarantee |
+| :--- | :--- | :--- |
+| **LlamaIndex** | `DocketLlamaIndexPostprocessor` | Intercepts `NodeWithScore` batches, binds SHA-256 hashes, and rejects poisoned nodes or clearance mismatches |
+| **Vector DBs** *(Milvus, Pinecone, Qdrant, Weaviate, Chroma)* | `DocketVectorRetriever` | Formats similarity search chunks into verified `<pod:object>` envelopes with automatic digest computation |
+| **LangChain** | `DocketLangChainCallbackHandler` | Pre-dispatch callback auditor catching untagged context, data smuggling, or character threshold breaches |
+| **CrewAI** | `DocketCrewAITool` / wrapper | Attests agent tool execution results before inter-agent communication or final delegation |
+| **LangGraph** | `@docket_langgraph_node` | Wraps state transitions and messages between graph nodes with cryptographic provenance |
+| **AutoGen** | `DocketAutoGenHook` | Inter-agent message hook validating and tagging conversational exchanges between conversable agents |
+| **Snowflake Data Warehouse** | `@attested_tool("snowflake://...")` | Binds SQL queries and Snowpark results to verifiable table-level and column-level attestation contracts |
+| **Google BigQuery** | `@attested_tool("bigquery://...")` | Validates data residency and departmental isolation on BigQuery enterprise datasets |
+
+---
+
 ## License & Third-Party Open Source Software
 
 G1 Docket is licensed under the **Apache License 2.0** — see [LICENSE](LICENSE).

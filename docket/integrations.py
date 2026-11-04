@@ -544,5 +544,32 @@ class DocketVectorRetriever:
         return "\n".join(blocks)
 
 
+def wrap_delegated_context(
+    content: str,
+    origin_sha256: str,
+    parent_tier: str = "Restricted",
+    agent_id: str = "agent-worker",
+    origin_locator: str | None = None,
+    sig: str | None = None,
+) -> str:
+    """Wrap agent output or summary in a `<pod:delegate>` container for multi-agent swarm handoffs.
+
+    Guarantees that downstream synthesizing agents cannot launder or leak high-clearance
+    information to lower-tier models or unauthorized callers.
+    """
+    attrs = [
+        f'origin_sha256="{origin_sha256}"',
+        f'parent_tier="{parent_tier}"',
+        f'agent_id="{agent_id}"',
+    ]
+    if origin_locator:
+        attrs.append(f'origin_locator="{origin_locator}"')
+    if sig:
+        attrs.append(f'sig="{sig}"')
+    attr_str = " ".join(attrs)
+    return f"<pod:delegate {attr_str}>{content}</pod:delegate>"
+
+
+
 
 

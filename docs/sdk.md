@@ -679,5 +679,31 @@ resp = client.chat_completions(
 )
 ```
 
+---
+
+## 19. LlamaIndex RAG Integration (`DocketLlamaIndexPostprocessor`)
+
+The `DocketLlamaIndexPostprocessor` provides turnkey attestation enforcement for LlamaIndex query engines, routers, and retrievers by automatically wrapping `NodeWithScore` objects into cryptographic `<pod:object>` tokens:
+
+```python
+from docket import DocketClient, DocketLlamaIndexPostprocessor
+
+# 1. Instantiate the postprocessor
+postprocessor = DocketLlamaIndexPostprocessor(auto_hash=True)
+
+# 2. Add to your LlamaIndex QueryEngine or Retriever
+# query_engine = index.as_query_engine(node_postprocessors=[postprocessor])
+
+# 3. Or postprocess retrieved nodes directly:
+# nodes = retriever.retrieve("What is the cluster CIDR?")
+# verified_nodes = postprocessor.postprocess_nodes(nodes)
+```
+
+Key features:
+- Automatically extracts node locator metadata and computes SHA-256 content digests.
+- Enforces multi-tier clearance boundaries and prevents unpapered context smuggling.
+- Protects against vector poisoning and prompt injection through real-time hash drift detection.
+
+
 
 

@@ -21,6 +21,7 @@ from docket.integrations import (
     extract_prompt_locators,
     format_rag_prompt,
     wrap_agent_tool_output,
+    wrap_delegated_context,
     wrap_rag_documents,
 )
 
@@ -49,6 +50,7 @@ __all__ = [
     "docket_langgraph_node",
     "attested_tool",
     "wrap_agent_tool_output",
+    "wrap_delegated_context",
     "wrap_rag_documents",
     "format_rag_prompt",
     "extract_prompt_locators",
