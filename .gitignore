@@ -40,7 +40,9 @@ reports/*.xml
 reports/*benchmark*
 reports/*BENCHMARK*
 scripts/*benchmark*
-scripts/
+scripts/*
+!scripts/demo_walkthrough.py
+!scripts/run_prevalidator.py
 tests/*benchmark*
 tests/data/
 tests/debug_failures.py
