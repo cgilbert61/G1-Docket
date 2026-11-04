@@ -214,6 +214,26 @@ transformer = DocketDocumentTransformer(default_locator_key="source", auto_hash=
 attested_docs = transformer.transform_documents(retrieved_docs)
 ```
 
+#### LangChain Pre-Dispatch Prompt Callback Handler
+Audit every prompt before dispatch to an LLM provider to ensure zero unpapered data exfiltration:
+
+```python
+from docket.integrations import DocketLangChainCallbackHandler
+
+handler = DocketLangChainCallbackHandler(
+    require_attested_context=True,  # Blocks prompts lacking <pod:object> markers
+    max_untagged_chars=200,         # Caps untagged context to prevent data smuggling
+    on_violation="raise",           # "raise" 403 PolicyDenialError or "log" to audit trail
+)
+
+# Attach to LangChain LLM or Chain callbacks:
+# chain.invoke({"question": "..."}, config={"callbacks": [handler]})
+
+# Review structured compliance audit trail:
+for entry in handler.audit_log:
+    print(entry["decision"], entry.get("reason"), entry.get("locators"))
+```
+
 #### LlamaIndex Node Postprocessor
 Plug `DocketLlamaIndexPostprocessor` directly into any LlamaIndex query engine or retriever:
 
@@ -224,6 +244,21 @@ postprocessor = DocketLlamaIndexPostprocessor(default_locator_key="file_path", a
 # Add to query engine:
 # query_engine = index.as_query_engine(node_postprocessors=[postprocessor])
 attested_nodes = postprocessor.postprocess_nodes(retrieved_nodes)
+```
+
+#### LlamaIndex Ingestion Pipeline Component
+Use `DocketTransformComponent` in LlamaIndex indexing pipelines to wrap document nodes during ingestion:
+
+```python
+from docket.integrations import DocketTransformComponent
+from llama_index.core.ingestion import IngestionPipeline
+
+pipeline = IngestionPipeline(
+    transformations=[
+        DocketTransformComponent(default_locator_key="file_path", auto_hash=True),
+        # embedding_model, etc.
+    ]
+)
 ```
 
 ---
