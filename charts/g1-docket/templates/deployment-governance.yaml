@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-governance
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: governance
+spec:
+  replicas: {{ .Values.governance.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "g1-docket.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: governance
+  template:
+    metadata:
+      labels:
+        {{- include "g1-docket.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: governance
+    spec:
+      containers:
+        - name: governance
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.governance.image.repository }}:{{ .Values.governance.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.governance.service.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ include "g1-docket.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.governance.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2

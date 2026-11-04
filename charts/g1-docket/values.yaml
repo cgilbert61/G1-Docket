@@ -1,0 +1,70 @@
+# Default values for g1-docket Helm chart.
+# Declare variables to be passed into templates.
+
+global:
+  imageRegistry: ghcr.io/cgilbert61
+  imagePullPolicy: IfNotPresent
+
+gateway:
+  mode: "enforce" # "enforce" (inline blocking) or "observe" (audit-only pass-through)
+  strictInlineHash: true
+  upstreamGatewayUrl: "http://litellm-gateway:14000"
+  snapshotUrl: "http://snapshot-publisher:18081/v1/snapshot"
+  governanceUrl: "http://governance-triage:18084"
+
+abac:
+  dataResidency:
+    enabled: true
+  departmentalIsolation:
+    enabled: true
+
+prevalidator:
+  replicaCount: 3
+  image:
+    repository: g1-docket-prevalidator
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18082
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 70
+
+governance:
+  replicaCount: 2
+  image:
+    repository: g1-docket-governance
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 18084
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: alb
+    # alb.ingress.kubernetes.io/scheme: internal
+  hosts:
+    - host: docket.corp.internal
+      paths:
+        - path: /
+          pathType: Prefix
+          service: prevalidator
+  tls: []

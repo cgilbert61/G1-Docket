@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-config
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+data:
+  POD_GATEWAY_MODE: {{ .Values.gateway.mode | quote }}
+  POD_SNAPSHOT_URL: {{ .Values.gateway.snapshotUrl | quote }}
+  POD_PUBLIC_KEY_DIR: "/var/lib/pod/public_keys"
+  POD_PREVALIDATOR_PORT: "18082"
+  POD_UPSTREAM_GATEWAY_URL: {{ .Values.gateway.upstreamGatewayUrl | quote }}
+  POD_STRICT_INLINE_HASH: {{ .Values.gateway.strictInlineHash | quote }}
+  POD_GOVERNANCE_URL: {{ .Values.gateway.governanceUrl | quote }}
+  POD_ENABLE_ABAC_DATA_RESIDENCY: {{ .Values.abac.dataResidency.enabled | quote }}
+  POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION: {{ .Values.abac.departmentalIsolation.enabled | quote }}

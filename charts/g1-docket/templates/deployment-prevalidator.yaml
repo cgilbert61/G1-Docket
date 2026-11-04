@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "g1-docket.fullname" . }}-prevalidator
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prevalidator
+spec:
+  replicas: {{ .Values.prevalidator.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "g1-docket.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: prevalidator
+  template:
+    metadata:
+      labels:
+        {{- include "g1-docket.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: prevalidator
+    spec:
+      containers:
+        - name: prevalidator
+          image: "{{ .Values.global.imageRegistry }}/{{ .Values.prevalidator.image.repository }}:{{ .Values.prevalidator.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.prevalidator.service.port }}
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ include "g1-docket.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.prevalidator.resources | nindent 12 }}
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 1
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: g1-docket
+description: Production Helm Chart for G1 Docket Cryptographic Data Attestation & Zero-DB-Call AI Gateway Prevalidator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai-security
+  - data-attestation
+  - in-toto
+  - zero-trust
+  - llm-gateway
+  - admission-control
+  - abac
+maintainers:
+  - name: G1163RT Security Labs
+    email: security@contoso.com
