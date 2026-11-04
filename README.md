@@ -335,3 +335,14 @@ G1 Docket exposes standard Prometheus text exposition format (`text/plain; versi
 | **Prevalidator Gateway** | `:18082` | `GET /metrics` | `g1_docket_mode`, `g1_docket_evaluations_total`, `g1_docket_evaluations_by_decision_total{decision="allow\|deny\|strip\|mask"}`, `g1_docket_policy_denials_by_reason_total`, `g1_docket_evaluation_duration_seconds{quantile="0.5\|0.95\|0.99"}`, `g1_docket_active_snapshot_sequence`, `g1_docket_active_snapshot_entries` |
 | **HITL Governance & SIEM** | `:18084` | `GET /metrics` | `g1_docket_governance_worm_events_total`, `g1_docket_governance_quarantine_items{status="QUARANTINED\|RELEASED\|REJECTED"}`, `g1_docket_governance_siem_destinations{enabled="true\|false"}` |
 
+### Prometheus Alerting Rules & Helm Integration
+
+Pre-configured Prometheus alert definitions are bundled for Helm and vanilla Kubernetes deployments under [`deploy/k8s/prometheus-alerts.yaml`](deploy/k8s/prometheus-alerts.yaml) and [`deploy/helm/g1-docket/templates/prometheusrule.yaml`](deploy/helm/g1-docket/templates/prometheusrule.yaml):
+
+* **`G1DocketSubMillisecondSLABreached`**: Critical alert when p95 admission latency breaches the $5\text{ ms}$ SLA budget.
+* **`G1DocketHashDriftSpike`**: Critical alert when $> 5$ hash drift / tamper events occur within 5 minutes.
+* **`G1DocketWORMVerificationFailure`**: Critical alert when Merkle hash-chain verification detects broken ledger integrity.
+* **`G1DocketQuarantineBacklog`**: Warning alert when $> 50$ quarantined items await Four-Eyes dual-key triage.
+
+See the complete [Observability & Monitoring Guide](docs/observability.md) for Prometheus scrape configurations, Grafana dashboard JSON models, and ServiceMonitor manifests.
+
