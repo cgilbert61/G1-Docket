@@ -50,8 +50,8 @@ jobs:
 
     - name: Lint Helm Chart
       run: |
-        helm lint charts/g1-docket
+        helm lint deploy/helm/g1-docket
 
     - name: Test Helm Template Generation
       run: |
-        helm template g1-docket charts/g1-docket --set ingress.enabled=true
+        helm template g1-docket deploy/helm/g1-docket --set ingress.enabled=true
