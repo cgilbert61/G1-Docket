@@ -43,6 +43,7 @@ scripts/*
 !scripts/run_prevalidator.py
 !scripts/generate_compliance_report.py
 !scripts/run_benchmark_600.py
+!scripts/run_all_verifications.py
 
 # Local test scratch files
 tests/debug_failures.py
