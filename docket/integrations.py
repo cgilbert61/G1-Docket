@@ -148,3 +148,64 @@ def format_rag_prompt(
 def extract_prompt_locators(prompt: str) -> list[str]:
     """Extract all canonical data locators referenced in `<pod:object>` blocks inside a prompt."""
     return [match.group(1) for match in POD_OBJECT_LOCATOR_RE.finditer(prompt)]
+
+
+class DocketDocumentTransformer:
+    """LangChain-compatible Document Transformer that wraps document content into `<pod:object>` tokens.
+
+    Can be placed into a LangChain pipeline or document retriever chain.
+    """
+
+    def __init__(self, default_locator_key: str = "source", auto_hash: bool = False):
+        self.default_locator_key = default_locator_key
+        self.auto_hash = auto_hash
+
+    def transform_documents(self, documents: Sequence[Any]) -> Sequence[Any]:
+        """Wrap each document's `page_content` in canonical `<pod:object>` attestation markers."""
+        transformed = []
+        for doc in documents:
+            if hasattr(doc, "page_content") and hasattr(doc, "metadata"):
+                meta = doc.metadata or {}
+                loc = str(meta.get("locator") or meta.get(self.default_locator_key) or meta.get("uri") or "urn:doc:unknown")
+                sha = meta.get("sha256")
+                if self.auto_hash and not sha:
+                    sha = hashlib.sha256(str(doc.page_content).encode("utf-8")).hexdigest()
+                wrapped = DocketClient.wrap_object(locator=loc, content=str(doc.page_content), sha256=sha)
+
+                try:
+                    cls = doc.__class__
+                    new_doc = cls(page_content=wrapped, metadata=dict(meta))
+                    transformed.append(new_doc)
+                except Exception:
+                    doc.page_content = wrapped
+                    transformed.append(doc)
+            else:
+                transformed.append(doc)
+        return transformed
+
+
+class DocketLlamaIndexPostprocessor:
+    """LlamaIndex-compatible Node Postprocessor that wraps retrieved node content into `<pod:object>` tokens.
+
+    Can be added to `node_postprocessors` on any LlamaIndex QueryEngine or Retriever.
+    """
+
+    def __init__(self, default_locator_key: str = "file_path", auto_hash: bool = False):
+        self.default_locator_key = default_locator_key
+        self.auto_hash = auto_hash
+
+    def postprocess_nodes(self, nodes: list[Any], query_bundle: Any = None) -> list[Any]:
+        """Wrap each node's text in canonical `<pod:object>` attestation markers."""
+        for item in nodes:
+            node = getattr(item, "node", item)
+            meta = getattr(node, "metadata", {}) or {}
+            loc = str(meta.get("locator") or meta.get(self.default_locator_key) or meta.get("source") or "urn:doc:unknown")
+            sha = meta.get("sha256")
+            text = getattr(node, "text", "")
+            if self.auto_hash and not sha:
+                sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            wrapped = DocketClient.wrap_object(locator=loc, content=text, sha256=sha)
+            if hasattr(node, "text"):
+                node.text = wrapped
+        return nodes
+

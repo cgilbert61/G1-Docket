@@ -207,3 +207,19 @@ def test_docket_framework_integrations_and_tool_decorator():
     wrapped = wrap_rag_documents(docs)
     assert '<pod:object locator="s3://legal/contract.pdf">LangChain retrieved chunk</pod:object>' in wrapped
     assert '<pod:object locator="snowflake://warehouse/q3_kpi">LlamaIndex retrieved chunk</pod:object>' in wrapped
+
+    # 6. DocketDocumentTransformer
+    from docket.integrations import DocketDocumentTransformer, DocketLlamaIndexPostprocessor
+
+    transformer = DocketDocumentTransformer(auto_hash=True)
+    transformed = transformer.transform_documents([MockLangChainDoc("Doc content", "s3://corp/doc.md")])
+    assert len(transformed) == 1
+    assert '<pod:object locator="s3://corp/doc.md" sha256=' in transformed[0].page_content
+    assert "Doc content</pod:object>" in transformed[0].page_content
+
+    # 7. DocketLlamaIndexPostprocessor
+    postprocessor = DocketLlamaIndexPostprocessor(auto_hash=True)
+    post_nodes = postprocessor.postprocess_nodes([MockNodeWithScore("Node text", "snowflake://corp/view")])
+    assert len(post_nodes) == 1
+    assert '<pod:object locator="snowflake://corp/view" sha256=' in post_nodes[0].node.text
+    assert "Node text</pod:object>" in post_nodes[0].node.text

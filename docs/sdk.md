@@ -202,6 +202,30 @@ print("Data assets referenced in prompt:", locators)
 # Output: ['s3://corp-lake/annual_report.pdf', 'snowflake://acme.snowflakecomputing.com/FINANCE/PUBLIC/Q3']
 ```
 
+### D. LangChain & LlamaIndex Pipeline Components
+
+#### LangChain Pipeline Transformer
+Use `DocketDocumentTransformer` directly in LangChain retrieval pipelines to automatically wrap retrieved documents:
+
+```python
+from docket.integrations import DocketDocumentTransformer
+
+transformer = DocketDocumentTransformer(default_locator_key="source", auto_hash=True)
+attested_docs = transformer.transform_documents(retrieved_docs)
+```
+
+#### LlamaIndex Node Postprocessor
+Plug `DocketLlamaIndexPostprocessor` directly into any LlamaIndex query engine or retriever:
+
+```python
+from docket.integrations import DocketLlamaIndexPostprocessor
+
+postprocessor = DocketLlamaIndexPostprocessor(default_locator_key="file_path", auto_hash=True)
+# Add to query engine:
+# query_engine = index.as_query_engine(node_postprocessors=[postprocessor])
+attested_nodes = postprocessor.postprocess_nodes(retrieved_nodes)
+```
+
 ---
 
 ## 6. Directory Prevalidation & Scanning
