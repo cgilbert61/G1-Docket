@@ -55,6 +55,8 @@ class DocketClient:
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
         timeout: float = 30.0,
+        transport: httpx.BaseTransport | None = None,
+        app: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
@@ -63,7 +65,9 @@ class DocketClient:
         self.admin_key = admin_key
         self.default_caller_key = default_caller_key
         self.timeout = timeout
-        self._client = httpx.Client(timeout=timeout)
+        if app is not None and transport is None:
+            transport = httpx.ASGITransport(app=app)
+        self._client = httpx.Client(timeout=timeout, transport=transport, base_url=self.base_url if transport else "")
 
     def close(self) -> None:
         """Close the underlying HTTP client."""
@@ -493,6 +497,8 @@ class AsyncDocketClient:
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
         timeout: float = 30.0,
+        transport: httpx.AsyncBaseTransport | None = None,
+        app: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
@@ -501,7 +507,9 @@ class AsyncDocketClient:
         self.admin_key = admin_key
         self.default_caller_key = default_caller_key
         self.timeout = timeout
-        self._client = httpx.AsyncClient(timeout=timeout)
+        if app is not None and transport is None:
+            transport = httpx.ASGITransport(app=app)
+        self._client = httpx.AsyncClient(timeout=timeout, transport=transport, base_url=self.base_url if transport else "")
 
     async def close(self) -> None:
         """Close the underlying HTTP client."""

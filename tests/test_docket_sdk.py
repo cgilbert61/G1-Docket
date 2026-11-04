@@ -40,8 +40,7 @@ def test_docket_client_mock_policy_denial():
         )
 
     transport = httpx.MockTransport(handler)
-    client = DocketClient()
-    client._client = httpx.Client(transport=transport)
+    client = DocketClient(transport=transport)
 
     with pytest.raises(PolicyDenialError) as exc_info:
         client.chat_completions(messages=[{"role": "user", "content": "secret"}])
