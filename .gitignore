@@ -16,7 +16,8 @@ build/
 .env
 .pod_keys/
 .pod_public_keys/
-data/
+/data/
+!tests/data/
 *.jsonl
 examples/out_demo/
 examples/out_phase0/
@@ -36,18 +37,14 @@ Thumbs.db
 # Large scanner raw dumps
 reports/*.xml
 
-# Benchmarking & Performance Evaluation (Not included in GitHub)
-*benchmark*
-*BENCHMARK*
-reports/*benchmark*
-reports/*BENCHMARK*
-scripts/*benchmark*
+# Local scripts whitelist
 scripts/*
 !scripts/demo_walkthrough.py
 !scripts/run_prevalidator.py
 !scripts/generate_compliance_report.py
-tests/*benchmark*
-tests/data/
+!scripts/run_benchmark_600.py
+
+# Local test scratch files
 tests/debug_failures.py
 tests/test_unpapered.py
 tests/test_valid.py
