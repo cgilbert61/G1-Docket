@@ -114,10 +114,26 @@ def main() -> int:
         print(f"  [+] Model Gateway Output: {resp3['choices'][0]['message']['content']}")
 
         # ---------------------------------------------------------------------
-        # Scenario 4: Tampered Query Output (Data Poisoning / Hash Drift Defense)
+        # Scenario 4: Dynamic In-Flight Field Masking on Snowflake CRM Table
         # ---------------------------------------------------------------------
         print("\n" + "-" * 75)
-        print("[Scenario 4] Rogue Actor alters Snowflake query rows (Cryptographic Hash Mismatch)")
+        print("[Scenario 4] Dynamic In-Flight Field Masking (permit_masked=True)")
+        print("-" * 75)
+
+        resp4 = client.chat_completions(
+            messages=[{"role": "user", "content": f"Analyze customer: {crm_data}"}],
+            model="local-model",
+            caller_key="pod-key-confidential",
+            permit_masked=True,
+        )
+        print("  [+] Gatekeeper Decision: DYNAMIC MASKING (HTTP 200 OK)")
+        print(f"  [+] Sanitized Model Input: {resp4['choices'][0]['message']['content']}")
+
+        # ---------------------------------------------------------------------
+        # Scenario 5: Tampered Query Output (Data Poisoning / Hash Drift Defense)
+        # ---------------------------------------------------------------------
+        print("\n" + "-" * 75)
+        print("[Scenario 5] Rogue Actor alters Snowflake query rows (Cryptographic Hash Mismatch)")
         print("-" * 75)
 
         tampered_data = (
@@ -140,10 +156,10 @@ def main() -> int:
             print("  [+] Cryptographic Integrity Enforced: Live hash differs from signed DSSE record.")
 
         # ---------------------------------------------------------------------
-        # Scenario 5: Data Smuggling Prevention (Untagged Free-Text Prompt Audit)
+        # Scenario 6: Data Smuggling Prevention (Untagged Free-Text Prompt Audit)
         # ---------------------------------------------------------------------
         print("\n" + "-" * 75)
-        print("[Scenario 5] Anti-Smuggling: Agent attempts to dump unpapered Snowflake data")
+        print("[Scenario 6] Anti-Smuggling: Agent attempts to dump unpapered Snowflake data")
         print("-" * 75)
 
         callback_auditor = DocketLangChainCallbackHandler(
