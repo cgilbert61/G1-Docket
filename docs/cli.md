@@ -39,6 +39,8 @@ pod --help
 | **`review-list`** | HITL | List pending human review triage items |
 | **`review-approve`** | HITL | Approve and finalize classification for an object in review |
 | **`doctor`** | Diagnostics | Probe cluster endpoints, check latencies, and audit WORM chain |
+| **`watermark-inspect`** | Forensics | Extract and verify cryptographic provenance watermark from text or file |
+| **`watermark-embed`** | Forensics | Embed an invisible zero-width cryptographic watermark into a file |
 
 ---
 
@@ -176,3 +178,42 @@ Extends the attestation period if the observed hash matches the original signatu
 docket renew "file:///shared/legal_docs/master_services_agreement.pdf" \
   --file /shared/legal_docs/master_services_agreement.pdf
 ```
+
+---
+
+## 10. Forensic Watermarking & Provenance Attribution
+
+### Inspect Text or File for Cryptographic Watermark
+Detects invisible zero-width Unicode steganography (`\u200B`, `\u200C`, `\u200D`) or structural XML comments, validates the HMAC-SHA256 signature against the gateway secret, and outputs JSON attribution metadata:
+
+```bash
+docket watermark-inspect "Leaked customer report text..."
+# Or from a file:
+docket watermark-inspect /path/to/suspicious_transcript.txt
+```
+
+Example JSON Output:
+```json
+{
+  "inspected_target": "/path/to/suspicious_transcript.txt",
+  "watermark_found": true,
+  "format": "invisible_steganography",
+  "version": 1,
+  "snapshot_sequence": 3168,
+  "timestamp_epoch": 1793829946,
+  "timestamp_iso": "2026-11-04T22:05:46+00:00",
+  "caller_key": "pod-key-analyst",
+  "signature": "ca9957d2f03d94ee",
+  "signature_valid": true
+}
+```
+
+### Embed Invisible Watermark into a File
+Binds a document to the active DSSE snapshot sequence number and caller identity without modifying its visual appearance:
+
+```bash
+docket watermark-embed confidential_memo.md \
+  --caller-key pod-key-analyst \
+  --output watermarked_memo.md
+```
+

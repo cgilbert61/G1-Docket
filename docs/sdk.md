@@ -475,3 +475,77 @@ except DocketError as exc:
     print(exc.status_code)
     print(exc.response_body)
 ```
+
+---
+
+## 13. Cryptographic Prompt Watermarking & Forensic Attribution
+
+The SDK provides zero-width Unicode steganography utilities (`\u200B`, `\u200C`, `\u200D`) and structural provenance comment formatters to cryptographically bind prompts and transcripts to the active DSSE snapshot contract:
+
+```python
+from docket import DocketClient, embed_invisible_watermark, extract_invisible_watermark
+
+# 1. Embed an invisible watermark into prompt text
+text = "Review Q3 corporate revenue numbers."
+watermarked = DocketClient.embed_watermark(
+    text=text,
+    snapshot_sequence=3168,
+    caller_key="pod-key-analyst",
+)
+# Visually identical to the original text; zero tokenization degradation
+
+# 2. Forensic extraction from leaked or exported text
+payload = DocketClient.extract_watermark(watermarked)
+if payload:
+    print("Snapshot Sequence:", payload["snapshot_sequence"])
+    print("Caller Identity:", payload["caller_key"])
+    print("Timestamp (UTC):", payload["timestamp_iso"])
+    print("Signature Valid:", payload["signature_valid"])
+```
+
+---
+
+## 14. Multi-Agent Cross-Clearance Orchestration
+
+When autonomous AI agents collaborate in workflows (LangGraph, AutoGen, CrewAI), the SDK enables strict segregation of duties through caller keys and clearance levels:
+
+```python
+from docket import DocketClient, PolicyDenialError
+from docket.integrations import attested_tool
+
+client = DocketClient()
+
+# Privileged worker queries internal Snowflake CRM
+@attested_tool("snowflake://corp/FINANCE/PUBLIC/DIM_CUSTOMER_CONTACTS", auto_hash=True)
+def get_customer_crm(cust_id: str) -> str:
+    return f"{cust_id} | elena@corp.io | phone: 555-0199"
+
+record = get_customer_crm("CUST-901")
+
+# 1. Privileged execution on local model (ALLOW)
+res1 = client.chat_completions(
+    messages=[{"role": "user", "content": record}],
+    model="local-model",
+    caller_key="pod-key-confidential",
+)
+
+# 2. Public agent attempting external egress is blocked (HARD BLOCK)
+try:
+    client.chat_completions(
+        messages=[{"role": "user", "content": record}],
+        model="gpt-4o",
+        caller_key="pod-key-public",
+    )
+except PolicyDenialError as err:
+    print("Blocked egress to external public cloud:", err)
+
+# 3. Dynamic in-flight sanitization for external release (200 OK)
+res3 = client.chat_completions(
+    messages=[{"role": "user", "content": record}],
+    model="gpt-4o",
+    caller_key="pod-key-public",
+    permit_masked=True,
+)
+print("Sanitized text:", res3["choices"][0]["message"]["content"])
+```
+
