@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
+import hmac
 import json
 import os
 import sqlite3
@@ -1373,11 +1375,29 @@ def create_prevalidator_app(
         is_stream = bool(clean_payload.get("stream", False))
         active_base_url = llm_config["base_url"]
 
+        # Cryptographic admission verdict headers for non-repudiation & telemetry
+        verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
+        lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
+        active_snap = enforcer.snapshot_store.get_active_snapshot()
+        seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
+        locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
+        ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
+        
+        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
+        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        response_headers = {
+            "X-POD-Attestation-Verdict": verdict,
+            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
+            "X-POD-Snapshot-Sequence": str(seq_num),
+            "X-POD-Attestation-Signature": verdict_sig,
+        }
+
         if active_base_url.startswith("mock://"):
             user_text = _extract_last_user_text(clean_payload)
             if is_stream:
-                return StreamingResponse(_mock_openai_sse_stream(model, user_text), media_type="text/event-stream")
-            return {
+                return StreamingResponse(_mock_openai_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
+            mock_body = {
                 "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
                 "object": "chat.completion",
                 "model": model,
@@ -1392,6 +1412,7 @@ def create_prevalidator_app(
                     }
                 ],
             }
+            return JSONResponse(status_code=200, content=mock_body, headers=response_headers)
 
         forward_headers = {
             k: v
@@ -1429,7 +1450,9 @@ def create_prevalidator_app(
 
         client = get_shared_upstream_client()
         resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-        return JSONResponse(status_code=resp.status_code, content=resp.json())
+        merged_resp_headers = dict(resp.headers)
+        merged_resp_headers.update(response_headers)
+        return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request) -> Any:
@@ -1497,11 +1520,29 @@ def create_prevalidator_app(
         is_stream = bool(clean_payload.get("stream", False))
         active_base_url = llm_config["base_url"]
 
+        # Cryptographic admission verdict headers for non-repudiation & telemetry
+        verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
+        lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
+        active_snap = enforcer.snapshot_store.get_active_snapshot()
+        seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
+        locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
+        ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
+        
+        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
+        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        response_headers = {
+            "X-POD-Attestation-Verdict": verdict,
+            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
+            "X-POD-Snapshot-Sequence": str(seq_num),
+            "X-POD-Attestation-Signature": verdict_sig,
+        }
+
         if active_base_url.startswith("mock://"):
             user_text = _extract_last_user_text(clean_payload)
             if is_stream:
-                return StreamingResponse(_mock_anthropic_sse_stream(model, user_text), media_type="text/event-stream")
-            return {
+                return StreamingResponse(_mock_anthropic_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
+            mock_anthropic_body = {
                 "id": f"msg_{uuid.uuid4().hex[:12]}",
                 "type": "message",
                 "role": "assistant",
@@ -1514,6 +1555,7 @@ def create_prevalidator_app(
                 ],
                 "stop_reason": "end_turn",
             }
+            return JSONResponse(status_code=200, content=mock_anthropic_body, headers=response_headers)
 
         forward_headers = {
             k: v
@@ -1545,7 +1587,9 @@ def create_prevalidator_app(
 
         client = get_shared_upstream_client()
         resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-        return JSONResponse(status_code=resp.status_code, content=resp.json())
+        merged_resp_headers = dict(resp.headers)
+        merged_resp_headers.update(response_headers)
+        return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
 
     @app.get("/v1/admin/audit-log")
     def get_audit_log(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:
