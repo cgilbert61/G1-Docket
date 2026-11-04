@@ -51,6 +51,7 @@ class DocketClient:
         base_url: str = "http://localhost:18082",
         registry_url: str = "http://localhost:18080",
         snapshot_url: str = "http://localhost:18081",
+        governance_url: str = "http://localhost:18084",
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
         timeout: float = 30.0,
@@ -58,6 +59,7 @@ class DocketClient:
         self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
+        self.governance_url = governance_url.rstrip("/")
         self.admin_key = admin_key
         self.default_caller_key = default_caller_key
         self.timeout = timeout
@@ -287,6 +289,29 @@ class DocketClient:
         return self._handle_response(res)
 
     # -------------------------------------------------------------------------
+    # Governance, WORM Audit & Quarantine
+    # -------------------------------------------------------------------------
+
+    def verify_worm_chain(self) -> dict[str, Any]:
+        """Recalculate and verify the cryptographic WORM hash-chain on the Governance service."""
+        res = self._client.get(f"{self.governance_url}/api/worm/verify")
+        return self._handle_response(res)
+
+    def export_worm_ledger(self, format: str = "json") -> str | dict[str, Any]:
+        """Export the cryptographic WORM audit ledger as JSON or CSV string."""
+        res = self._client.get(f"{self.governance_url}/api/worm/export", params={"format": format})
+        if format.lower() == "csv":
+            return res.text
+        return self._handle_response(res)
+
+    def export_quarantine(self, format: str = "json") -> str | dict[str, Any]:
+        """Export quarantined security items as JSON or CSV string."""
+        res = self._client.get(f"{self.governance_url}/api/quarantine/export", params={"format": format})
+        if format.lower() == "csv":
+            return res.text
+        return self._handle_response(res)
+
+    # -------------------------------------------------------------------------
     # Registry Catalog & Governance
     # -------------------------------------------------------------------------
 
@@ -430,6 +455,7 @@ class AsyncDocketClient:
         base_url: str = "http://localhost:18082",
         registry_url: str = "http://localhost:18080",
         snapshot_url: str = "http://localhost:18081",
+        governance_url: str = "http://localhost:18084",
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
         timeout: float = 30.0,
@@ -437,6 +463,7 @@ class AsyncDocketClient:
         self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
+        self.governance_url = governance_url.rstrip("/")
         self.admin_key = admin_key
         self.default_caller_key = default_caller_key
         self.timeout = timeout
@@ -627,4 +654,23 @@ class AsyncDocketClient:
             headers=self._admin_headers(),
             params={"locator": locator},
         )
+        return self._handle_response(res)
+
+    async def verify_worm_chain(self) -> dict[str, Any]:
+        """Recalculate and verify the cryptographic WORM hash-chain on the Governance service asynchronously."""
+        res = await self._client.get(f"{self.governance_url}/api/worm/verify")
+        return self._handle_response(res)
+
+    async def export_worm_ledger(self, format: str = "json") -> str | dict[str, Any]:
+        """Export the cryptographic WORM audit ledger as JSON or CSV string asynchronously."""
+        res = await self._client.get(f"{self.governance_url}/api/worm/export", params={"format": format})
+        if format.lower() == "csv":
+            return res.text
+        return self._handle_response(res)
+
+    async def export_quarantine(self, format: str = "json") -> str | dict[str, Any]:
+        """Export quarantined security items as JSON or CSV string asynchronously."""
+        res = await self._client.get(f"{self.governance_url}/api/quarantine/export", params={"format": format})
+        if format.lower() == "csv":
+            return res.text
         return self._handle_response(res)

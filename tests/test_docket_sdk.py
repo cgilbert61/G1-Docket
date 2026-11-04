@@ -104,6 +104,42 @@ def test_async_docket_client_mock():
     asyncio.run(_run())
 
 
+def test_docket_client_governance_methods():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/worm/verify":
+            return httpx.Response(200, json={"valid": True, "total_entries": 10})
+        if request.url.path == "/api/worm/export":
+            fmt = request.url.params.get("format", "json")
+            if fmt == "csv":
+                return httpx.Response(200, text="entry_id,timestamp_utc_iso8601\n1,2026-11-04")
+            return httpx.Response(200, json={"events": [], "total_events": 0})
+        if request.url.path == "/api/quarantine/export":
+            fmt = request.url.params.get("format", "json")
+            if fmt == "csv":
+                return httpx.Response(200, text="quarantine_id,status\nQ-1,QUARANTINED")
+            return httpx.Response(200, json={"items": [], "total_items": 0})
+        return httpx.Response(404, json={"detail": "Not found"})
+
+    transport = httpx.MockTransport(handler)
+    client = DocketClient()
+    client._client = httpx.Client(transport=transport)
+
+    verify = client.verify_worm_chain()
+    assert verify["valid"] is True
+
+    worm_json = client.export_worm_ledger(format="json")
+    assert "events" in worm_json
+
+    worm_csv = client.export_worm_ledger(format="csv")
+    assert "entry_id,timestamp_utc_iso8601" in worm_csv
+
+    q_json = client.export_quarantine(format="json")
+    assert "items" in q_json
+
+    q_csv = client.export_quarantine(format="csv")
+    assert "quarantine_id,status" in q_csv
+
+
 def test_docket_sdk_abac_headers():
     client = DocketClient()
     headers = client._caller_headers(
