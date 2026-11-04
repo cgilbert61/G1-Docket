@@ -641,4 +641,43 @@ with DocketClient(app=app) as client:
     assert health["status"] == "ok"
 ```
 
+---
+
+## 18. Vector Database & Semantic RAG Integration (`DocketVectorRetriever`)
+
+The `DocketVectorRetriever` bridges vector search databases (Milvus, Pinecone, Qdrant, Weaviate, Chroma) and semantic chunk retrievers into G1 Docket zero-trust admission control:
+
+```python
+from docket import DocketClient, DocketVectorRetriever
+
+client = DocketClient()
+retriever = DocketVectorRetriever(client=client, auto_hash=True)
+
+# 1. Format individual vector hits
+chunk_token = retriever.format_chunk(
+    content="Public Reference Architecture: Zero-Trust AI Admission Control.",
+    locator="s3://corp-knowledge/public/arch.md#chunk=1",
+)
+
+# 2. Format a list of search hits (from LangChain, LlamaIndex, or raw dicts)
+vector_hits = [
+    {
+        "text": "Cluster CIDR: 10.42.16.0/20",
+        "locator": "s3://corp-knowledge/internal/runbook.json",
+        "tier": "Internal",
+    }
+]
+rag_context = retriever.format_search_results(vector_hits)
+
+# 3. Forward to G1 Docket admission gateway (< 250 µs in-memory evaluation)
+resp = client.chat_completions(
+    messages=[
+        {"role": "user", "content": f"Context:\n{rag_context}\n\nQuestion: Extract cluster CIDR."}
+    ],
+    model="local-model",
+    caller_key="pod-key-internal",
+)
+```
+
+
 

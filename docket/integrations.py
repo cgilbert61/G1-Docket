@@ -497,4 +497,52 @@ class DocketAutoGenHook:
         return self.process_message(sender, message, recipient, silent)
 
 
+class DocketVectorRetriever:
+    """Turnkey adapter for Vector Databases (Pinecone, Milvus, Qdrant, Weaviate, Chroma).
+
+    Transforms vector search results and semantic chunks into verified `<pod:object>`
+    provenance blocks with automatic SHA-256 digest binding.
+    """
+
+    def __init__(self, client: DocketClient | None = None, auto_hash: bool = True) -> None:
+        self.client = client or DocketClient()
+        self.auto_hash = auto_hash
+
+    def format_chunk(self, content: str, locator: str, sha256: str | None = None) -> str:
+        """Format an individual retrieved vector chunk into `<pod:object>` syntax."""
+        return wrap_agent_tool_output(locator=locator, content=content, sha256=sha256, auto_hash=self.auto_hash)
+
+    def format_search_results(
+        self,
+        hits: Sequence[Mapping[str, Any] | Any],
+        content_key: str = "text",
+        locator_key: str = "locator",
+        sha256_key: str = "sha256",
+    ) -> str:
+        """Format a list of vector search matches into newline-delimited `<pod:object>` tokens."""
+        blocks: list[str] = []
+        for hit in hits:
+            if isinstance(hit, Mapping):
+                content = str(hit.get(content_key) or hit.get("page_content") or hit.get("content", ""))
+                loc = str(hit.get(locator_key) or hit.get("source") or hit.get("id", "vector://unspecified"))
+                sha = hit.get(sha256_key)
+            elif hasattr(hit, "page_content"):
+                content = str(hit.page_content)
+                meta = getattr(hit, "metadata", {}) or {}
+                loc = str(meta.get(locator_key, meta.get("source", "vector://unspecified")))
+                sha = meta.get(sha256_key)
+            elif hasattr(hit, "text"):
+                content = str(hit.text)
+                meta = getattr(hit, "metadata", {}) or {}
+                loc = str(meta.get(locator_key, meta.get("source", "vector://unspecified")))
+                sha = meta.get(sha256_key)
+            else:
+                content = str(hit)
+                loc = "vector://unspecified"
+                sha = None
+            blocks.append(self.format_chunk(content=content, locator=loc, sha256=sha))
+        return "\n".join(blocks)
+
+
+
 

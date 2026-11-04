@@ -14,6 +14,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 10: LangGraph Workflow State Admission Demo
   Phase 11: AutoGen Multi-Agent Message Hook Demo
   Phase 12: SOC 2 Evidence Export & Standalone Air-Gapped Verifier
+  Phase 13: Vector Database & Chunk-Level RAG Admission Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -141,6 +142,9 @@ def main() -> int:
 
     # Phase 12: SOC 2 Evidence Packager & Standalone Air-Gapped Verification
     phases.append(run_phase(12, "SOC 2 Evidence Export & Standalone Verifier", [sys.executable, "-c", "import subprocess, sys, glob, os; subprocess.check_call([sys.executable, 'scripts/export_soc2_evidence.py']); zips = glob.glob('audit_evidence_bundles/*.zip'); assert zips; subprocess.check_call([sys.executable, 'scripts/docket_verify_standalone.py', zips[-1]]); [os.remove(z) for z in zips]"]))
+
+    # Phase 13: Vector Database & Chunk-Level RAG Admission Demo
+    phases.append(run_phase(13, "Vector Database & Chunk-Level RAG Admission Demo", [sys.executable, "examples/vector_rag_agent_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
