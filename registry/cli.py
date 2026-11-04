@@ -94,6 +94,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_doc.add_argument("--registry-url", default="http://localhost:18080", help="Authoritative Registry URL")
     p_doc.add_argument("--snapshot-url", default="http://localhost:18081", help="Snapshot Publisher URL")
 
+    # watermark-inspect
+    p_wi = sub.add_parser("watermark-inspect", help="Extract and cryptographically verify forensic provenance watermark from text or file")
+    p_wi.add_argument("target", help="Text string or path to file to inspect")
+
+    # watermark-embed
+    p_we = sub.add_parser("watermark-embed", help="Embed an invisible zero-width cryptographic watermark into a file")
+    p_we.add_argument("file", help="Path to text file to watermark")
+    p_we.add_argument("--seq", type=int, default=None, help="Snapshot sequence number (defaults to live gateway sequence)")
+    p_we.add_argument("--caller-key", default="pod-key-analyst", help="Caller key identity to bind to watermark")
+    p_we.add_argument("--output", default=None, help="Output file path (defaults to overwrite input)")
+
     return parser
 
 
@@ -323,6 +334,73 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             env = pub.publish_snapshot()
             print(json.dumps({"published": True, "path": str(args.output), "signatures": env["signatures"]}, indent=2))
+            return 0
+
+        if args.command == "watermark-inspect":
+            target = args.target
+            p = Path(target)
+            content = p.read_text(encoding="utf-8") if (p.exists() and p.is_file()) else target
+
+            from docket.watermark import extract_invisible_watermark, has_invisible_watermark
+            import re
+            
+            res: dict[str, Any] = {"inspected_target": str(p) if (p.exists() and p.is_file()) else "raw_text_input"}
+            if has_invisible_watermark(content):
+                payload = extract_invisible_watermark(content)
+                if payload:
+                    res.update({
+                        "watermark_found": True,
+                        "format": "invisible_steganography",
+                        **payload.to_dict(),
+                    })
+                else:
+                    res.update({"watermark_found": False, "note": "Zero-width characters detected but payload corrupt or invalid signature"})
+            else:
+                m = re.search(r'<!--\s*pod:provenance\s+seq="(\d+)"\s+caller="([^"]+)"\s+timestamp="([^"]+)"\s+sig="([^"]+)"\s*-->', content)
+                if m:
+                    res.update({
+                        "watermark_found": True,
+                        "format": "structural_comment",
+                        "snapshot_sequence": int(m.group(1)),
+                        "caller_key": m.group(2),
+                        "timestamp_iso": m.group(3),
+                        "signature": m.group(4),
+                    })
+                else:
+                    res.update({"watermark_found": False})
+
+            print(json.dumps(res, indent=2))
+            return 0 if res.get("watermark_found") else 1
+
+        if args.command == "watermark-embed":
+            p = Path(args.file)
+            if not p.exists() or not p.is_file():
+                print(json.dumps({"error": f"File not found: {args.file}"}), file=sys.stderr)
+                return 1
+
+            seq = args.seq
+            if seq is None:
+                try:
+                    import urllib.request
+                    with urllib.request.urlopen("http://localhost:18082/healthz", timeout=2.0) as resp:
+                        h_data = json.loads(resp.read().decode("utf-8"))
+                        seq = h_data.get("snapshot_sequence", 1)
+                except Exception:
+                    seq = 1
+
+            from docket.watermark import embed_invisible_watermark
+            content = p.read_text(encoding="utf-8")
+            watermarked = embed_invisible_watermark(content, snapshot_sequence=seq, caller_key=args.caller_key)
+
+            out_path = Path(args.output) if args.output else p
+            out_path.write_text(watermarked, encoding="utf-8")
+
+            print(json.dumps({
+                "watermarked": True,
+                "file": str(out_path),
+                "snapshot_sequence": seq,
+                "caller_key": args.caller_key,
+            }, indent=2))
             return 0
 
         return 1
