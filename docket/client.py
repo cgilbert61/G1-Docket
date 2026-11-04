@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterator, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import httpx
 
