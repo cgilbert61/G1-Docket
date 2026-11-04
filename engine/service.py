@@ -712,7 +712,11 @@ def create_engine_app() -> FastAPI:
             "This file exists on disk in the directory, but has NO signed record in the Registry or Snapshot.\n"
         )
         new_file = target_dir / fname
-        new_file.write_text(body, encoding="utf-8")
+        try:
+            new_file.write_text(body, encoding="utf-8")
+        except PermissionError:
+            if not new_file.exists():
+                raise
         return {
             "created": True,
             "file_name": fname,

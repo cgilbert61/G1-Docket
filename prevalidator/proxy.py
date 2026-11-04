@@ -185,7 +185,7 @@ def create_prevalidator_app(
     engine_service_url: str | None = None,
 ) -> FastAPI:
     """Create the Prevalidator proxy application."""
-    app = FastAPI(title="G1 Docket by G1163RT Security Labs — AI Gateway Prevalidator", version="0.1.0")
+    app = FastAPI(title="G1 Docket by G1163RT Security Labs - AI Gateway Prevalidator", version="0.1.0")
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
@@ -559,34 +559,34 @@ def create_prevalidator_app(
                 tier = "NONE"
                 unattested_count += 1
                 if is_observe_mode:
-                    reason_detail = "OBSERVE MODE (FORWARDED + LOGGED) — Unattested file (would block in Enforce Mode)"
+                    reason_detail = "OBSERVE MODE (FORWARDED + LOGGED) - Unattested file (would block in Enforce Mode)"
                 else:
-                    reason_detail = "UNATTESTED — No signed record in snapshot"
+                    reason_detail = "UNATTESTED - No signed record in snapshot"
             elif snap_entry["content_sha256"].lower() != obs_sha.lower():
                 att_state = "HASH_DRIFT"
                 tier = snap_entry["tier"]
                 unattested_count += 1
                 hash_drift_count += 1
                 if is_observe_mode:
-                    reason_detail = "OBSERVE MODE (FORWARDED + LOGGED) — File SHA-256 modified (would block in Enforce Mode)"
+                    reason_detail = "OBSERVE MODE (FORWARDED + LOGGED) - File SHA-256 modified (would block in Enforce Mode)"
                 else:
-                    reason_detail = "UNATTESTED — File content SHA-256 modified since attestation"
+                    reason_detail = "UNATTESTED - File content SHA-256 modified since attestation"
             else:
                 att_state = f"ATTESTED ({snap_entry['status'].upper()})"
                 tier = snap_entry["tier"]
                 if is_clean_pass:
                     if outcome.audit_entry.decision == "strip":
                         strip_count += 1
-                        reason_detail = "PASSED (STRIP) — Confidential content stripped per policy"
+                        reason_detail = "PASSED (STRIP) - Confidential content stripped per policy"
                     else:
                         allow_count += 1
-                        reason_detail = "PASSED (ALLOW) — Hash & policy verified"
+                        reason_detail = "PASSED (ALLOW) - Hash & policy verified"
                 else:
                     policy_denied_count += 1
                     if is_observe_mode:
-                        reason_detail = f"OBSERVE MODE (FORWARDED + LOGGED) — Would block in Enforce Mode: {', '.join(reasons)}"
+                        reason_detail = f"OBSERVE MODE (FORWARDED + LOGGED) - Would block in Enforce Mode: {', '.join(reasons)}"
                     else:
-                        reason_detail = f"BLOCKED — {', '.join(reasons)}"
+                        reason_detail = f"BLOCKED - {', '.join(reasons)}"
 
             if is_clean_pass:
                 passed_count += 1
@@ -626,9 +626,9 @@ def create_prevalidator_app(
         }
 
         pure_unattested = unattested_count - hash_drift_count
-        mode_tag = "OBSERVE MODE (Audit-Only — Violations Forwarded & Logged)" if enforcer.mode == "observe" else "ENFORCE MODE (Active Blocking)"
+        mode_tag = "OBSERVE MODE (Audit-Only - Violations Forwarded & Logged)" if enforcer.mode == "observe" else "ENFORCE MODE (Active Blocking)"
         english_summary = (
-            f"[{mode_tag}] Prevalidator scanned {total_count} total file(s) in '{dir_label}' in {enforcer_ms} ms in-memory ({avg_file_us} µs/file; {total_wall_ms} ms incl. disk SHA-256): "
+            f"[{mode_tag}] Prevalidator scanned {total_count} total file(s) in '{dir_label}' in {enforcer_ms} ms in-memory ({avg_file_us} us/file; {total_wall_ms} ms incl. disk SHA-256): "
             f"{passed_count} of {total_count} file(s) PASSED/FORWARDED ({allow_count} Clean Allowed, {strip_count} Stripped) and "
             f"{failed_count} of {total_count} file(s) BLOCKED "
             f"({pure_unattested} Unattested file(s) with no signed record, "
