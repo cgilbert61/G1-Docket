@@ -259,3 +259,51 @@ def test_docket_framework_integrations_and_tool_decorator():
     assert len(post_nodes) == 1
     assert '<pod:object locator="snowflake://corp/view" sha256=' in post_nodes[0].node.text
     assert "Node text</pod:object>" in post_nodes[0].node.text
+
+    # 8. DocketTransformComponent (LlamaIndex ingestion pipeline component)
+    from docket.integrations import DocketTransformComponent
+
+    transform_comp = DocketTransformComponent(auto_hash=True)
+    transformed_nodes = transform_comp([MockNode("Ingested node text", "s3://lake/record.json")])
+    assert len(transformed_nodes) == 1
+    assert '<pod:object locator="s3://lake/record.json" sha256=' in transformed_nodes[0].text
+    assert "Ingested node text</pod:object>" in transformed_nodes[0].text
+
+    # 9. DocketLangChainCallbackHandler
+    from docket.integrations import DocketLangChainCallbackHandler
+
+    handler = DocketLangChainCallbackHandler(require_attested_context=True, max_untagged_chars=50)
+
+    # Valid prompt with attested locator
+    valid_prompt = 'Summarize: <pod:object locator="snowflake://db/t">sales data</pod:object>'
+    handler.on_llm_start(serialized={}, prompts=[valid_prompt])
+    assert len(handler.audit_log) == 1
+    assert handler.audit_log[0]["decision"] == "allow"
+    assert handler.audit_log[0]["locators"] == ["snowflake://db/t"]
+
+    # Violation 1: Missing attested context when required
+    invalid_prompt = "Tell me everything about sales without any tags."
+    with pytest.raises(PolicyDenialError) as exc:
+        handler.on_llm_start(serialized={}, prompts=[invalid_prompt])
+    assert exc.value.status_code == 403
+    assert "missing_attested_context" in str(exc.value.response_body)
+
+    # Violation 2: Untagged characters exceed quota
+    bloated_prompt = (
+        '<pod:object locator="s3://b/f">short</pod:object>'
+        + (" " + "A" * 100)  # 100 untagged chars exceeds max_untagged_chars=50
+    )
+    with pytest.raises(PolicyDenialError) as exc2:
+        handler.on_llm_start(serialized={}, prompts=[bloated_prompt])
+    assert exc2.value.status_code == 403
+    assert "untagged_quota_exceeded" in str(exc2.value.response_body)
+
+    # Test audit-only mode (on_violation="log")
+    permissive_handler = DocketLangChainCallbackHandler(
+        require_attested_context=True,
+        on_violation="log",
+    )
+    permissive_handler.on_llm_start(serialized={}, prompts=["Untagged prompt"])
+    assert permissive_handler.audit_log[-1]["decision"] == "deny"
+    assert permissive_handler.audit_log[-1]["reason"] == "MISSING_ATTESTED_CONTEXT"
+

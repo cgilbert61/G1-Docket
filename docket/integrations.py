@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
-from docket.client import DocketClient
+from docket.client import DocketClient, PolicyDenialError
 
 POD_OBJECT_LOCATOR_RE = re.compile(
     r'<pod:object\s+locator=["\']([^"\']+)["\'](?:\s+sha256=["\']([^"\']+)["\'])?>(.*?)</pod:object>',
@@ -208,4 +208,135 @@ class DocketLlamaIndexPostprocessor:
             if hasattr(node, "text"):
                 node.text = wrapped
         return nodes
+
+
+try:
+    from langchain_core.callbacks.base import BaseCallbackHandler  # type: ignore[import-untyped]
+except ImportError:
+    class BaseCallbackHandler:  # type: ignore[no-redef]
+        """Duck-typed fallback when langchain-core is not installed."""
+        pass
+
+
+class DocketLangChainCallbackHandler(BaseCallbackHandler):
+    """LangChain-compatible CallbackHandler that audits prompts before LLM dispatch.
+
+    Enforces that prompts carry valid `<pod:object>` locators when `require_attested_context=True`,
+    ensures untagged prompt content does not exceed `max_untagged_chars`, and records
+    an in-memory compliance audit log for observability.
+    """
+
+    def __init__(
+        self,
+        client: DocketClient | None = None,
+        require_attested_context: bool = False,
+        max_untagged_chars: int | None = None,
+        on_violation: str = "raise",  # "raise" | "log"
+    ) -> None:
+        self.client = client
+        self.require_attested_context = require_attested_context
+        self.max_untagged_chars = max_untagged_chars
+        self.on_violation = on_violation
+        self.audit_log: list[dict[str, Any]] = []
+
+    def on_llm_start(
+        self,
+        serialized: dict[str, Any],
+        prompts: list[str],
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Inspect each prompt before it is dispatched to the LLM model provider."""
+        for prompt in prompts:
+            locators = extract_prompt_locators(prompt)
+            had_violation = False
+
+            if self.require_attested_context and not locators:
+                had_violation = True
+                msg = "Prompt dispatch blocked: require_attested_context is True but no <pod:object> locators found."
+                self.audit_log.append({
+                    "decision": "deny",
+                    "reason": "MISSING_ATTESTED_CONTEXT",
+                    "locators": [],
+                    "prompt_sample": prompt[:120],
+                })
+                if self.on_violation == "raise":
+                    raise PolicyDenialError(
+                        msg,
+                        status_code=403,
+                        response_body={"error": msg, "code": "missing_attested_context"},
+                    )
+
+            if self.max_untagged_chars is not None:
+                stripped = POD_OBJECT_LOCATOR_RE.sub("", prompt)
+                if len(stripped.strip()) > self.max_untagged_chars:
+                    had_violation = True
+                    msg = (
+                        f"Prompt dispatch blocked: untagged characters ({len(stripped.strip())}) "
+                        f"exceed quota ({self.max_untagged_chars})."
+                    )
+                    self.audit_log.append({
+                        "decision": "deny",
+                        "reason": "UNTAGGED_QUOTA_EXCEEDED",
+                        "untagged_chars": len(stripped.strip()),
+                        "locators": locators,
+                        "prompt_sample": prompt[:120],
+                    })
+                    if self.on_violation == "raise":
+                        raise PolicyDenialError(
+                            msg,
+                            status_code=403,
+                            response_body={"error": msg, "code": "untagged_quota_exceeded"},
+                        )
+
+            if not had_violation:
+                self.audit_log.append({
+                    "decision": "allow",
+                    "locators": locators,
+                    "prompt_sample": prompt[:120],
+                })
+
+
+class DocketTransformComponent:
+    """LlamaIndex-compatible TransformComponent for ingestion and indexing pipelines.
+
+    Wraps extracted node text in canonical `<pod:object>` attestation markers during
+    the ingestion or indexing stage before embedding or storage.
+    """
+
+    def __init__(self, default_locator_key: str = "file_path", auto_hash: bool = True) -> None:
+        self.default_locator_key = default_locator_key
+        self.auto_hash = auto_hash
+
+    def __call__(self, nodes: Sequence[Any], **kwargs: Any) -> Sequence[Any]:
+        return self.transform(nodes, **kwargs)
+
+    def transform(self, nodes: Sequence[Any], **kwargs: Any) -> Sequence[Any]:
+        """Transform nodes by wrapping their text content in `<pod:object>` tags."""
+        for item in nodes:
+            node = getattr(item, "node", item)
+            meta = getattr(node, "metadata", {}) or {}
+            loc = str(
+                meta.get("locator")
+                or meta.get(self.default_locator_key)
+                or meta.get("source")
+                or "urn:doc:unknown"
+            )
+            sha = meta.get("sha256")
+            text = getattr(node, "text", "")
+            if self.auto_hash and not sha:
+                sha = hashlib.sha256(str(text).encode("utf-8")).hexdigest()
+            wrapped = DocketClient.wrap_object(locator=loc, content=str(text), sha256=sha)
+            if hasattr(node, "text"):
+                node.text = wrapped
+        return nodes
+
+
+# Backward-compatible alias
+DocketLlamaIndexTransformComponent = DocketTransformComponent
+
 
