@@ -430,10 +430,10 @@
         <div style="display: flex; align-items: center; gap: 6px;">
           <span style="font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase;">Scale Tier:</span>
           <select id="auditFirmScaleSelect" onchange="changeAuditFirmScale()" style="width: auto; padding: 4px 8px; font-size: 12px; margin-bottom: 0; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px;">
-            <option value="mid_size" selected>Mid-Size Firm (30 Days · 100K–1M objects)</option>
-            <option value="large_enterprise">Large Enterprise (60 Days · 1M–10M objects)</option>
-            <option value="hyperscale">Hyperscale / Multi-Cloud (90 Days · 10M–100M objects)</option>
-            <option value="sovereign">Global Mega / Sovereign (180 Days · 100M–1B objects)</option>
+            <option value="mid_size" selected>Mid-Size Firm (30 Days - 100K-1M objects)</option>
+            <option value="large_enterprise">Large Enterprise (60 Days - 1M-10M objects)</option>
+            <option value="hyperscale">Hyperscale / Multi-Cloud (90 Days - 10M-100M objects)</option>
+            <option value="sovereign">Global Mega / Sovereign (180 Days - 100M-1B objects)</option>
           </select>
         </div>
         <!-- TIME WINDOW SELECTOR -->
@@ -1188,7 +1188,7 @@
       <!-- LEFT: ENGINE DIRECTORY ATTESTATION RESULTS -->
       <div class="card">
         <h2>
-          <span>Step 1 &mdash; Attestation Engine Directory Report</span>
+          <span>Step 1: Attestation Engine Directory Report</span>
           <span id="attestStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
         </h2>
 
@@ -1233,7 +1233,7 @@
       <div class="card scorecard-mode-enforce" id="prevalScorecardCard">
         <h2>
           <span style="display: inline-flex; align-items: center; gap: 8px;">
-            <span>Step 2 &mdash; Prevalidator Directory Verification Scorecard</span>
+            <span>Step 2: Prevalidator Directory Verification Scorecard</span>
             <span id="scorecardModePill" class="badge badge-Public" style="font-size: 10px; padding: 2px 7px;">ENFORCE (BLOCKING)</span>
           </span>
           <span id="prevalStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
@@ -1973,7 +1973,8 @@
           return;
         }
         const stamp = new Date().toLocaleTimeString();
-        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--accent); font-weight:600;">&#10003; Attested ${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s</span> <span style="color:var(--muted); font-size:11px;">(${stamp})</span>`;
+        const checkSvg = `<svg style="display:inline-block; width:12px; height:12px; vertical-align:-1px; margin-right:4px; fill:currentColor;" viewBox="0 0 16 16"><path d="M13.485 1.929a1 1 0 0 1 .086 1.414l-7 8a1 1 0 0 1-1.474.025l-3.5-3.5a1 1 0 0 1 1.414-1.414L5.75 9.172l6.321-7.223a1 1 0 0 1 1.414-.02z"/></svg>`;
+        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--accent); font-weight:600;">${checkSvg}Attested ${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s</span> <span style="color:var(--muted); font-size:11px;">(${stamp})</span>`;
         document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${totalElapsed}s &bull; ${stamp}):</strong> ${data.english_summary}`;
         document.getElementById('attTotal').textContent = data.total_files_found;
         document.getElementById('attActive').textContent = data.attested_active_count;
@@ -1996,7 +1997,7 @@
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s) &mdash; 1. Run Attestation on Directory`;
+          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s) - 1. Run Attestation on Directory`;
         }
         await prevalidateSelectedDirectory();
       } catch (err) {
@@ -2090,7 +2091,10 @@
           return;
         }
 
-        document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; margin-right:4px;"></span>${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
+        const passSvg = `<svg style="display:inline-block; width:12px; height:12px; vertical-align:-1px; margin-right:4px; fill:currentColor;" viewBox="0 0 16 16"><path d="M13.485 1.929a1 1 0 0 1 .086 1.414l-7 8a1 1 0 0 1-1.474.025l-3.5-3.5a1 1 0 0 1 1.414-.02z"/></svg>`;
+        const warnDot = `<span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--warn); margin-right:4px;"></span>`;
+        const prevalIcon = data.failed_count > 0 ? warnDot : passSvg;
+        document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;">${prevalIcon}${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
         const banner = document.getElementById('prevalEnglishBanner');
         const mode = data.mode || currentMode;
         const formattedSummary = (data.english_summary || '')
@@ -2140,7 +2144,7 @@
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `Prevalidated (${data.passed_count}/${data.total_files} in ${totalElapsed}s) &mdash; 2. Run Prevalidator Scan`;
+          btn.textContent = `Prevalidated (${data.passed_count}/${data.total_files} in ${totalElapsed}s) - 2. Run Prevalidator Scan`;
         }
         await refreshState();
       } catch (err) {
@@ -2299,7 +2303,7 @@
       auditResp.entries.slice().reverse().slice(0, 10).forEach(a => {
         const tr = document.createElement('tr');
         const latMs = typeof a.decision_latency_ms === 'number' ? a.decision_latency_ms.toFixed(3) + ' ms' : '-';
-        const latUs = typeof a.decision_latency_us === 'number' ? ` (${a.decision_latency_us.toFixed(0)} µs)` : '';
+        const latUs = typeof a.decision_latency_us === 'number' ? ` (${a.decision_latency_us.toFixed(0)} us)` : '';
         tr.innerHTML = `<td><code>${a.timestamp.slice(11, 19)}</code></td>
           <td>${a.mode}</td>
           <td><strong>${a.decision}</strong></td>
@@ -2351,7 +2355,7 @@
           const pctHeight = Math.max(14, Math.min(100, Math.round((val / maxVal) * 100)));
           const color = val <= 1.0 ? '#1E293B' : (val <= 5.0 ? '#B45309' : '#B91C1C');
           const bar = document.createElement('div');
-          bar.title = `Eval #${idx + 1}: ${val.toFixed(3)} ms (${(val * 1000).toFixed(1)} µs)`;
+          bar.title = `Eval #${idx + 1}: ${val.toFixed(3)} ms (${(val * 1000).toFixed(1)} us)`;
           bar.style.cssText = `flex:1; max-width:22px; height:${pctHeight}%; background:${color}; border-radius:2px 2px 0 0; position:relative; cursor:pointer;`;
           spark.appendChild(bar);
         });
@@ -2376,7 +2380,7 @@
           await refreshState();
         }
         if (btn && data.benchmark_wall_ms !== undefined) {
-          btn.textContent = `100 Evals in ${Number(data.benchmark_wall_ms).toFixed(2)} ms (${Number(data.avg_eval_us).toFixed(1)} µs/eval)`;
+          btn.textContent = `100 Evals in ${Number(data.benchmark_wall_ms).toFixed(2)} ms (${Number(data.avg_eval_us).toFixed(1)} us/eval)`;
         }
       } finally {
         if (btn) btn.disabled = false;
