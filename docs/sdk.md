@@ -126,7 +126,29 @@ except PolicyDenialError as err:
 | :--- | :--- | :--- |
 | **`allow`** | Object tier $\le$ Caller clearance and AI eligibility is `allow` | Wrapper tags stripped, inner content passed to LLM cleanly. |
 | **`strip`** | Object is marked `Confidential` or eligibility is `strip` | Entire `<pod:object>` block replaced with `[POD:STRIPPED]`. Remainder of prompt forwarded. |
-| **`deny`** | Object is `Restricted`, `unattested`, `expired`, `revoked`, or hash mismatch | Uniform **`HTTP 403 Forbidden`** returned. LLM gateway never contacted. |
+| **`deny`** | Object is `Restricted`, `unattested`, `expired`, `revoked`, hash mismatch, or ABAC violation | Uniform **`HTTP 403 Forbidden`** returned. LLM gateway never contacted. |
+
+### ABAC, Departmental Isolation & Sovereign Boundaries
+
+The SDK supports fine-grained Attribute-Based Access Control (ABAC) and data sovereignty claims directly in `chat_completions()` and `messages()`:
+
+```python
+# 1. Enforce Departmental Isolation (Finance only)
+response = client.chat_completions(
+    messages=[{"role": "user", "content": prompt}],
+    model="gpt-4o",
+    caller_key="pod-key-confidential",
+    caller_dept="Finance",  # Transmits X-POD-Caller-Dept header
+)
+
+# 2. Enforce Sovereign Data Residency (EU GDPR Enclave)
+response = client.chat_completions(
+    messages=[{"role": "user", "content": prompt}],
+    model="gpt-4o",
+    caller_key="pod-key-public",
+    target_region="eu-central-1",  # Transmits X-POD-Target-Region header
+)
+```
 
 ---
 
