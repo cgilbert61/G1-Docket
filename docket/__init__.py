@@ -7,6 +7,7 @@ and Signed Snapshot Publisher.
 
 from docket.client import AsyncDocketClient, DocketClient, DocketError, PolicyDenialError
 from docket.integrations import (
+    DocketCrewAITool,
     DocketDocumentTransformer,
     DocketLangChainCallbackHandler,
     DocketLlamaIndexPostprocessor,
@@ -14,6 +15,7 @@ from docket.integrations import (
     DocketRAGDocument,
     DocketTransformComponent,
     attested_tool,
+    docket_langgraph_node,
     extract_prompt_locators,
     format_rag_prompt,
     wrap_agent_tool_output,
@@ -39,6 +41,8 @@ __all__ = [
     "DocketTransformComponent",
     "DocketLlamaIndexTransformComponent",
     "DocketLangChainCallbackHandler",
+    "DocketCrewAITool",
+    "docket_langgraph_node",
     "attested_tool",
     "wrap_agent_tool_output",
     "wrap_rag_documents",

@@ -398,3 +398,64 @@ class DocketTransformComponent:
 DocketLlamaIndexTransformComponent = DocketTransformComponent
 
 
+class DocketCrewAITool:
+    """CrewAI-compatible tool wrapper enforcing G1 Docket data provenance.
+
+    Wraps the tool execution to automatically wrap returned database records,
+    documents, or API results in canonical `<pod:object>` tokens.
+    """
+
+    def __init__(self, tool: Any, locator: str | Callable[..., str], auto_hash: bool = True) -> None:
+        self.tool = tool
+        self.locator = locator
+        self.auto_hash = auto_hash
+
+    def run(self, *args: Any, **kwargs: Any) -> str:
+        raw_result = self.tool.run(*args, **kwargs) if hasattr(self.tool, "run") else self.tool(*args, **kwargs)
+        loc = self.locator(*args, **kwargs) if callable(self.locator) else str(self.locator)
+        return wrap_agent_tool_output(loc, raw_result, auto_hash=self.auto_hash)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> str:
+        return self.run(*args, **kwargs)
+
+
+def docket_langgraph_node(
+    locator: str | Callable[[dict[str, Any]], str],
+    state_key: str = "messages",
+    auto_hash: bool = True,
+) -> Callable[..., Any]:
+    """Decorator for LangGraph node functions.
+
+    Ensures that context injected into the graph state is wrapped with canonical `<pod:object>`
+    provenance envelopes, allowing the Prevalidator to verify clearance as state flows across nodes.
+    """
+    def decorator(fn: Callable[[dict[str, Any]], dict[str, Any]]) -> Callable[[dict[str, Any]], dict[str, Any]]:
+        @functools.wraps(fn)
+        def wrapper(state: dict[str, Any]) -> dict[str, Any]:
+            new_state = fn(state)
+            if not isinstance(new_state, dict):
+                return new_state
+
+            if state_key in new_state:
+                val = new_state[state_key]
+                loc = locator(state) if callable(locator) else str(locator)
+                if isinstance(val, str) and "<pod:object" not in val:
+                    new_state[state_key] = wrap_agent_tool_output(loc, val, auto_hash=auto_hash)
+                elif isinstance(val, list):
+                    updated_list = list(val)
+                    if updated_list:
+                        last_item = updated_list[-1]
+                        if isinstance(last_item, dict) and "content" in last_item:
+                            content = str(last_item["content"])
+                            if "<pod:object" not in content:
+                                last_item["content"] = wrap_agent_tool_output(loc, content, auto_hash=auto_hash)
+                        elif hasattr(last_item, "content"):
+                            content = str(last_item.content)
+                            if "<pod:object" not in content:
+                                last_item.content = wrap_agent_tool_output(loc, content, auto_hash=auto_hash)
+                    new_state[state_key] = updated_list
+            return new_state
+        return wrapper
+    return decorator
+
+

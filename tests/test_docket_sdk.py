@@ -353,3 +353,30 @@ def test_multi_agent_clearance_segregation():
     assert exc.value.status_code == 403
 
 
+def test_crewai_and_langgraph_integrations():
+    """Verify native CrewAI tool wrapper and LangGraph node decorator."""
+    from docket.integrations import DocketCrewAITool, docket_langgraph_node
+
+    # 1. CrewAI Tool wrapper
+    class MockCrewTool:
+        def run(self, query: str) -> str:
+            return f"Queried results for {query}: balance=$1,200,000"
+
+    raw_tool = MockCrewTool()
+    attested_tool = DocketCrewAITool(raw_tool, locator="snowflake://corp/fin/gl", auto_hash=True)
+    res = attested_tool.run("Q3")
+    assert '<pod:object locator="snowflake://corp/fin/gl" sha256=' in res
+    assert "balance=$1,200,000</pod:object>" in res
+
+    # 2. LangGraph node decorator
+    @docket_langgraph_node(locator="bigquery://health/ehr/patient", state_key="messages", auto_hash=True)
+    def intake_node(state: dict):
+        return {"messages": [{"role": "system", "content": "Patient intake record: John Doe DOB 1980"}]}
+
+    out_state = intake_node({"messages": []})
+    wrapped_content = out_state["messages"][0]["content"]
+    assert '<pod:object locator="bigquery://health/ehr/patient" sha256=' in wrapped_content
+    assert "John Doe DOB 1980</pod:object>" in wrapped_content
+
+
+

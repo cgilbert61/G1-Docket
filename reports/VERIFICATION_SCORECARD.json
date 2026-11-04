@@ -1,0 +1,87 @@
+{
+  "timestamp_utc": "2026-11-04T22:18:46.744689+00:00",
+  "total_phases": 7,
+  "passed_phases": 7,
+  "failed_phases": 0,
+  "total_duration_seconds": 108.15,
+  "all_passed": true,
+  "phases": [
+    {
+      "phase_id": 1,
+      "name": "Cluster Health & WORM Merkle Chain Audit",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m registry.cli doctor",
+      "status": "PASS",
+      "duration_s": 5.07,
+      "output_snippet": "----------------------------------------------------------------------\n[PASS] WORM Audit Merkle Chain    -> Valid (4340 events verified) [123.4ms]\n======================================================================\n[OK] All cluster admission control services are operational.",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 2,
+      "name": "Core SDK, ABAC, and Prevalidator Test Suite",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest tests/ -q",
+      "status": "PASS",
+      "duration_s": 31.23,
+      "output_snippet": "C:\\Users\\chuck\\Anaconda3\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\nfrom starlette.testclient import TestClient as TestClient  # noqa\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n57 passed, 1 warning in 28.05s",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 3,
+      "name": "Consumer Conformance Test Suite",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest conformance/ -q",
+      "status": "PASS",
+      "duration_s": 6.78,
+      "output_snippet": ".....                                                                    [100%]\n5 passed in 3.66s",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 4,
+      "name": "Multi-Agent Cross-Clearance Admission Control",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe examples/multi_agent_orchestration_demo.py",
+      "status": "PASS",
+      "duration_s": 2.35,
+      "output_snippet": "[+] Quarantine Incidents Log : 50 incidents tracked\n================================================================================\n[SUCCESS] MULTI-AGENT ADMISSION CONTROL BENCHMARK COMPLETE (0 ERRORS)\n================================================================================",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 5,
+      "name": "High-Concurrency Latency & Throughput Benchmark",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe benchmarks/benchmark_gateway_concurrency.py",
+      "status": "PASS",
+      "duration_s": 58.01,
+      "output_snippet": "4. Dynamic In-Flight Masking (MASK 200) |   32.1 RPS |  232.0 us | 1675.8 us |   97.20% | 100.00%\n==========================================================================================\n[+] Benchmark summary exported to: D:\\attestation\\reports\\concurrency_benchmark_report.json\n[+] Markdown report exported to: D:\\attestation\\reports\\CONCURRENCY_BENCHMARK.md",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 6,
+      "name": "Forensic Watermarking & Provenance Verification",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe -m pytest tests/test_watermark.py -q",
+      "status": "PASS",
+      "duration_s": 3.66,
+      "output_snippet": ".....                                                                    [100%]\n5 passed in 0.32s",
+      "details": {
+        "exit_code": 0
+      }
+    },
+    {
+      "phase_id": 7,
+      "name": "SOC 2 & ISO 27001 Cryptographic Audit Reporter",
+      "command": "C:\\Users\\chuck\\Anaconda3\\python.exe scripts/generate_compliance_report.py",
+      "status": "PASS",
+      "duration_s": 1.05,
+      "output_snippet": "[*] Generating G1 Docket Cryptographic Compliance Audit Report...\n[+] Compliance Audit Report written to: reports\\COMPLIANCE_AUDIT_REPORT.md\n[+] Machine-readable Summary written to: reports\\compliance_audit_summary.json",
+      "details": {
+        "exit_code": 0
+      }
+    }
+  ]
+}
