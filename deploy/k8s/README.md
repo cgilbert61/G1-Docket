@@ -63,3 +63,17 @@ kubectl get svc -n g1-docket
 | **Attestation Engine** | `18083` | HTTP | Continuous background delta crawler & catalog scanner |
 | **Registry API** | `18080` | HTTP | Central authoritative PostgreSQL attestation record registry |
 | **PostgreSQL** | `15432` | TCP | Central metadata & cryptographic record store |
+
+---
+
+## 4. Policy Customization & ABAC Configuration
+
+The `g1-docket-config` ConfigMap controls global security posture across all pods and sidecars:
+
+| Environment Variable | Default | Description |
+| :--- | :--- | :--- |
+| `POD_GATEWAY_MODE` | `"enforce"` | Operational mode: `"enforce"` (inline blocking) or `"observe"` (audit-only pass-through). |
+| `POD_ENABLE_ABAC_DATA_RESIDENCY` | `"true"` | Enforce regional sovereign boundary claims (e.g. EU GDPR enclaves). |
+| `POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION` | `"true"` | Enforce departmental compartmentalization (`X-POD-Caller-Dept` matching). |
+| `POD_STRICT_INLINE_HASH` | `"true"` | Live cryptographic SHA-256 fingerprint verification of `<pod:object>` tokens. |
+| `POD_UPSTREAM_GATEWAY_URL` | `"http://litellm-gateway:14000"` | Upstream LLM gateway or provider endpoint (OpenAI, vLLM, Bedrock, etc.). |
