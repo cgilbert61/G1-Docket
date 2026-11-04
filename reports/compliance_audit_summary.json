@@ -1,13 +1,13 @@
 {
-  "timestamp_utc": "2026-11-04 18:53:56 UTC",
+  "timestamp_utc": "2026-11-04 21:54:16 UTC",
   "mode": "ENFORCE",
   "chain_valid": true,
-  "total_objects": 618,
+  "total_objects": 624,
   "tier_distribution": {
-    "Public": 563,
+    "Public": 565,
     "Internal": 8,
-    "Confidential": 34,
-    "Restricted": 13,
+    "Confidential": 36,
+    "Restricted": 15,
     "Other": 0
   },
   "provider_distribution": {
@@ -18,9 +18,9 @@
     "Snowflake": 3,
     "BigQuery": 4,
     "PostgreSQL": 3,
-    "Other": 4
+    "Other": 10
   },
   "worm_records": 0,
   "active_quarantined": 50,
-  "tip_hash": "b5974bee0de5211c74242fff4e2f10428646031ee8bbe1334fbebc2ca82a619b"
+  "tip_hash": "bf1fd1f9e5aa94bf89916149a80bfea7e16955c53336c72976012766cb29690c"
 }

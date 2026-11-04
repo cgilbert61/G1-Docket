@@ -1,6 +1,6 @@
 # G1 Docket — Cryptographic Compliance & Zero-Trust Audit Dossier
 
-**Audit Timestamp:** `2026-11-04 18:53:56 UTC`  
+**Audit Timestamp:** `2026-11-04 21:54:16 UTC`  
 **Framework Version:** `G1 Docket v0.1 (Institutional Security Labs)`  
 **Audit Standard Reference:** `SOC 2 Type II (CC6.1, CC6.6, CC6.7) | ISO/IEC 27001:2022 (A.8.12, A.8.24) | NIST SP 800-207`  
 
@@ -14,21 +14,21 @@
 | **Prevalidator Gateway (:18082)** | `HEALTHY` | [PASS] Online & Healthy |
 | **Governance Subsystem (:18084)** | `HEALTHY` | [PASS] Online & Healthy |
 | **Cryptographic Hash-Chain** | `VALID (SHA-256 Non-Repudiation Verified)` | [PASS] Invariant Verified |
-| **Attested Data Estate Scale** | `618 discrete objects` | [PASS] Authoritative Snapshot Active |
+| **Attested Data Estate Scale** | `624 discrete objects` | [PASS] Authoritative Snapshot Active |
 
 ---
 
 ## 2. Attestation Estate & Sensitivity Classification Breakdown
 
-The in-memory snapshot contract actively governs access to **618 verified objects** across enterprise data repositories:
+The in-memory snapshot contract actively governs access to **624 verified objects** across enterprise data repositories:
 
 ### Sensitivity Tier Distribution
 | Sensitivity Tier | Object Count | Percentage | Mandatory Minimum Clearance | Maximum Egress Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Public** | `563` | `91.1%` | `pod-key-public` | Public API / Internet Frontier |
+| **Public** | `565` | `90.5%` | `pod-key-public` | Public API / Internet Frontier |
 | **Internal** | `8` | `1.3%` | `pod-key-internal` | Private Cloud / VPC Model |
-| **Confidential** | `34` | `5.5%` | `pod-key-confidential` | Private Cloud / Redacted Strip |
-| **Restricted** | `13` | `2.1%` | `pod-key-restricted` | Local Enclave Only |
+| **Confidential** | `36` | `5.8%` | `pod-key-confidential` | Private Cloud / Redacted Strip |
+| **Restricted** | `15` | `2.4%` | `pod-key-restricted` | Local Enclave Only |
 | **Other / Custom** | `0` | `0.0%` | N/A | Refused / Quarantined |
 
 ### Enterprise Data Source Distribution
@@ -51,7 +51,7 @@ All policy refusals, quarantine events, and emergency overrides are appended to 
 * **Audit Verification Algorithm:** Linear SHA-256 hash chaining over serialized DSSE envelopes.
 * **Total Ledger Records:** `0`
 * **Chain Validation Verdict:** **`PASS - Cryptographically Intact`**
-* **Active Tip Hash:** `b5974bee0de5211c74242fff4e2f10428646031ee8bbe1334fbebc2ca82a619b`
+* **Active Tip Hash:** `bf1fd1f9e5aa94bf89916149a80bfea7e16955c53336c72976012766cb29690c`
 
 ---
 
