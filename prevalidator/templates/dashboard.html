@@ -1286,6 +1286,7 @@
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('databricks')">8. Databricks Gate</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('iceberg')">9. Iceberg Lakehouse</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('mask')">10. Dynamic Masking</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('bigquery')">11. BigQuery HIPAA Gate</button>
           </div>
 
           <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
@@ -2138,6 +2139,11 @@
         document.getElementById('callerKey').value = 'pod-key-public';
         document.getElementById('modelSelect').value = 'gpt-4o';
         document.getElementById('promptInput').value = 'Process customer revenue record with dynamic PII field masking:\n<pod:object locator="iceberg://polaris.us-east-1.lakehouse.net/finance_analytics/fact_gl_revenue_ledger">fiscal_quarter:2026-Q3 | revenue_usd:$42,150,000 | operating_margin:28.4% | region:Global</pod:object>';
+      } else if (name === 'bigquery') {
+        document.getElementById('endpointSelect').value = '/v1/chat/completions';
+        document.getElementById('callerKey').value = 'pod-key-public';
+        document.getElementById('modelSelect').value = 'local-model';
+        document.getElementById('promptInput').value = 'Analyze HIPAA clinical intake record with dynamic PII field masking:\n<pod:object locator="bigquery://contoso-gcp-analytics/enterprise_mart/hipaa_patient_encounters">encounter_id:ENC-9921 | ssn:412-58-9021 | mrn:MRN-8839201 | diagnosis:ICD10-J45.909</pod:object>';
       }
     }
 
