@@ -34,6 +34,13 @@ def main() -> int:
         eng_health = client.get(f"{engine_url}/healthz").json()
         gw_health = client.get(f"{gateway_url}/healthz").json()
 
+        # Ensure Prevalidator is in enforce mode for blocking verification
+        client.post(
+            f"{prevalidator_url}/v1/admin/mode",
+            headers=admin_headers,
+            json={"mode": "enforce"},
+        )
+
         # 1. OpenAI `/v1/chat/completions` ALLOW on Public attested document
         r_allow = client.post(
             f"{prevalidator_url}/v1/chat/completions",
