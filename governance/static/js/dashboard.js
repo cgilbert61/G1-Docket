@@ -78,12 +78,24 @@ async function openTriageModal(qid) {
     k1Rat.value = '';
     document.getElementById('key1-badge').className = 'badge badge-warning';
     document.getElementById('key1-badge').textContent = 'Awaiting Key 1';
+    const qk1 = document.getElementById('btn-quick-k1');
+    if (qk1) qk1.classList.remove('hidden');
 
     k2Btn.disabled = true;
+    k2Btn.title = 'Locked: Complete Step 1 (Stage Key 1 Override) above first.';
     k2Op.disabled = true;
     k2Notes.disabled = true;
     document.getElementById('key2-badge').className = 'badge badge-neutral';
     document.getElementById('key2-badge').textContent = 'Locked';
+    const s2Badge = document.getElementById('step2-badge-tag');
+    if (s2Badge) {
+      s2Badge.textContent = 'STEP 2 (LOCKED)';
+      s2Badge.className = 'text-[10px] font-bold text-[#64748B] bg-[#F1F5F9] border border-[#E2E8F0] px-1.5 py-0.5 rounded';
+    }
+    const lockNotice = document.getElementById('key2-lock-notice');
+    if (lockNotice) lockNotice.classList.remove('hidden');
+    const qk2 = document.getElementById('btn-quick-k2');
+    if (qk2) qk2.classList.add('hidden');
     replayBox.classList.add('hidden');
   } else if (item.status === 'AWAITING_SECOND_KEY') {
     k1Btn.disabled = true;
@@ -93,14 +105,26 @@ async function openTriageModal(qid) {
     k1Rat.value = (item.first_key || {}).rationale || '';
     document.getElementById('key1-badge').className = 'badge badge-success';
     document.getElementById('key1-badge').textContent = `Signed by ${k1Op.value}`;
+    const qk1 = document.getElementById('btn-quick-k1');
+    if (qk1) qk1.classList.add('hidden');
 
     k2Btn.disabled = false;
+    k2Btn.title = 'Authorize emergency release and replay payload through :18082';
     k2Op.disabled = false;
     k2Notes.disabled = false;
     k2Op.value = '';
     k2Notes.value = '';
     document.getElementById('key2-badge').className = 'badge badge-warning';
     document.getElementById('key2-badge').textContent = 'Awaiting Distinct Key 2';
+    const s2Badge = document.getElementById('step2-badge-tag');
+    if (s2Badge) {
+      s2Badge.textContent = 'STEP 2 (UNLOCKED)';
+      s2Badge.className = 'text-[10px] font-bold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-1.5 py-0.5 rounded';
+    }
+    const lockNotice = document.getElementById('key2-lock-notice');
+    if (lockNotice) lockNotice.classList.add('hidden');
+    const qk2 = document.getElementById('btn-quick-k2');
+    if (qk2) qk2.classList.remove('hidden');
     replayBox.classList.add('hidden');
   } else if (item.status === 'RELEASED') {
     k1Btn.disabled = true;
@@ -108,7 +132,11 @@ async function openTriageModal(qid) {
     k1Rat.disabled = true;
     k1Op.value = (item.first_key || {}).operator || '';
     k1Rat.value = (item.first_key || {}).rationale || '';
+    const qk1 = document.getElementById('btn-quick-k1');
+    if (qk1) qk1.classList.add('hidden');
+
     k2Btn.disabled = true;
+    k2Btn.title = 'Item already released via Ed25519 DSSE emergency ticket.';
     k2Op.disabled = true;
     k2Notes.disabled = true;
     k2Op.value = (item.second_key || {}).operator || '';
@@ -117,6 +145,15 @@ async function openTriageModal(qid) {
     document.getElementById('key1-badge').textContent = `Signed by ${k1Op.value}`;
     document.getElementById('key2-badge').className = 'badge badge-success';
     document.getElementById('key2-badge').textContent = `Approved by ${k2Op.value}`;
+    const s2Badge = document.getElementById('step2-badge-tag');
+    if (s2Badge) {
+      s2Badge.textContent = 'STEP 2 (COMPLETED)';
+      s2Badge.className = 'text-[10px] font-bold text-[#166534] bg-[#F0FDF4] border border-[#BBF7D0] px-1.5 py-0.5 rounded';
+    }
+    const lockNotice = document.getElementById('key2-lock-notice');
+    if (lockNotice) lockNotice.classList.add('hidden');
+    const qk2 = document.getElementById('btn-quick-k2');
+    if (qk2) qk2.classList.add('hidden');
 
     if (item.replay_response) {
       replayBox.classList.remove('hidden');
@@ -125,6 +162,32 @@ async function openTriageModal(qid) {
   }
 
   document.getElementById('triage-modal').classList.remove('hidden');
+}
+
+function handleKey2Click(e) {
+  const k2Btn = document.getElementById('btn-submit-key2');
+  if (k2Btn && k2Btn.disabled) {
+    if (e) e.stopPropagation();
+    alert('⚠️ Step 1 Required:\n\nPlease complete Step 1 first:\n1. Enter Requester ID (or click "Autofill Demo Requester")\n2. Enter business justification\n3. Click "Stage Key 1 Override"\n\nOnce Key 1 is staged, Key 2 will unlock for distinct approver signoff.');
+  }
+}
+
+function quickFillDemoK1() {
+  const k1Op = document.getElementById('k1-operator');
+  const k1Rat = document.getElementById('k1-rationale');
+  if (k1Op && !k1Op.disabled) {
+    k1Op.value = 'secops-analyst-1';
+    k1Rat.value = 'Operational triage test: mission-critical incident justification.';
+  }
+}
+
+function quickFillDemoK2() {
+  const k2Op = document.getElementById('k2-operator');
+  const k2Notes = document.getElementById('k2-notes');
+  if (k2Op && !k2Op.disabled) {
+    k2Op.value = 'ciso-officer-2';
+    k2Notes.value = 'Four-eyes verification confirmed: authorized emergency DSSE ticket emit.';
+  }
 }
 
 function closeTriageModal() {

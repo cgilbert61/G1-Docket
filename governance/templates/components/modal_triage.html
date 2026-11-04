@@ -28,13 +28,22 @@
 
       <!-- Four-Eyes Approval Workflow Box -->
       <div class="border border-[#E2E8F0] rounded p-4 bg-white space-y-3">
-        <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
+        <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
+          <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
+          <span class="text-[11px] text-[#475569]">Cryptographic Ed25519 DSSE Attestation Replay</span>
+        </div>
 
         <!-- Step 1: Requester Stage -->
         <div id="step-1-container" class="space-y-2 border-b border-[#E2E8F0] pb-3">
           <div class="flex items-center justify-between">
-            <span class="font-semibold text-[#0F172A]">Key 1: Override Request & Business Justification</span>
-            <span id="key1-badge" class="badge badge-warning">Awaiting Key 1</span>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-[#1E293B] bg-[#F1F5F9] border border-[#CBD5E1] px-1.5 py-0.5 rounded">STEP 1</span>
+              <span class="font-semibold text-[#0F172A]">Key 1: Override Request &amp; Business Justification</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="quickFillDemoK1()" class="text-[11px] text-[#2563EB] hover:underline" id="btn-quick-k1">Autofill Demo Requester</button>
+              <span id="key1-badge" class="badge badge-warning">Awaiting Key 1</span>
+            </div>
           </div>
           <div class="grid grid-cols-3 gap-2">
             <input type="text" id="k1-operator" placeholder="Requester ID (e.g. secops-analyst-1)" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1">
@@ -48,17 +57,30 @@
         <!-- Step 2: Approver Release -->
         <div id="step-2-container" class="space-y-2 pt-1">
           <div class="flex items-center justify-between">
-            <span class="font-semibold text-[#0F172A]">Key 2: Distinct Approver Signoff & Emergency Release</span>
-            <span id="key2-badge" class="badge badge-neutral">Locked</span>
+            <div class="flex items-center gap-2">
+              <span id="step2-badge-tag" class="text-[10px] font-bold text-[#64748B] bg-[#F1F5F9] border border-[#E2E8F0] px-1.5 py-0.5 rounded">STEP 2 (LOCKED)</span>
+              <span class="font-semibold text-[#0F172A]">Key 2: Distinct Approver Signoff &amp; Emergency Release</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="quickFillDemoK2()" class="text-[11px] text-[#2563EB] hover:underline hidden" id="btn-quick-k2">Autofill Demo Approver</button>
+              <span id="key2-badge" class="badge badge-neutral">Locked</span>
+            </div>
           </div>
           <p class="text-[11px] text-[#475569]">Approver must be a distinct authorized identity. Signs an Ed25519 DSSE emergency ticket and replays payload through :18082.</p>
+          
+          <div id="key2-lock-notice" class="bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded px-3 py-2 text-[11px] flex items-center justify-between">
+            <span>Locked: Complete Step 1 above (enter Requester ID &amp; rationale, then click "Stage Key 1 Override") to unlock Key 2 approval.</span>
+          </div>
+
           <div class="grid grid-cols-3 gap-2">
             <input type="text" id="k2-operator" placeholder="Approver ID (e.g. ciso-officer-2)" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1" disabled>
             <input type="text" id="k2-notes" placeholder="Approval audit notes..." class="border border-[#E2E8F0] rounded p-2 text-xs col-span-2" disabled>
           </div>
           <div class="flex justify-between items-center">
             <button onclick="rejectCurrentItem()" id="btn-reject" class="btn btn-danger">Permanently Deny</button>
-            <button onclick="submitKey2()" id="btn-submit-key2" class="btn btn-primary" disabled>Sign Key 2 & Execute Replay</button>
+            <div class="inline-block" onclick="handleKey2Click(event)">
+              <button onclick="submitKey2()" id="btn-submit-key2" class="btn btn-primary" title="Locked: Complete Step 1 first" disabled>Sign Key 2 &amp; Execute Replay</button>
+            </div>
           </div>
         </div>
       </div>

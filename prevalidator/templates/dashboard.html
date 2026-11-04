@@ -67,7 +67,38 @@
       transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
     .english-verdict.has-failures { border-left-color: var(--danger); background: #FEF2F2; }
-    /* Mode-Specific Subtle Tinting for Verification Scorecard Box */
+    /* Mode-Specific Subtle Tinting for Verification Scorecard Box (Entire Box & Banner) */
+    .card.scorecard-mode-enforce {
+      background: #F0FDF4 !important; /* Subtle Emerald-50 tint across entire box */
+      border: 1px solid #BBF7D0 !important; /* Emerald-200 */
+      border-top: 3px solid #059669 !important; /* Emerald-600 top indicator */
+      transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+    .card.scorecard-mode-enforce h2 {
+      border-bottom-color: #D1FAE5 !important;
+    }
+    .card.scorecard-mode-enforce .score-box {
+      background: #FFFFFF !important;
+      border-color: #A7F3D0 !important;
+    }
+
+    .card.scorecard-mode-observe,
+    .card.scorecard-mode-audit {
+      background: #FEF2F2 !important; /* Subtle Red-50 tint across entire box */
+      border: 1px solid #FECACA !important; /* Red-200 */
+      border-top: 3px solid #DC2626 !important; /* Red-600 top indicator */
+      transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+    .card.scorecard-mode-observe h2,
+    .card.scorecard-mode-audit h2 {
+      border-bottom-color: #FEE2E2 !important;
+    }
+    .card.scorecard-mode-observe .score-box,
+    .card.scorecard-mode-audit .score-box {
+      background: #FFFFFF !important;
+      border-color: #FCA5A5 !important;
+    }
+
     .english-verdict.mode-enforce {
       background: #ECFDF5 !important; /* Subtle Emerald-50 tint */
       border: 1px solid #A7F3D0 !important; /* Emerald-200 */
@@ -79,8 +110,8 @@
     }
     .english-verdict.mode-observe,
     .english-verdict.mode-audit {
-      background: #FEF2F2 !important; /* Subtle Red-50 tint */
-      border: 1px solid #FECACA !important; /* Red-200 */
+      background: #FEE2E2 !important; /* Subtle Red-100 tint */
+      border: 1px solid #FCA5A5 !important; /* Red-300 */
       border-left: 3px solid #DC2626 !important; /* Red-600 */
       color: #7F1D1D !important; /* Red-900 */
     }
@@ -872,9 +903,9 @@
       </div>
 
       <!-- RIGHT: PREVALIDATOR DIRECTORY BATCH SCANNER RESULTS -->
-      <div class="card">
+      <div class="card scorecard-mode-enforce" id="prevalScorecardCard">
         <h2>
-          <span>Step 2 — Prevalidator Directory Verification Scorecard</span>
+          <span>Step 2: Prevalidator Directory Verification Scorecard</span>
           <span id="prevalStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
         </h2>
 
@@ -1682,7 +1713,7 @@
           return;
         }
 
-        document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;">✓ ${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
+        document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;"><span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; margin-right:4px;"></span>${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
         const banner = document.getElementById('prevalEnglishBanner');
         const mode = data.mode || currentMode;
         const formattedSummary = (data.english_summary || '')
@@ -1690,6 +1721,11 @@
           .replace(/\[OBSERVE MODE[^\]]*\]/, '<span style="background: #DC2626; color: #FFFFFF; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 3px; font-variant-numeric: tabular-nums; vertical-align: baseline; margin-right: 4px;">OBSERVE MODE (Audit-Only)</span>');
         banner.innerHTML = `<strong>Verifiable Prevalidator Count (${totalElapsed}s):</strong> ${formattedSummary}`;
         banner.className = 'english-verdict ' + (mode === 'enforce' ? 'mode-enforce' : 'mode-observe');
+        const prevalCard = document.getElementById('prevalScorecardCard');
+        if (prevalCard) {
+          prevalCard.classList.remove('scorecard-mode-enforce', 'scorecard-mode-observe', 'scorecard-mode-audit');
+          prevalCard.classList.add(mode === 'enforce' ? 'scorecard-mode-enforce' : 'scorecard-mode-observe');
+        }
 
         document.getElementById('pvTotal').textContent = data.total_files;
         document.getElementById('pvPassed').textContent = data.passed_count;
@@ -1776,6 +1812,11 @@
       if (prevalBanner) {
         prevalBanner.classList.remove('mode-enforce', 'mode-observe', 'mode-audit');
         prevalBanner.classList.add(currentMode === 'enforce' ? 'mode-enforce' : 'mode-observe');
+      }
+      const prevalCard = document.getElementById('prevalScorecardCard');
+      if (prevalCard) {
+        prevalCard.classList.remove('scorecard-mode-enforce', 'scorecard-mode-observe', 'scorecard-mode-audit');
+        prevalCard.classList.add(currentMode === 'enforce' ? 'scorecard-mode-enforce' : 'scorecard-mode-observe');
       }
 
       const modeBtn = document.getElementById('toggleModeBtn');

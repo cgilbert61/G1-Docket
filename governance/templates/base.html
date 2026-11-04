@@ -57,12 +57,31 @@
       transition: background-color 0.15s ease, border-color 0.15s ease;
       cursor: pointer;
     }
+    .btn:disabled, .btn[disabled], button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed !important;
+      box-shadow: none !important;
+    }
     .btn-primary { background: var(--primary); color: #FFFFFF; border-color: var(--primary); }
-    .btn-primary:hover { background: #0F172A; }
+    .btn-primary:hover:not(:disabled) { background: #0F172A; }
+    .btn-primary:disabled, .btn-primary[disabled] {
+      background: #94A3B8 !important;
+      border-color: #94A3B8 !important;
+      color: #FFFFFF !important;
+    }
     .btn-secondary { background: #FFFFFF; color: var(--text); border-color: var(--border); }
-    .btn-secondary:hover { background: #F1F5F9; border-color: #CBD5E1; }
+    .btn-secondary:hover:not(:disabled) { background: #F1F5F9; border-color: #CBD5E1; }
+    .btn-secondary:disabled, .btn-secondary[disabled] {
+      background: #F1F5F9 !important;
+      color: #94A3B8 !important;
+      border-color: #E2E8F0 !important;
+    }
     .btn-danger { background: #FFFFFF; color: var(--danger); border-color: #FECACA; }
-    .btn-danger:hover { background: #FEF2F2; border-color: var(--danger); }
+    .btn-danger:hover:not(:disabled) { background: #FEF2F2; border-color: var(--danger); }
+    .btn-danger:disabled, .btn-danger[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed !important;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
