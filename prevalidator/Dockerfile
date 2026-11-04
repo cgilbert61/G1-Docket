@@ -22,13 +22,16 @@ RUN pip install --no-cache-dir \
     "httpx>=0.26.0" \
     "pyjwt>=2.8.0" \
     "openpyxl>=3.1.2" \
-    "psycopg2-binary>=2.9.9"
+    "psycopg2-binary>=2.9.9" \
+    "jinja2>=3.1.2" \
+    "pyyaml>=6.0"
 
 COPY pyproject.toml LICENSE ./
 COPY schemas ./schemas
 COPY registry ./registry
 COPY engine ./engine
 COPY prevalidator ./prevalidator
+COPY governance ./governance
 RUN pip install --no-cache-dir --no-deps -e .
 
 RUN mkdir -p /var/lib/pod/public_keys /var/lib/pod/state && \

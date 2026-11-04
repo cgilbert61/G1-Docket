@@ -256,12 +256,28 @@ def create_prevalidator_app(
         }
 
     @app.get("/", response_class=HTMLResponse)
-    def root_console() -> str:
-        return DASHBOARD_HTML
+    def root_console() -> HTMLResponse:
+        return HTMLResponse(
+            content=_load_template("dashboard.html"),
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
 
     @app.get("/dlp", response_class=HTMLResponse)
-    def dlp_connector_console() -> str:
-        return DLP_CONNECTOR_HTML
+    def dlp_connector_console() -> HTMLResponse:
+        return HTMLResponse(
+            content=_load_template("dlp_connector.html"),
+            media_type="text/html; charset=utf-8",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
 
     @app.get("/v1/admin/dlp/config")
     async def proxy_dlp_get_config(x_pod_admin_key: str | None = Header(default=None)) -> Any:

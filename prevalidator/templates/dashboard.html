@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="icon" type="image/png" href="/assets/g1-logo.png" />
   <title>G1 Docket by G1163RT Security Labs | Cryptographic Data Attestation &amp; AI Prevalidator</title>
   <style>
@@ -71,8 +74,9 @@
     .card.scorecard-mode-enforce {
       background: #F0FDF4 !important; /* Subtle Emerald-50 tint across entire box */
       border: 1px solid #BBF7D0 !important; /* Emerald-200 */
-      border-top: 3px solid #059669 !important; /* Emerald-600 top indicator */
-      transition: background-color 0.25s ease, border-color 0.25s ease;
+      border-left: 4px solid #059669 !important; /* Emerald-600 left indicator */
+      box-shadow: 0 1px 3px rgba(5, 150, 105, 0.08);
+      transition: background-color 0.25s ease, border-color 0.25s ease, border-left-color 0.25s ease;
     }
     .card.scorecard-mode-enforce h2 {
       border-bottom-color: #D1FAE5 !important;
@@ -86,8 +90,9 @@
     .card.scorecard-mode-audit {
       background: #FEF2F2 !important; /* Subtle Red-50 tint across entire box */
       border: 1px solid #FECACA !important; /* Red-200 */
-      border-top: 3px solid #DC2626 !important; /* Red-600 top indicator */
-      transition: background-color 0.25s ease, border-color 0.25s ease;
+      border-left: 4px solid #DC2626 !important; /* Red-600 left indicator */
+      box-shadow: 0 1px 3px rgba(220, 38, 38, 0.08);
+      transition: background-color 0.25s ease, border-color 0.25s ease, border-left-color 0.25s ease;
     }
     .card.scorecard-mode-observe h2,
     .card.scorecard-mode-audit h2 {
@@ -372,7 +377,7 @@
   <!-- ENTERPRISE CONTINUOUS DELTA SCANNER CONFIGURATION DRAWER -->
   <div id="enterpriseScannerDrawer" class="card" style="display: none; margin-top: 18px;">
     <h2>
-      <span>Enterprise Continuous Background Delta Crawler — Target Scope &amp; Micro-Snapshot Policy</span>
+      <span>Enterprise Continuous Background Delta Crawler &mdash; Target Scope &amp; Micro-Snapshot Policy</span>
       <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleEnterpriseScannerDrawer()">Close</button>
     </h2>
     <div style="display: grid; grid-template-columns: 1.45fr 1fr; gap: 18px;">
@@ -414,7 +419,7 @@
           <div>
             <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Scanner Head Pacing</label>
             <select id="crawlerThrottleSelect" onchange="saveCrawlerPolicySettings()" style="margin-bottom: 0;">
-              <option value="0">Max Speed (0 ms delay — Full I/O Rate)</option>
+              <option value="0">Max Speed (0 ms delay &mdash; Full I/O Rate)</option>
               <option value="3.5" selected>Fast Live Ticker (~250+ files/sec)</option>
               <option value="15">Readable Ticker (~60 files/sec)</option>
             </select>
@@ -509,10 +514,10 @@
           <div>
             <label style="font-size: 11.5px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Event Type</label>
             <select id="evtTypeSelect" style="margin-bottom: 0;">
-              <option value="ObjectCreated:Put">AWS S3 — ObjectCreated:Put (Auto-Attest)</option>
-              <option value="Microsoft.Storage.BlobCreated">Azure Event Grid — BlobCreated (Auto-Attest)</option>
-              <option value="google.cloud.storage.object.v1.finalized">GCS Pub/Sub — object.finalized (Auto-Attest)</option>
-              <option value="ObjectRemoved:Delete">AWS S3 — ObjectRemoved:Delete (Auto-Revoke)</option>
+              <option value="ObjectCreated:Put">AWS S3 &mdash; ObjectCreated:Put (Auto-Attest)</option>
+              <option value="Microsoft.Storage.BlobCreated">Azure Event Grid &mdash; BlobCreated (Auto-Attest)</option>
+              <option value="google.cloud.storage.object.v1.finalized">GCS Pub/Sub &mdash; object.finalized (Auto-Attest)</option>
+              <option value="ObjectRemoved:Delete">AWS S3 &mdash; ObjectRemoved:Delete (Auto-Revoke)</option>
             </select>
           </div>
           <div>
@@ -541,7 +546,7 @@
   <!-- CONFIGURATION MENU DRAWER: POINT AT ANY LLM PROVIDER -->
   <div id="llmConfigDrawer" class="card" style="display: none; margin-top: 18px;">
     <h2>
-      <span>LLM Provider Configuration — Point G1 Docket Prevalidator at Any Local or Cloud LLM</span>
+      <span>LLM Provider Configuration &mdash; Point G1 Docket Prevalidator at Any Local or Cloud LLM</span>
       <button class="btn btn-dark" style="padding: 4px 10px; font-size: 12px;" onclick="toggleLlmConfig()">Close</button>
     </h2>
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 10px;">
@@ -593,9 +598,9 @@
           <strong>5. Provider Egress Classification</strong> (Enforced by Prevalidator)
         </label>
         <select id="llmEgressClass" style="margin-bottom: 0;">
-          <option value="local_only">local_only — Local Host / Air-Gapped Model</option>
-          <option value="private_cloud">private_cloud — Private VPC / Enterprise Tenant</option>
-          <option value="public_api">public_api — External Public Cloud LLM API</option>
+          <option value="local_only">local_only &mdash; Local Host / Air-Gapped Model</option>
+          <option value="private_cloud">private_cloud &mdash; Private VPC / Enterprise Tenant</option>
+          <option value="public_api">public_api &mdash; External Public Cloud LLM API</option>
         </select>
       </div>
       <div>
@@ -768,14 +773,14 @@
               <strong>Select Enterprise Data Store (S3, Azure ADLS, GCS, Snowflake, BigQuery, Postgres) or Local PC Drive/Folder:</strong>
             </label>
             <select id="pcFolderSelect" style="margin-bottom: 0; font-size: 13px; font-weight: 600;" onchange="selectPresetFolder()">
-              <option value="D:\attestation\pc_demo_folder" selected>D:\attestation\pc_demo_folder — Sample Demo Documents (7 files)</option>
-              <option value="C:\Users\chuck\pc_demo_folder">C:\Users\chuck\pc_demo_folder — Sample Disparate Files</option>
-              <option value="s3://contoso-ai-datalake-prod/rag-corpus">[AWS S3] s3://contoso-ai-datalake-prod/rag-corpus — Production AI &amp; RAG Data Lake</option>
+              <option value="D:\attestation\pc_demo_folder" selected>D:\attestation\pc_demo_folder &mdash; Sample Demo Documents (7 files)</option>
+              <option value="C:\Users\chuck\pc_demo_folder">C:\Users\chuck\pc_demo_folder &mdash; Sample Disparate Files</option>
+              <option value="s3://contoso-ai-datalake-prod/rag-corpus">[AWS S3] s3://contoso-ai-datalake-prod/rag-corpus &mdash; Production AI &amp; RAG Data Lake</option>
               <option value="azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge">[Azure ADLS Gen2 / Blob] azblob://contosodatalake.blob.core.windows.net/enterprise-knowledge</option>
-              <option value="gs://contoso-vertex-lake-us/curated-zones">[GCP Cloud Storage] gs://contoso-vertex-lake-us/curated-zones — Vertex AI Data Lake</option>
+              <option value="gs://contoso-vertex-lake-us/curated-zones">[GCP Cloud Storage] gs://contoso-vertex-lake-us/curated-zones &mdash; Vertex AI Data Lake</option>
               <option value="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC">[Snowflake] snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC</option>
               <option value="bigquery://contoso-gcp-analytics/enterprise_mart">[Google BigQuery] bigquery://contoso-gcp-analytics/enterprise_mart</option>
-              <option value="postgres://estate-db:5432/estate">[PostgreSQL] postgres://estate-db:5432/estate — Operational DB (Live SQL)</option>
+              <option value="postgres://estate-db:5432/estate">[PostgreSQL] postgres://estate-db:5432/estate &mdash; Operational DB (Live SQL)</option>
             </select>
             <input type="hidden" id="pcPathInput" value="D:\attestation\pc_demo_folder" />
           </div>
@@ -861,7 +866,7 @@
       <!-- LEFT: ENGINE DIRECTORY ATTESTATION RESULTS -->
       <div class="card">
         <h2>
-          <span>Step 1 — Attestation Engine Directory Report</span>
+          <span>Step 1 &mdash; Attestation Engine Directory Report</span>
           <span id="attestStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
         </h2>
 
@@ -905,7 +910,10 @@
       <!-- RIGHT: PREVALIDATOR DIRECTORY BATCH SCANNER RESULTS -->
       <div class="card scorecard-mode-enforce" id="prevalScorecardCard">
         <h2>
-          <span>Step 2: Prevalidator Directory Verification Scorecard</span>
+          <span style="display: inline-flex; align-items: center; gap: 8px;">
+            <span>Step 2 &mdash; Prevalidator Directory Verification Scorecard</span>
+            <span id="scorecardModePill" class="badge badge-Public" style="font-size: 10px; padding: 2px 7px;">ENFORCE (BLOCKING)</span>
+          </span>
           <span id="prevalStatusText" style="font-size: 12px; color: var(--muted);">Ready</span>
         </h2>
 
@@ -1009,8 +1017,8 @@
 
           <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
           <select id="endpointSelect">
-            <option value="/v1/chat/completions">OpenAI — POST /v1/chat/completions</option>
-            <option value="/v1/messages">Anthropic — POST /v1/messages</option>
+            <option value="/v1/chat/completions">OpenAI &mdash; POST /v1/chat/completions</option>
+            <option value="/v1/messages">Anthropic &mdash; POST /v1/messages</option>
           </select>
 
           <div class="grid-2" style="gap: 10px;">
@@ -1587,7 +1595,7 @@
         const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 
         if (!resp.ok) {
-          document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${data.detail || resp.status}</span>`;
+          document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">&times; Error: ${data.detail || resp.status}</span>`;
           document.getElementById('attestEnglishBanner').textContent = 'Error: ' + (data.detail || resp.status);
           if (btn) {
             btn.disabled = false;
@@ -1596,8 +1604,8 @@
           return;
         }
         const stamp = new Date().toLocaleTimeString();
-        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--accent); font-weight:600;">✓ Attested ${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s</span> <span style="color:var(--muted); font-size:11px;">(${stamp})</span>`;
-        document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${totalElapsed}s • ${stamp}):</strong> ${data.english_summary}`;
+        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--accent); font-weight:600;">&#10003; Attested ${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s</span> <span style="color:var(--muted); font-size:11px;">(${stamp})</span>`;
+        document.getElementById('attestEnglishBanner').innerHTML = `<strong>Verifiable Attestation Count (${totalElapsed}s &bull; ${stamp}):</strong> ${data.english_summary}`;
         document.getElementById('attTotal').textContent = data.total_files_found;
         document.getElementById('attActive').textContent = data.attested_active_count;
         document.getElementById('attHeld').textContent = data.held_in_review_count;
@@ -1615,17 +1623,17 @@
             <td><code>${f.object_type}</code></td>
             <td><span class="badge badge-${f.tier}">${f.tier}</span></td>
             <td><code>${f.ai_eligibility} / ${f.egress_class}</code></td>
-            <td><code>${(f.content_sha256 || '').slice(0, 12)}…</code></td>`;
+            <td><code>${(f.content_sha256 || '').slice(0, 12)}&hellip;</code></td>`;
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s) — 1. Run Attestation on Directory`;
+          btn.textContent = `Attested (${data.attested_active_count}/${data.total_files_found} in ${totalElapsed}s) &mdash; 1. Run Attestation on Directory`;
         }
         await prevalidateSelectedDirectory();
       } catch (err) {
         clearInterval(attestTimerInterval);
         if (hairline) hairline.style.display = 'none';
-        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${err}</span>`;
+        document.getElementById('attestStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">&times; Error: ${err}</span>`;
       } finally {
         clearInterval(attestTimerInterval);
         if (hairline) hairline.style.display = 'none';
@@ -1704,7 +1712,7 @@
         const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(2);
 
         if (!resp.ok) {
-          document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${data.detail || resp.status}</span>`;
+          document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">&times; Error: ${data.detail || resp.status}</span>`;
           document.getElementById('prevalEnglishBanner').textContent = 'Error: ' + (data.detail || resp.status);
           if (btn) {
             btn.disabled = false;
@@ -1725,6 +1733,11 @@
         if (prevalCard) {
           prevalCard.classList.remove('scorecard-mode-enforce', 'scorecard-mode-observe', 'scorecard-mode-audit');
           prevalCard.classList.add(mode === 'enforce' ? 'scorecard-mode-enforce' : 'scorecard-mode-observe');
+        }
+        const modePill = document.getElementById('scorecardModePill');
+        if (modePill) {
+          modePill.className = 'badge ' + (mode === 'enforce' ? 'badge-Public' : 'badge-Restricted');
+          modePill.textContent = mode === 'enforce' ? 'ENFORCE (BLOCKING)' : 'OBSERVE (AUDIT-ONLY)';
         }
 
         document.getElementById('pvTotal').textContent = data.total_files;
@@ -1758,13 +1771,13 @@
           tbody.appendChild(tr);
         });
         if (btn) {
-          btn.textContent = `Prevalidated (${data.passed_count}/${data.total_files} in ${totalElapsed}s) — 2. Run Prevalidator Scan`;
+          btn.textContent = `Prevalidated (${data.passed_count}/${data.total_files} in ${totalElapsed}s) &mdash; 2. Run Prevalidator Scan`;
         }
         await refreshState();
       } catch (err) {
         clearInterval(prevalTimerInterval);
         if (hairline) hairline.style.display = 'none';
-        document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">✕ Error: ${err}</span>`;
+        document.getElementById('prevalStatusText').innerHTML = `<span style="color:var(--danger); font-weight:600;">&times; Error: ${err}</span>`;
       } finally {
         clearInterval(prevalTimerInterval);
         if (hairline) hairline.style.display = 'none';
@@ -1818,6 +1831,11 @@
         prevalCard.classList.remove('scorecard-mode-enforce', 'scorecard-mode-observe', 'scorecard-mode-audit');
         prevalCard.classList.add(currentMode === 'enforce' ? 'scorecard-mode-enforce' : 'scorecard-mode-observe');
       }
+      const modePill = document.getElementById('scorecardModePill');
+      if (modePill) {
+        modePill.className = 'badge ' + (currentMode === 'enforce' ? 'badge-Public' : 'badge-Restricted');
+        modePill.textContent = currentMode === 'enforce' ? 'ENFORCE (BLOCKING)' : 'OBSERVE (AUDIT-ONLY)';
+      }
 
       const modeBtn = document.getElementById('toggleModeBtn');
       if (modeBtn) {
@@ -1857,7 +1875,7 @@
             <td>${e.minimum_clearance}</td>
             <td><code>${e.egress_class}</code></td>
             <td><code>${e.ai_eligibility}</code></td>
-            <td><code>${e.content_sha256.slice(0, 10)}…</code></td>`;
+            <td><code>${e.content_sha256.slice(0, 10)}&hellip;</code></td>`;
           tbody.appendChild(tr);
         });
       }
@@ -1899,7 +1917,7 @@
       const slaBadge = document.getElementById('latSlaBadge');
       if (slaBadge) {
         const pct = Number(lat.sla_compliant_pct ?? 100);
-        slaBadge.textContent = `SLA ≤ 5.0 ms: ${pct.toFixed(1)}% PASS`;
+        slaBadge.textContent = `SLA &le; 5.0 ms: ${pct.toFixed(1)}% PASS`;
         slaBadge.className = 'badge ' + (pct >= 99 ? 'badge-Public' : 'badge-Confidential');
       }
 
@@ -1980,7 +1998,7 @@
           const auditResp = await (await fetch('/v1/admin/audit-log', { headers: { 'X-POD-Admin-Key': ADMIN_KEY } })).json();
           const lastAudit = (auditResp.entries || []).slice(-1)[0];
           const reasons = lastAudit && lastAudit.reason_codes ? lastAudit.reason_codes.join(', ') : 'POLICY_DENIED';
-          document.getElementById('statusSpan').innerHTML = `<span style="color:var(--danger);">HTTP 403 — Blocked (${reasons})</span>`;
+          document.getElementById('statusSpan').innerHTML = `<span style="color:var(--danger);">HTTP 403 &mdash; Blocked (${reasons})</span>`;
         } catch (e) {
           document.getElementById('statusSpan').textContent = `HTTP ${resp.status}`;
         }
@@ -2052,7 +2070,7 @@
         document.getElementById('llmBaseUrl').value = cfg.base_url || 'http://litellm-gateway:4000';
         document.getElementById('llmDefaultModel').value = cfg.default_model || 'local-model';
         document.getElementById('llmEgressClass').value = cfg.egress_class || 'local_only';
-        document.getElementById('activeLlmBadge').textContent = `LLM: ${cfg.provider_name} (${cfg.default_model} • ${cfg.egress_class})`;
+        document.getElementById('activeLlmBadge').textContent = `LLM: ${cfg.provider_name} (${cfg.default_model} &bull; ${cfg.egress_class})`;
         document.getElementById('llmConfigStatus').textContent = `Active Provider: ${cfg.provider_name} -> ${cfg.base_url} [Model: ${cfg.default_model}, Egress: ${cfg.egress_class}, API Key: ${cfg.has_api_key ? cfg.api_key_masked : 'none'}]`;
         ensureModelInDropdowns(cfg.default_model, cfg.egress_class);
         if (cfg.protocol === 'anthropic') {
@@ -2087,8 +2105,8 @@
         return;
       }
       statusEl.style.color = 'var(--accent)';
-      statusEl.textContent = `Saved & Activated: ${data.provider_name} (${data.base_url}) — Model '${data.default_model}' mapped to egress '${data.egress_class}'`;
-      document.getElementById('activeLlmBadge').textContent = `LLM: ${data.provider_name} (${data.default_model} • ${data.egress_class})`;
+      statusEl.textContent = `Saved & Activated: ${data.provider_name} (${data.base_url}) &mdash; Model '${data.default_model}' mapped to egress '${data.egress_class}'`;
+      document.getElementById('activeLlmBadge').textContent = `LLM: ${data.provider_name} (${data.default_model} &bull; ${data.egress_class})`;
       ensureModelInDropdowns(data.default_model, data.egress_class);
       if (data.protocol === 'anthropic') {
         document.getElementById('endpointSelect').value = '/v1/messages';
@@ -2264,10 +2282,10 @@
       }
 
       document.getElementById('crFilesSwept').textContent = Number(data.files_swept || 0).toLocaleString();
-      document.getElementById('crPassNum').textContent = `Pass #${data.pass_number || 1} • Watermarks: ${Number(data.watermark_count || 0).toLocaleString()}`;
+      document.getElementById('crPassNum').textContent = `Pass #${data.pass_number || 1} &bull; Watermarks: ${Number(data.watermark_count || 0).toLocaleString()}`;
       document.getElementById('crSkipped').textContent = Number(data.unchanged_skipped || 0).toLocaleString();
       document.getElementById('crDeltas').textContent = Number(data.deltas_attested || 0).toLocaleString();
-      document.getElementById('crRevoked').textContent = `Pass 2 Deep Scan • Revoked: ${data.deleted_revoked || 0}`;
+      document.getElementById('crRevoked').textContent = `Pass 2 Deep Scan &bull; Revoked: ${data.deleted_revoked || 0}`;
       document.getElementById('crRate').textContent = `~${Number(data.scan_rate_files_per_sec || 0).toFixed(1)} /s`;
       document.getElementById('crTargetNow').textContent = `Target: ${data.current_target || '-'}`;
       document.getElementById('crSnapshots').textContent = `${data.micro_snapshots_published || 0}${data.last_snapshot_seq ? ' (#' + data.last_snapshot_seq + ')' : ''}`;
@@ -2282,13 +2300,13 @@
             ? `<a class="file-link" style="padding:0 5px;font-size:11.5px;" onclick="openFileInspector('${safeLoc}')">${item.path}</a>`
             : `<span>${item.path}</span>`;
           if (item.kind === 'delta') {
-            return `<div style="color:var(--accent);">[${item.timestamp}] <strong>[ATTESTING DELTA]</strong> ${clickablePath} &rarr; <span class="badge badge-${item.tier || 'Internal'}" style="padding:1px 6px;font-size:10px;">${item.tier || ''}</span> <span style="color:var(--muted);">(${item.detail}${item.sha256 ? ' • sha256: ' + item.sha256 : ''})</span></div>`;
+            return `<div style="color:var(--accent);">[${item.timestamp}] <strong>[ATTESTING DELTA]</strong> ${clickablePath} &rarr; <span class="badge badge-${item.tier || 'Internal'}" style="padding:1px 6px;font-size:10px;">${item.tier || ''}</span> <span style="color:var(--muted);">(${item.detail}${item.sha256 ? ' &bull; sha256: ' + item.sha256 : ''})</span></div>`;
           } else if (item.kind === 'snapshot') {
-            return `<div style="color:var(--text); font-weight:600;">[${item.timestamp}] [ROLLING MICRO-SNAPSHOT] ${item.path} — ${item.detail}</div>`;
+            return `<div style="color:var(--text); font-weight:600;">[${item.timestamp}] [ROLLING MICRO-SNAPSHOT] ${item.path} &mdash; ${item.detail}</div>`;
           } else if (item.kind === 'stop') {
-            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [ENTERPRISE SCAN STOPPED] ${item.path} — ${item.detail}</div>`;
+            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [ENTERPRISE SCAN STOPPED] ${item.path} &mdash; ${item.detail}</div>`;
           } else if (item.kind === 'revoke') {
-            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [REVOKED DELETED] ${clickablePath} — ${item.detail}</div>`;
+            return `<div style="color:var(--danger); font-weight:600;">[${item.timestamp}] [REVOKED DELETED] ${clickablePath} &mdash; ${item.detail}</div>`;
           } else {
             return `<div style="color:var(--muted);">[${item.timestamp}] [UNCHANGED SKIP] ${clickablePath} (${item.detail})</div>`;
           }
@@ -2374,7 +2392,7 @@
       if (!isFound && (!tier || tier === 'NONE' || tier === 'UNATTESTED')) {
         banner.className = 'english-verdict has-failures';
         banner.innerHTML = `<strong>UNATTESTED OBJECT (Fail-Closed Default Deny):</strong> <code>${fileName}</code> exists in the target directory/store (` +
-          `observed SHA-256: <code>${(cached.observed_sha256 || 'unhashed').slice(0, 16)}…</code>), but has <strong>NO signed attestation record</strong> in the Registry or Active Snapshot. ` +
+          `observed SHA-256: <code>${(cached.observed_sha256 || 'unhashed').slice(0, 16)}&hellip;</code>), but has <strong>NO signed attestation record</strong> in the Registry or Active Snapshot. ` +
           `The Prevalidator blocks all AI requests referencing this object until you click <strong>1. Run Attestation on Directory (Engine)</strong>.`;
       } else {
         banner.className = 'english-verdict';
@@ -2389,11 +2407,11 @@
 
       // Group 1 & 2: Ownership & Identity
       document.getElementById('inspOwner').textContent = own.owner || rec.owner || cached.owner || (isFound ? 'fileshare-owners@example.org' : 'Unassigned (Unattested File)');
-      document.getElementById('inspSteward').textContent = own.steward || cached.steward || (isFound ? 'data-governance-steward@contoso.com' : 'None — Awaiting Attestation');
+      document.getElementById('inspSteward').textContent = own.steward || cached.steward || (isFound ? 'data-governance-steward@contoso.com' : 'None &mdash; Awaiting Attestation');
       document.getElementById('inspOrgUnit').textContent = own.org_unit || cached.org_unit || (isFound ? 'Enterprise Data & AI Governance' : '-');
       document.getElementById('inspJurisdiction').textContent = own.jurisdiction || cached.jurisdiction || (isFound ? 'GLOBAL' : '-');
       document.getElementById('inspRecordId').textContent = ident.record_id || rec.record_id || cached.record_id || 'NONE (Unattested)';
-      document.getElementById('inspObjTypeEnv').textContent = `${ident.object_type || rec.object_type || cached.object_type || 'file'} • ${ident.environment || cached.environment || 'production'}`;
+      document.getElementById('inspObjTypeEnv').textContent = `${ident.object_type || rec.object_type || cached.object_type || 'file'} &bull; ${ident.environment || cached.environment || 'production'}`;
 
       // Group 5: Classification & Sensitive Entities
       document.getElementById('inspClassTier').innerHTML = `<span class="badge ${tier && tier !== 'NONE' && tier !== 'UNATTESTED' ? 'badge-' + tier : 'badge-FAIL'}">${tier}</span>`;
@@ -2406,11 +2424,11 @@
       if (!isFound && (!tier || tier === 'NONE' || tier === 'UNATTESTED')) {
         catsBox.innerHTML = `<span style="color:var(--danger);">File has not been scanned by the Attestation Engine yet.</span>`;
       } else if (!Array.isArray(cats) || cats.length === 0) {
-        catsBox.innerHTML = `<span style="color:var(--accent);">0 Sensitive PII / PHI / PCI / Credential Entities Detected — Verified Clean (${tier})</span>`;
+        catsBox.innerHTML = `<span style="color:var(--accent);">0 Sensitive PII / PHI / PCI / Credential Entities Detected &mdash; Verified Clean (${tier})</span>`;
       } else {
         catsBox.innerHTML = cats.map(c => {
           const confStr = c.max_confidence !== undefined ? `${(Number(c.max_confidence) * 100).toFixed(0)}% conf` : '';
-          const colStr = c.column_or_field ? ` • field: <code>${c.column_or_field}</code>` : '';
+          const colStr = c.column_or_field ? ` &bull; field: <code>${c.column_or_field}</code>` : '';
           return `<div style="display:flex; justify-content:space-between; align-items:center; padding:4px 6px; border-bottom:1px solid var(--border);">
             <span><strong style="color:var(--text);">${c.category}</strong>${colStr}</span>
             <span><span class="badge badge-Confidential" style="font-size:10px;">Count: ${c.count}</span> <code style="color:var(--muted);">${confStr}</code></span>
@@ -2452,7 +2470,7 @@
       document.getElementById('inspTextSha').textContent = textSha || '-';
       document.getElementById('inspSchemaSha').textContent = schemaSha || 'N/A (Unstructured File)';
       document.getElementById('inspFpMethod').textContent = integ.fingerprint_method || cached.fingerprint_method || 'raw_bytes_sha256';
-      document.getElementById('inspSizeRows').textContent = `${sizeBytes !== null && sizeBytes !== undefined ? Number(sizeBytes).toLocaleString() + ' bytes' : '-'}${rowCount !== null && rowCount !== undefined ? ' • ' + Number(rowCount).toLocaleString() + ' rows' : ''}`;
+      document.getElementById('inspSizeRows').textContent = `${sizeBytes !== null && sizeBytes !== undefined ? Number(sizeBytes).toLocaleString() + ' bytes' : '-'}${rowCount !== null && rowCount !== undefined ? ' &bull; ' + Number(rowCount).toLocaleString() + ' rows' : ''}`;
       document.getElementById('inspChunkCount').innerHTML = `<strong style="color:var(--text);">${Array.isArray(chunks) ? chunks.length : 0}</strong> canonical paragraph/row SHA-256 chunk digest(s)`;
 
       // Group 3: Provenance
@@ -2466,7 +2484,7 @@
         : '<span style="color:var(--muted);">Primary Source Object (0 upstream lineage dependencies)</span>';
 
       // Group 7: Lifecycle & DSSE Signature
-      document.getElementById('inspLifeStatus').innerHTML = `<code>${statusStr}</code>${cached.preval_reason_detail ? ' — <span style="color:var(--muted);">' + cached.preval_reason_detail + '</span>' : ''}`;
+      document.getElementById('inspLifeStatus').innerHTML = `<code>${statusStr}</code>${cached.preval_reason_detail ? ' &mdash; <span style="color:var(--muted);">' + cached.preval_reason_detail + '</span>' : ''}`;
       document.getElementById('inspIssuedAt').textContent = life.issued_at || rec.issued_at || cached.issued_at || '-';
       const expStr = life.expires_at || rec.expires_at || cached.expires_at || (snapEntry && snapEntry.expires_at) || '-';
       const ttlStr = life.ttl_days || cached.ttl_days ? ` (TTL: ${life.ttl_days || cached.ttl_days} days)` : '';
@@ -2480,7 +2498,7 @@
 
       const sigEntry = (env && Array.isArray(env.signatures) && env.signatures[0]) || null;
       document.getElementById('inspDsseKeyId').textContent = sigEntry
-        ? `keyid: ${sigEntry.keyid} (Ed25519 • sig: ${String(sigEntry.sig || '').slice(0, 20)}…)`
+        ? `keyid: ${sigEntry.keyid} (Ed25519 &bull; sig: ${String(sigEntry.sig || '').slice(0, 20)}&hellip;)`
         : (inSnap ? 'Signed in Active DSSE Snapshot Contract' : 'Unsigned');
 
       const fullJsonObj = {

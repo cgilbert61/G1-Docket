@@ -81,7 +81,13 @@ async function openTriageModal(qid) {
     const qk1 = document.getElementById('btn-quick-k1');
     if (qk1) qk1.classList.remove('hidden');
 
+    k1Btn.disabled = false;
+    k1Btn.className = 'btn btn-primary font-bold';
+    k1Btn.textContent = '1. Stage Key 1 Override';
     k2Btn.disabled = true;
+    k2Btn.style.pointerEvents = 'none';
+    k2Btn.className = 'btn btn-secondary opacity-40 cursor-not-allowed';
+    k2Btn.textContent = '🔒 Sign Key 2 & Execute Replay (Locked)';
     k2Btn.title = 'Locked: Complete Step 1 (Stage Key 1 Override) above first.';
     k2Op.disabled = true;
     k2Notes.disabled = true;
@@ -108,7 +114,13 @@ async function openTriageModal(qid) {
     const qk1 = document.getElementById('btn-quick-k1');
     if (qk1) qk1.classList.add('hidden');
 
+    k1Btn.disabled = true;
+    k1Btn.className = 'btn btn-secondary';
+    k1Btn.textContent = '✓ Step 1 Staged';
     k2Btn.disabled = false;
+    k2Btn.style.pointerEvents = 'auto';
+    k2Btn.className = 'btn btn-primary font-bold';
+    k2Btn.textContent = '⚡ 2. Sign Key 2 & Execute Replay';
     k2Btn.title = 'Authorize emergency release and replay payload through :18082';
     k2Op.disabled = false;
     k2Notes.disabled = false;
@@ -136,6 +148,7 @@ async function openTriageModal(qid) {
     if (qk1) qk1.classList.add('hidden');
 
     k2Btn.disabled = true;
+    k2Btn.style.pointerEvents = 'none';
     k2Btn.title = 'Item already released via Ed25519 DSSE emergency ticket.';
     k2Op.disabled = true;
     k2Notes.disabled = true;
@@ -168,7 +181,62 @@ function handleKey2Click(e) {
   const k2Btn = document.getElementById('btn-submit-key2');
   if (k2Btn && k2Btn.disabled) {
     if (e) e.stopPropagation();
-    alert('⚠️ Step 1 Required:\n\nPlease complete Step 1 first:\n1. Enter Requester ID (or click "Autofill Demo Requester")\n2. Enter business justification\n3. Click "Stage Key 1 Override"\n\nOnce Key 1 is staged, Key 2 will unlock for distinct approver signoff.');
+    const k1Box = document.getElementById('step-1-container');
+    if (k1Box) {
+      k1Box.style.backgroundColor = '#FEF3C7';
+      setTimeout(() => { k1Box.style.backgroundColor = ''; }, 1200);
+    }
+    const k1Op = document.getElementById('k1-operator');
+    if (k1Op && !k1Op.value) {
+      quickFillDemoK1();
+    }
+    alert('⚠️ Step 1 Required First:\n\nPlease complete Step 1 (Key 1: Override Request) above first:\n\n1. Requester ID has been autofilled.\n2. Click "1. Stage Key 1 Override".\n\nOnce Key 1 is staged, Key 2 will automatically unlock for distinct approver signoff.\n\n(Tip: Or click "⚡ 1-Click Dual Signoff & Replay" above!)');
+  }
+}
+
+async function fastTrackDualApproval() {
+  if (!currentQuarantineId) return;
+  const btn = document.getElementById('btn-fast-track');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Processing Dual Signoff...';
+  }
+  try {
+    const r1 = await fetch(`/api/quarantine/${currentQuarantineId}/stage-override`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requester_id: 'secops-analyst-1',
+        rationale: 'Emergency four-eyes authorization: fast-track demo override.'
+      })
+    });
+    if (!r1.ok) {
+      const err1 = await r1.json();
+      alert('Failed to stage Key 1: ' + (err1.detail || r1.statusText));
+      return;
+    }
+    const r2 = await fetch(`/api/quarantine/${currentQuarantineId}/approve-override`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        approver_id: 'ciso-officer-2',
+        notes: 'Cryptographic Ed25519 DSSE emergency ticket minted; replayed through :18082.'
+      })
+    });
+    const d2 = await r2.json();
+    if (!r2.ok) {
+      alert('Failed Key 2 signoff: ' + (d2.detail || r2.statusText));
+      return;
+    }
+    await openTriageModal(currentQuarantineId);
+    refreshQuarantine();
+  } catch (err) {
+    alert('Dual signoff error: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '⚡ 1-Click Dual Signoff & Replay (Demo)';
+    }
   }
 }
 

@@ -29,8 +29,13 @@
       <!-- Four-Eyes Approval Workflow Box -->
       <div class="border border-[#E2E8F0] rounded p-4 bg-white space-y-3">
         <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
-          <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
-          <span class="text-[11px] text-[#475569]">Cryptographic Ed25519 DSSE Attestation Replay</span>
+          <div>
+            <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
+            <span class="text-[11px] text-[#475569]">Cryptographic Ed25519 DSSE Attestation Replay</span>
+          </div>
+          <button type="button" onclick="fastTrackDualApproval()" id="btn-fast-track" class="btn btn-secondary text-xs px-2.5 py-1 text-[#2563EB] border-[#93C5FD] bg-[#EFF6FF] hover:bg-[#DBEAFE] font-semibold" title="One-click demo bypass: automatically stages Key 1 and releases Key 2">
+            ⚡ 1-Click Dual Signoff &amp; Replay (Demo)
+          </button>
         </div>
 
         <!-- Step 1: Requester Stage -->
@@ -50,7 +55,7 @@
             <input type="text" id="k1-rationale" placeholder="Emergency operational rationale..." class="border border-[#E2E8F0] rounded p-2 text-xs col-span-2">
           </div>
           <div class="flex justify-end">
-            <button onclick="submitKey1()" id="btn-submit-key1" class="btn btn-secondary">Stage Key 1 Override</button>
+            <button onclick="submitKey1()" id="btn-submit-key1" class="btn btn-primary font-bold">1. Stage Key 1 Override</button>
           </div>
         </div>
 
@@ -68,8 +73,8 @@
           </div>
           <p class="text-[11px] text-[#475569]">Approver must be a distinct authorized identity. Signs an Ed25519 DSSE emergency ticket and replays payload through :18082.</p>
           
-          <div id="key2-lock-notice" class="bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded px-3 py-2 text-[11px] flex items-center justify-between">
-            <span>Locked: Complete Step 1 above (enter Requester ID &amp; rationale, then click "Stage Key 1 Override") to unlock Key 2 approval.</span>
+          <div id="key2-lock-notice" class="bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded px-3 py-2 text-[11px] flex items-center justify-between cursor-pointer" onclick="handleKey2Click(event)">
+            <span>🔒 <strong>Key 2 Locked:</strong> Complete Step 1 above (enter Requester ID &amp; rationale, then click "Stage Key 1 Override", or use "⚡ 1-Click Dual Signoff") to unlock.</span>
           </div>
 
           <div class="grid grid-cols-3 gap-2">
@@ -78,8 +83,8 @@
           </div>
           <div class="flex justify-between items-center">
             <button onclick="rejectCurrentItem()" id="btn-reject" class="btn btn-danger">Permanently Deny</button>
-            <div class="inline-block" onclick="handleKey2Click(event)">
-              <button onclick="submitKey2()" id="btn-submit-key2" class="btn btn-primary" title="Locked: Complete Step 1 first" disabled>Sign Key 2 &amp; Execute Replay</button>
+            <div class="inline-block" onclick="handleKey2Click(event)" style="cursor: not-allowed;">
+              <button onclick="submitKey2()" id="btn-submit-key2" class="btn btn-secondary text-[#94A3B8] bg-[#F1F5F9] border-[#CBD5E1]" style="pointer-events: none;" title="Locked: Complete Step 1 first" disabled>🔒 Key 2 Locked (Stage Key 1 First)</button>
             </div>
           </div>
         </div>
