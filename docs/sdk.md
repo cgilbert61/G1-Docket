@@ -152,7 +152,59 @@ response = client.chat_completions(
 
 ---
 
-## 5. Directory Prevalidation & Scanning
+## 5. AI Agent & RAG Framework Integrations
+
+G1 Docket provides first-class primitives for modern AI agent frameworks (**LangChain**, **LlamaIndex**, **AutoGen**, **CrewAI**, and custom tool-calling agents) in `docket.integrations`:
+
+### A. Wrapping Retrieved Context Chunks (`wrap_rag_documents`)
+Automatically wraps retrieved chunks, LangChain `Document` objects, LlamaIndex `NodeWithScore` instances, or dictionaries into canonical `<pod:object>` tokens:
+
+```python
+from docket.integrations import wrap_rag_documents, format_rag_prompt
+
+# Supports heterogeneous inputs: LangChain docs, LlamaIndex nodes, or dicts
+chunks = [
+    {"source": "s3://corp-lake/annual_report.pdf", "page_content": "Annual recurring revenue: $42M"},
+    {"locator": "snowflake://acme.snowflakecomputing.com/FINANCE/PUBLIC/Q3", "content": "Q3 Margin: 68%"},
+]
+
+prompt = format_rag_prompt(
+    prompt_template="Answer the question using only attested facts:\n\n{context}\n\nQuestion: {question}",
+    documents=chunks,
+)
+```
+
+### B. Agent Tool-Calling Decorator (`@attested_tool`)
+Decorate database, search, or retrieval tools so their outputs are automatically wrapped in tamper-proof attestation tokens:
+
+```python
+from docket.integrations import attested_tool
+
+@attested_tool("snowflake://analytics.snowflakecomputing.com/MART/REVENUE", auto_hash=True)
+def query_quarterly_revenue(quarter: str) -> str:
+    # Tool output is automatically enclosed in <pod:object locator="..." sha256="...">...</pod:object>
+    return f"{quarter} ARR: $42.5M, Growth: 32%"
+
+# Dynamic locators based on function arguments
+@attested_tool(lambda table_name: f"snowflake://prod/{table_name}", auto_hash=True)
+def run_dynamic_query(table_name: str) -> str:
+    return "Query result rows..."
+```
+
+### C. Extracting Locators from Prompts (`extract_prompt_locators`)
+Inspect prompts before dispatch to audit which data assets are referenced:
+
+```python
+from docket.integrations import extract_prompt_locators
+
+locators = extract_prompt_locators(prompt)
+print("Data assets referenced in prompt:", locators)
+# Output: ['s3://corp-lake/annual_report.pdf', 'snowflake://acme.snowflakecomputing.com/FINANCE/PUBLIC/Q3']
+```
+
+---
+
+## 6. Directory Prevalidation & Scanning
 
 Prevalidate local directory shares or batch files before indexing into vector databases or passing to LLMs:
 
@@ -180,7 +232,7 @@ print("Attested Files Count:", len(crawl_summary.get("attested_records", [])))
 
 ---
 
-## 6. Authoritative Registry & Catalog Governance
+## 7. Authoritative Registry & Catalog Governance
 
 Interact directly with the Registry service (port `18080`) for cryptographic record lookups, lifecycle operations, and review queue approvals:
 
@@ -236,7 +288,7 @@ for review in pending_reviews:
 
 ---
 
-## 7. Signed Snapshot Publisher
+## 8. Signed Snapshot Publisher
 
 Fetch the active monotonic DSSE-signed snapshot:
 
@@ -256,7 +308,7 @@ print(f"Key ID: {signatures[0]['keyid']}")
 
 ---
 
-## 8. Asynchronous Client (`AsyncDocketClient`)
+## 9. Asynchronous Client (`AsyncDocketClient`)
 
 For high-throughput `asyncio`, FastAPI, or Starlette applications:
 
@@ -295,7 +347,7 @@ if __name__ == "__main__":
 
 ---
 
-## 9. Client Initialization Options
+## 10. Client Initialization Options
 
 `DocketClient` and `AsyncDocketClient` accept the following configuration parameters:
 
@@ -310,7 +362,7 @@ if __name__ == "__main__":
 
 ---
 
-## 10. Error Reference
+## 11. Error Reference
 
 All SDK errors inherit from `DocketError`:
 

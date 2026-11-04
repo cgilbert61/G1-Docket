@@ -157,3 +157,53 @@ def test_docket_rag_integrations():
         "file://corp/policy.pdf",
         "gs://vertex/data.csv",
     ]
+
+
+def test_docket_framework_integrations_and_tool_decorator():
+    from docket.integrations import attested_tool, wrap_agent_tool_output, wrap_rag_documents
+
+    # 1. wrap_agent_tool_output
+    out1 = wrap_agent_tool_output("snowflake://db/tbl", "100 rows", auto_hash=True)
+    assert '<pod:object locator="snowflake://db/tbl" sha256=' in out1
+    assert "100 rows</pod:object>" in out1
+
+    # 2. @attested_tool with static locator
+    @attested_tool("snowflake://analytics/public/metrics", auto_hash=True)
+    def fetch_metrics(metric_name: str) -> str:
+        return f"{metric_name}: 99.4%"
+
+    tagged_res = fetch_metrics("uptime")
+    assert '<pod:object locator="snowflake://analytics/public/metrics" sha256=' in tagged_res
+    assert "uptime: 99.4%</pod:object>" in tagged_res
+
+    # 3. @attested_tool with dynamic locator callable
+    @attested_tool(lambda table: f"snowflake://prod/{table}")
+    def run_sql(table: str) -> str:
+        return f"SELECT * FROM {table}"
+
+    sql_res = run_sql("customers")
+    assert sql_res == '<pod:object locator="snowflake://prod/customers">SELECT * FROM customers</pod:object>'
+
+    # 4. Duck-typed LangChain Document
+    class MockLangChainDoc:
+        def __init__(self, content: str, source: str):
+            self.page_content = content
+            self.metadata = {"source": source}
+
+    # 5. Duck-typed LlamaIndex NodeWithScore
+    class MockNode:
+        def __init__(self, text: str, file_path: str):
+            self.text = text
+            self.metadata = {"file_path": file_path}
+
+    class MockNodeWithScore:
+        def __init__(self, text: str, file_path: str):
+            self.node = MockNode(text, file_path)
+
+    docs = [
+        MockLangChainDoc("LangChain retrieved chunk", "s3://legal/contract.pdf"),
+        MockNodeWithScore("LlamaIndex retrieved chunk", "snowflake://warehouse/q3_kpi"),
+    ]
+    wrapped = wrap_rag_documents(docs)
+    assert '<pod:object locator="s3://legal/contract.pdf">LangChain retrieved chunk</pod:object>' in wrapped
+    assert '<pod:object locator="snowflake://warehouse/q3_kpi">LlamaIndex retrieved chunk</pod:object>' in wrapped

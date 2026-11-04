@@ -8,8 +8,10 @@ and Signed Snapshot Publisher.
 from docket.client import AsyncDocketClient, DocketClient, DocketError, PolicyDenialError
 from docket.integrations import (
     DocketRAGDocument,
+    attested_tool,
     extract_prompt_locators,
     format_rag_prompt,
+    wrap_agent_tool_output,
     wrap_rag_documents,
 )
 
@@ -19,6 +21,8 @@ __all__ = [
     "DocketError",
     "PolicyDenialError",
     "DocketRAGDocument",
+    "attested_tool",
+    "wrap_agent_tool_output",
     "wrap_rag_documents",
     "format_rag_prompt",
     "extract_prompt_locators",
