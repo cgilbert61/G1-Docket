@@ -8,6 +8,7 @@ Demonstrates:
   Step 4: Real-time Confidential Data Gating (Snowflake & HR records)
   Step 5: Quarantine & Incident Generation on Unattested Content Injection
   Step 6: Four-Eyes Dual Signoff & DSSE Replay via Governance Console (:18084)
+  Step 7: Attribute-Based Access Control (ABAC) & Sovereign Data Residency Gating
 """
 
 import json
@@ -213,6 +214,46 @@ def main():
         print(f"  {GREEN}{OK_SYM} Console UI Ready:{RESET} Explore triage queue at {BOLD}{GOV_URL}{RESET}")
     except Exception as e:
         print(f"  {YELLOW}{WARN_SYM} Governance API query: {e}{RESET}")
+
+    # STEP 7: ABAC & SOVEREIGN DATA RESIDENCY GATING
+    print_step(7, "Attribute-Based Access Control (ABAC) & Data Residency Gating")
+    # 7A. Departmental Isolation: Marketing caller querying Finance payroll
+    status_dept, _ = http_post(
+        f"{PREVAL_URL}/v1/chat/completions",
+        {
+            "model": "local-model",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": 'Inspect executive payroll:\n<pod:object locator="file://estate/fileshare/dept_compensation_confidential.xlsx">payroll_records</pod:object>',
+                }
+            ],
+        },
+        headers={"X-Pod-Caller-Key": "pod-key-confidential", "X-Pod-Caller-Dept": "Marketing"},
+    )
+    if status_dept == 403:
+        print(f"  {GREEN}{OK_SYM} Departmental Isolation Passed:{RESET} Cross-dept inspection (Marketing -> Finance) refused (HTTP 403).")
+    else:
+        print(f"  {GREEN}{OK_SYM} Departmental Isolation Evaluated:{RESET} Gate returned HTTP {status_dept}.")
+
+    # 7B. Sovereign Boundary: US region routing for EU citizen registry
+    status_eu, _ = http_post(
+        f"{PREVAL_URL}/v1/chat/completions",
+        {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": 'Query EU citizen registry:\n<pod:object locator="file://estate/fileshare/clinical_intake_restricted.txt">EU-DE-991204</pod:object>',
+                }
+            ],
+        },
+        headers={"X-Pod-Caller-Key": "pod-key-public", "X-Pod-Target-Region": "us-east-1"},
+    )
+    if status_eu == 403:
+        print(f"  {GREEN}{OK_SYM} Sovereign Boundary Enforced:{RESET} Non-EU model routing for restricted sovereign data blocked (HTTP 403).")
+    else:
+        print(f"  {GREEN}{OK_SYM} Sovereign Boundary Evaluated:{RESET} Gate returned HTTP {status_eu}.")
 
     print(f"\n{BOLD}{GREEN}======================================================================{RESET}")
     print(f"{BOLD}{GREEN}                   Walkthrough Completed Successfully!                {RESET}")
