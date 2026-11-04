@@ -8,6 +8,8 @@ data:
   POD_GATEWAY_MODE: {{ .Values.prevalidator.mode | quote }}
   POD_STRICT_INLINE_HASH: {{ .Values.prevalidator.strictInlineHash | quote }}
   POD_ENABLE_PRESIDIO_FALLBACK: {{ .Values.prevalidator.enablePresidioFallback | quote }}
+  POD_ENABLE_ABAC_DATA_RESIDENCY: {{ .Values.prevalidator.policies.enableDataResidency | default false | quote }}
+  POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION: {{ .Values.prevalidator.policies.enableDepartmentalIsolation | default false | quote }}
   POD_SNAPSHOT_PUBLISHER_URL: "http://{{ include "g1-docket.fullname" . }}-publisher:{{ .Values.snapshotPublisher.service.port }}"
   POD_ENGINE_URL: "http://{{ include "g1-docket.fullname" . }}-engine:{{ .Values.engine.service.port }}"
   POD_GOVERNANCE_URL: "http://{{ include "g1-docket.fullname" . }}-governance:{{ .Values.governance.service.port }}"

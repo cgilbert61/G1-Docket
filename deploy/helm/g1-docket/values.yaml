@@ -27,6 +27,9 @@ prevalidator:
   mode: "enforce" # "enforce" (active blocking) | "observe" (audit-only)
   strictInlineHash: true
   enablePresidioFallback: true
+  policies:
+    enableDataResidency: false
+    enableDepartmentalIsolation: false
   resources:
     limits:
       cpu: 2000m

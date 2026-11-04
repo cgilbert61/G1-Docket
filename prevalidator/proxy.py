@@ -698,6 +698,12 @@ def create_prevalidator_app(
                 pass
         mode = os.environ.get("POD_PREVALIDATOR_MODE", "enforce")
         enforcer = PrevalidatorEnforcer(snapshot_store=store, mode=mode)
+        if os.environ.get("POD_ENABLE_ABAC_DATA_RESIDENCY", "").lower() in ("1", "true", "yes"):
+            from prevalidator.enforcer import create_data_residency_hook
+            enforcer.register_policy_hook(create_data_residency_hook())
+        if os.environ.get("POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION", "").lower() in ("1", "true", "yes"):
+            from prevalidator.enforcer import create_departmental_isolation_hook
+            enforcer.register_policy_hook(create_departmental_isolation_hook())
 
     upstream_url = (upstream_gateway_url or os.environ.get("POD_UPSTREAM_GATEWAY_URL", "mock://local")).rstrip("/")
     engine_url = (engine_service_url or os.environ.get("POD_ENGINE_SERVICE_URL", "http://engine:8083")).rstrip("/")

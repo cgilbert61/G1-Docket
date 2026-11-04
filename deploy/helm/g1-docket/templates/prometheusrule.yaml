@@ -51,4 +51,24 @@ spec:
           annotations:
             summary: "High volume of quarantined data objects awaiting human review"
             description: "More than 50 quarantined records in G1 Governance awaiting Four-Eyes review or operator override."
+
+        - alert: G1DocketHashDriftSpike
+          expr: rate(g1_docket_evaluations_by_reason_total{reason="HASH_DRIFT"}[5m]) > 5
+          for: 1m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "Cryptographic hash drift detected on inbound AI context"
+            description: "Multiple inbound prompts contain data objects whose SHA-256 digest deviates from the attested snapshot. Potential MITM tampering or stale pipeline cache."
+
+        - alert: G1DocketWORMVerificationFailure
+          expr: g1_docket_worm_chain_valid == 0
+          for: 30s
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "WORM Merkle Audit Ledger verification failure"
+            description: "Cryptographic hash-chain audit detected broken SHA-256 Merkle links in the governance audit ledger. Tampering suspected."
 {{- end }}
