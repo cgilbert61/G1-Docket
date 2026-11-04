@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -28,10 +29,29 @@ jobs:
         pip install -e .
         pip install pytest pytest-asyncio httpx
 
-    - name: Run Test Suite
+    - name: Run Full Test & Conformance Suite
       run: |
-        pytest -v
+        pytest -v tests/ conformance/
 
     - name: Run Reproducible End-to-End Demo
       run: |
         python examples/run_demo.py
+
+  helm-lint:
+    name: Helm Chart Validation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: v3.14.0
+
+    - name: Lint Helm Chart
+      run: |
+        helm lint charts/g1-docket
+
+    - name: Test Helm Template Generation
+      run: |
+        helm template g1-docket charts/g1-docket --set ingress.enabled=true
