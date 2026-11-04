@@ -307,3 +307,10 @@ def test_docket_framework_integrations_and_tool_decorator():
     assert permissive_handler.audit_log[-1]["decision"] == "deny"
     assert permissive_handler.audit_log[-1]["reason"] == "MISSING_ATTESTED_CONTEXT"
 
+    # Test complete LangChain callback event lifecycle
+    permissive_handler.on_llm_end(response={"choices": []})
+    permissive_handler.on_llm_error(error=RuntimeError("test error"))
+    permissive_handler.on_tool_start(serialized={"name": "sql_query"}, input_str="SELECT *")
+    permissive_handler.on_tool_end(output="42 rows")
+    permissive_handler.on_tool_error(error=RuntimeError("tool failure"))
+

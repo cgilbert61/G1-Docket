@@ -300,6 +300,64 @@ class DocketLangChainCallbackHandler(BaseCallbackHandler):
                     "prompt_sample": prompt[:120],
                 })
 
+    def on_llm_end(
+        self,
+        response: Any,
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        """Invoked when the LLM finishes running cleanly."""
+        pass
+
+    def on_llm_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        """Invoked when the LLM encounters an exception."""
+        pass
+
+    def on_tool_start(
+        self,
+        serialized: dict[str, Any],
+        input_str: str,
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        tags: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Invoked before a LangChain tool starts running."""
+        pass
+
+    def on_tool_end(
+        self,
+        output: Any,
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        """Invoked after a LangChain tool finishes executing."""
+        pass
+
+    def on_tool_error(
+        self,
+        error: BaseException,
+        *,
+        run_id: Any = None,
+        parent_run_id: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        """Invoked when a LangChain tool throws an exception."""
+        pass
+
 
 class DocketTransformComponent:
     """LlamaIndex-compatible TransformComponent for ingestion and indexing pipelines.
