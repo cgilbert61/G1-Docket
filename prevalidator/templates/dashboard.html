@@ -1282,6 +1282,7 @@
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('snowflake')">5. Snowflake Gate</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('gdpr')">6. GDPR Sovereign Gate</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('department')">7. Dept Isolation Gate</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('databricks')">8. Databricks Gate</button>
           </div>
 
           <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
@@ -2119,6 +2120,11 @@
         if (document.getElementById('targetRegionSelect')) document.getElementById('targetRegionSelect').value = 'us-east-1';
         document.getElementById('modelSelect').value = 'local-model';
         document.getElementById('promptInput').value = 'Extract executive payroll summary:\n<pod:object locator="file://corp-lake/finance/q4_payroll_allocations.csv">dept,payroll_q4\nEngineering,$4200000\nFinance,$980000\n</pod:object>';
+      } else if (name === 'databricks') {
+        document.getElementById('endpointSelect').value = '/v1/chat/completions';
+        document.getElementById('callerKey').value = 'pod-key-public';
+        document.getElementById('modelSelect').value = 'gpt-4o';
+        document.getElementById('promptInput').value = 'Analyze executive ARR growth metrics from Databricks Unity Catalog:\n<pod:object locator="databricks://adb-41920194.azuredatabricks.net/main/sales_analytics/gold_arr_executive_summary">region:EMEA | q4_arr_usd:$18,400,000 | churn_rate:2.1% | acv_growth:34%</pod:object>';
       }
     }
 

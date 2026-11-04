@@ -449,6 +449,62 @@ class EnterpriseDataStoreManager:
             ),
         ]
 
+        # 7. Databricks Unity Catalog AI & Analytics Lakehouse
+        dbx_uri = "databricks://adb-41920194.azuredatabricks.net/main/sales_analytics"
+        self.stores[dbx_uri] = DataStoreConnectionConfig(
+            store_id="databricks-unity-catalog",
+            name="Databricks Unity Catalog - sales_analytics Delta Lakehouse",
+            uri=dbx_uri,
+            provider="Databricks Unity Catalog",
+            store_kind="warehouse",
+            region="eastus2",
+            auth_mode="oauth_m2m",
+            owner="lakehouse-stewards@contoso.com",
+            created_at=now_iso,
+        )
+        self.store_objects[dbx_uri] = [
+            _build_obj(
+                locator=f"{dbx_uri}/public_feature_store_registry",
+                display_name="main.sales_analytics.public_feature_store_registry",
+                object_type="warehouse_table",
+                store_uri=dbx_uri,
+                provider="Databricks Unity Catalog",
+                sample_text="feature_id:churn_prediction_v4 | freshness_hours:6 | owner:mlops-team@contoso.com",
+                owner="mlops-team@contoso.com",
+                sensitivity_label="Public",
+                size_bytes=420000,
+                row_count=1800,
+            ),
+            _build_obj(
+                locator=f"{dbx_uri}/gold_arr_executive_summary",
+                display_name="main.sales_analytics.gold_arr_executive_summary",
+                object_type="warehouse_table",
+                store_uri=dbx_uri,
+                provider="Databricks Unity Catalog",
+                sample_text="region:EMEA | q4_arr_usd:$18,400,000 | churn_rate:2.1% | acv_growth:34%",
+                owner="revops-leadership@contoso.com",
+                sensitivity_label="Confidential",
+                size_bytes=3800000,
+                row_count=940,
+                extra_chunks=[
+                    "q4_arr_usd:$18,400,000 | churn_rate:2.1%",
+                    "region:EMEA | q4_arr_usd:$18,400,000",
+                ],
+            ),
+            _build_obj(
+                locator=f"{dbx_uri}/gold_customer_identity_registry",
+                display_name="main.sales_analytics.gold_customer_identity_registry",
+                object_type="warehouse_table",
+                store_uri=dbx_uri,
+                provider="Databricks Unity Catalog",
+                sample_text="cust_id:CUST-4412 | ssn:518-99-4011 | iban:DE89370400440532013000 | tier:Enterprise",
+                owner="ciso-privacy@contoso.com",
+                sensitivity_label="Restricted",
+                size_bytes=24500000,
+                row_count=82000,
+            ),
+        ]
+
     def list_stores(self) -> list[dict[str, Any]]:
         """Return all registered enterprise data stores for the UI selector and API."""
         out: list[dict[str, Any]] = []
