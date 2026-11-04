@@ -80,7 +80,7 @@ def main() -> int:
             print("  [+] Attestation Policy Refusal:", err.response_body.get("error", {}).get("message"))
 
     # 4. Test Agent Execution with Approved Clearance & Department Context
-    print("\n[Step 4] Dispatching Prompt as Cleared Agent (pod-key-confidential + Finance Dept)...")
+    print("\n[Step 4] Dispatching Prompt as Cleared Agent (pod-key-public on public data)...")
     with DocketClient(base_url="http://localhost:18082") as client:
         # For a prompt containing only Public data
         public_only_chunks = [retrieved_chunks[0]]
@@ -92,6 +92,35 @@ def main() -> int:
         )
         print("  [+] Public Prompt Passed Prevalidator Successfully (HTTP 200 OK)")
         print("  [+] Model Gateway Response:", res.get("choices", [{}])[0].get("message", {}).get("content"))
+
+    # 5. Test @attested_tool for SQL Agent Execution
+    print("\n[Step 5] SQL Agent Tool Wrapping with @attested_tool...")
+    from docket.integrations import attested_tool
+
+    @attested_tool("snowflake://acme.snowflakecomputing.com/FINANCE_PROD/PUBLIC/Q3_REVENUE", auto_hash=True)
+    def query_revenue_tool(quarter: str) -> str:
+        return f"{quarter} ARR: $42.5M, Growth: 32%"
+
+    tool_output = query_revenue_tool("Q3")
+    print("  [+] Tool Output Wrapped in Cryptographic Token:")
+    print(f"      {tool_output}")
+
+    # 6. Test Pre-Dispatch Audit via DocketLangChainCallbackHandler
+    print("\n[Step 6] Pre-Dispatch Prompt Auditing via DocketLangChainCallbackHandler...")
+    from docket.integrations import DocketLangChainCallbackHandler
+
+    handler = DocketLangChainCallbackHandler(require_attested_context=True, max_untagged_chars=120)
+
+    # Allowed prompt with attested token
+    handler.on_llm_start(serialized={}, prompts=[f"Analyze revenue: {tool_output}"])
+    print("  [+] Attested Tool Prompt Passed Callback Audit. Decision:", handler.audit_log[-1]["decision"])
+
+    # Blocked unpapered prompt
+    try:
+        handler.on_llm_start(serialized={}, prompts=["Tell me confidential financial numbers."])
+        print("  [-] Unexpected: Unpapered prompt passed callback handler!")
+    except PolicyDenialError as err:
+        print(f"  [+] Unpapered Prompt Blocked by Callback Handler (HTTP {err.status_code}):", err.response_body.get("error"))
 
     print("\n" + "=" * 70)
     print("             RAG Agent Integration Walkthrough Complete!              ")
