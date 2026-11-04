@@ -52,8 +52,42 @@
     .score-box { background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; text-align: left; font-variant-numeric: tabular-nums; }
     .score-box .num { font-size: 22px; font-weight: 600; letter-spacing: -0.025em; color: var(--text); margin-top: 4px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-variant-numeric: tabular-nums; }
     .score-box .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
-    .english-verdict { background: var(--bg-subtle); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: 4px; padding: 12px 16px; margin-bottom: 14px; font-size: 13.5px; line-height: 1.6; color: var(--text); max-width: 100%; font-variant-numeric: tabular-nums; }
+    .english-verdict {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--text);
+      max-width: 100%;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
     .english-verdict.has-failures { border-left-color: var(--danger); background: #FEF2F2; }
+    /* Mode-Specific Subtle Tinting for Verification Scorecard Box */
+    .english-verdict.mode-enforce {
+      background: #ECFDF5 !important; /* Subtle Emerald-50 tint */
+      border: 1px solid #A7F3D0 !important; /* Emerald-200 */
+      border-left: 3px solid #059669 !important; /* Emerald-600 */
+      color: #064E3B !important; /* Emerald-900 */
+    }
+    .english-verdict.mode-enforce strong {
+      color: #064E3B;
+    }
+    .english-verdict.mode-observe,
+    .english-verdict.mode-audit {
+      background: #FEF2F2 !important; /* Subtle Red-50 tint */
+      border: 1px solid #FECACA !important; /* Red-200 */
+      border-left: 3px solid #DC2626 !important; /* Red-600 */
+      color: #7F1D1D !important; /* Red-900 */
+    }
+    .english-verdict.mode-observe strong,
+    .english-verdict.mode-audit strong {
+      color: #7F1D1D;
+    }
     table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
     th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     th { color: var(--muted); font-weight: 600; background: var(--bg); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -845,7 +879,7 @@
         </h2>
 
         <!-- VERIFIABLE PLAIN-ENGLISH FILE COUNT BANNER (PREVALIDATOR) -->
-        <div id="prevalEnglishBanner" class="english-verdict">
+        <div id="prevalEnglishBanner" class="english-verdict mode-enforce">
           Loading verifiable Prevalidator pass/fail file count...
         </div>
         <div id="prevalHairlineProgress" class="hairline-progress-container">
@@ -1602,7 +1636,11 @@
       }
 
       document.getElementById('prevalStatusText').innerHTML = '<span style="color:var(--link); font-weight:600; display:inline-flex; align-items:center;"><span class="status-dot-active"></span>Evaluating against snapshot (<span class="preval-live-timer active-shimmer">0.0s</span>)...</span>';
-      document.getElementById('prevalEnglishBanner').innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><strong><span class="status-dot-active"></span>Prevalidator Active:</strong> Zero-DB memory evaluation against active cryptographic snapshot (<span class="preval-live-timer active-shimmer">0.0s</span>)...</div>';
+      const initBanner = document.getElementById('prevalEnglishBanner');
+      if (initBanner) {
+        initBanner.className = 'english-verdict ' + (currentMode === 'enforce' ? 'mode-enforce' : 'mode-observe');
+        initBanner.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><strong><span class="status-dot-active"></span>Prevalidator Active:</strong> Zero-DB memory evaluation against active cryptographic snapshot (<span class="preval-live-timer active-shimmer">0.0s</span>)...</div>';
+      }
 
       const tbody = document.querySelector('#prevalidatedFilesTable tbody');
       if (tbody) {
@@ -1646,8 +1684,12 @@
 
         document.getElementById('prevalStatusText').innerHTML = `<span style="color:${data.failed_count > 0 ? 'var(--warn)' : 'var(--accent)'}; font-weight:600;">✓ ${data.passed_count} Passed / ${data.failed_count} Blocked in ${totalElapsed}s</span>`;
         const banner = document.getElementById('prevalEnglishBanner');
-        banner.innerHTML = `<strong>Verifiable Prevalidator Count (${totalElapsed}s):</strong> ${data.english_summary}`;
-        banner.className = 'english-verdict' + (data.failed_count > 0 ? ' has-failures' : '');
+        const mode = data.mode || currentMode;
+        const formattedSummary = (data.english_summary || '')
+          .replace(/\[ENFORCE MODE[^\]]*\]/, '<span style="background: #059669; color: #FFFFFF; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 3px; font-variant-numeric: tabular-nums; vertical-align: baseline; margin-right: 4px;">ENFORCE MODE (Active Blocking)</span>')
+          .replace(/\[OBSERVE MODE[^\]]*\]/, '<span style="background: #DC2626; color: #FFFFFF; font-weight: 700; font-size: 11px; padding: 2px 7px; border-radius: 3px; font-variant-numeric: tabular-nums; vertical-align: baseline; margin-right: 4px;">OBSERVE MODE (Audit-Only)</span>');
+        banner.innerHTML = `<strong>Verifiable Prevalidator Count (${totalElapsed}s):</strong> ${formattedSummary}`;
+        banner.className = 'english-verdict ' + (mode === 'enforce' ? 'mode-enforce' : 'mode-observe');
 
         document.getElementById('pvTotal').textContent = data.total_files;
         document.getElementById('pvPassed').textContent = data.passed_count;
@@ -1730,6 +1772,12 @@
       const badge = document.getElementById('modeBadge');
       badge.textContent = currentMode === 'enforce' ? 'ENFORCE MODE (BLOCKING)' : 'OBSERVE MODE (AUDIT-ONLY)';
       badge.className = 'badge ' + (currentMode === 'enforce' ? 'badge-Public' : 'badge-Confidential');
+      const prevalBanner = document.getElementById('prevalEnglishBanner');
+      if (prevalBanner) {
+        prevalBanner.classList.remove('mode-enforce', 'mode-observe', 'mode-audit');
+        prevalBanner.classList.add(currentMode === 'enforce' ? 'mode-enforce' : 'mode-observe');
+      }
+
       const modeBtn = document.getElementById('toggleModeBtn');
       if (modeBtn) {
         if (currentMode === 'enforce') {

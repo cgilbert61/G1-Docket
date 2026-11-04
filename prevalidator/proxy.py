@@ -621,6 +621,7 @@ def create_prevalidator_app(
         )
 
         return {
+            "mode": enforcer.mode,
             "directory": dir_label,
             "total_files": total_count,
             "passed_count": passed_count,
