@@ -6,7 +6,9 @@
       <p class="text-xs text-[#475569]">Requests blocked due to un-papered data, hash tampering, forged tickets, or policy violations.</p>
     </div>
     <div class="flex gap-2">
-      <button onclick="refreshQuarantine()" class="btn btn-secondary">Refresh</button>
+      <a href="/api/quarantine/export?format=csv" class="btn btn-secondary text-xs" title="Export Quarantine to CSV">Export CSV</a>
+      <a href="/api/quarantine/export?format=json" class="btn btn-secondary text-xs" title="Export Quarantine to JSON">Export JSON</a>
+      <button onclick="refreshQuarantine()" class="btn btn-secondary text-xs">Refresh</button>
     </div>
   </div>
 

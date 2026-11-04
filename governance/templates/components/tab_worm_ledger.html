@@ -5,9 +5,13 @@
       <h2 class="text-base font-semibold text-[#0F172A] tracking-tight">Cryptographic WORM Audit Ledger</h2>
       <p class="text-xs text-[#475569]">Write-Once Read-Many Merkle chain with SQLite WAL write triggers and canonical JSONL hash-chaining.</p>
     </div>
-    <button onclick="verifyWORM()" class="btn btn-primary">
-      Verify Cryptographic Integrity
-    </button>
+    <div class="flex gap-2">
+      <a href="/api/worm/export?format=csv" class="btn btn-secondary text-xs" title="Export Ledger to CSV">Export CSV</a>
+      <a href="/api/worm/export?format=json" class="btn btn-secondary text-xs" title="Export Ledger to JSON">Export JSON</a>
+      <button onclick="verifyWORM()" class="btn btn-primary text-xs">
+        Verify Cryptographic Integrity
+      </button>
+    </div>
   </div>
 
   <!-- Verification Result Banner -->
