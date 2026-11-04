@@ -613,3 +613,63 @@ def test_continuous_delta_crawler_pass1_skip_pass2_delta_and_auto_revoke(tmp_pat
 
 
 
+
+
+def test_databricks_unity_catalog_governance(tmp_path: Path):
+    """Test 9: Verify Databricks Unity Catalog crawl, multi-tier attestation, and in-memory Prevalidator admission control."""
+    from engine.pipeline import AttestationEngine
+    from engine.storage_connectors import EnterpriseDataStoreManager
+
+    db_url = f"sqlite:///{(tmp_path / 'adv9.db').as_posix()}"
+    registry = RegistryService(db_url=db_url, key_dir=tmp_path / "keys")
+    eng = AttestationEngine(registry=registry)
+    mgr = EnterpriseDataStoreManager(registry=registry, engine=eng, estate_dir=tmp_path)
+
+    # 1. Crawl and attest Databricks Unity Catalog Delta Lakehouse
+    dbx_uri = "databricks://adb-41920194.azuredatabricks.net/main/sales_analytics"
+    res = mgr.crawl_and_attest_store(dbx_uri)
+    assert res["total_files_found"] == 3
+    assert res["attested_active_count"] == 3
+
+    # 2. Publish cryptographic snapshot
+    pub = SnapshotPublisher(registry=registry, snapshot_output_path=tmp_path / "snap.dsse.json")
+    env = pub.publish_snapshot()
+    store = InMemorySnapshotStore(registry.keyring)
+    store.load_from_envelope(env)
+    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce", strict_inline_hash=True)
+
+    # Scenario A: Public feature store -> gpt-4o (ALLOW)
+    pub_loc = f"{dbx_uri}/public_feature_store_registry"
+    pub_text = "feature_id:churn_prediction_v4 | freshness_hours:6 | team:mlops-platform | status:available"
+    out_pub = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{pub_loc}">{pub_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+    assert out_pub.allowed_to_forward is True
+
+    # Scenario B: Confidential ARR executive summary -> gpt-4o (DENY: EGRESS_DENIED)
+    conf_loc = f"{dbx_uri}/gold_arr_executive_summary"
+    conf_text = "region:EMEA | q4_arr_usd:$18,400,000 | churn_rate:2.1% | acv_growth:34%"
+    out_conf = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{conf_loc}">{conf_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+    )
+    assert out_conf.allowed_to_forward is False
+
+    # Scenario C: Cleared confidential caller -> local-model (ALLOW)
+    out_local = enforcer.evaluate_request(
+        payload={"model": "local-model", "messages": [{"role": "user", "content": f'<pod:object locator="{conf_loc}">{conf_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-confidential"},
+    )
+    assert out_local.allowed_to_forward is True
+
+    # Scenario D: Restricted customer identity vault -> public caller (DENY: INSUFFICIENT_CLEARANCE)
+    rest_loc = f"{dbx_uri}/gold_customer_identity_registry"
+    rest_text = "cust_id:CUST-4412 | ssn:518-99-4011 | iban:DE89370400440532013000 | tier:Enterprise"
+    out_rest = enforcer.evaluate_request(
+        payload={"model": "gpt-4o", "messages": [{"role": "user", "content": f'<pod:object locator="{rest_loc}">{rest_text}</pod:object>'}]},
+        headers={"X-POD-Caller-Key": "pod-key-analyst"},
+    )
+    assert out_rest.allowed_to_forward is False
+
+    registry.close()

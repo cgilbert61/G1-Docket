@@ -469,7 +469,7 @@ class EnterpriseDataStoreManager:
                 object_type="warehouse_table",
                 store_uri=dbx_uri,
                 provider="Databricks Unity Catalog",
-                sample_text="feature_id:churn_prediction_v4 | freshness_hours:6 | owner:mlops-team@contoso.com",
+                sample_text="feature_id:churn_prediction_v4 | freshness_hours:6 | team:mlops-platform | status:available",
                 owner="mlops-team@contoso.com",
                 sensitivity_label="Public",
                 size_bytes=420000,
