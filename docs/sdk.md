@@ -549,3 +549,96 @@ res3 = client.chat_completions(
 print("Sanitized text:", res3["choices"][0]["message"]["content"])
 ```
 
+---
+
+## 15. Agentic Framework Adapters (CrewAI, LangGraph, AutoGen)
+
+The SDK provides native wrappers and hooks for leading multi-agent frameworks:
+
+### CrewAI (`DocketCrewAITool`)
+```python
+from docket.integrations import DocketCrewAITool
+
+def raw_db_tool(cust_id: str) -> str:
+    return f"{cust_id} | elena.fisher@example.com | segment: Enterprise"
+
+# Wrap tool to automatically wrap outputs in canonical <pod:object> envelopes
+attested_tool = DocketCrewAITool(
+    raw_db_tool,
+    locator="snowflake://corp/crm/contacts",
+    auto_hash=True,
+)
+output = attested_tool.run("CUST-901")
+```
+
+### LangGraph (`@docket_langgraph_node`)
+```python
+from docket.integrations import docket_langgraph_node
+
+@docket_langgraph_node(locator="snowflake://corp/crm/contacts", state_key="messages", auto_hash=True)
+def retrieve_node(state: dict) -> dict:
+    messages = list(state.get("messages", []))
+    messages.append({"role": "user", "content": "CUST-901 | elena.fisher@example.com"})
+    return {"messages": messages}
+```
+
+### Microsoft AutoGen (`DocketAutoGenHook`)
+```python
+from docket.integrations import DocketAutoGenHook
+
+# AutoGen hook intercepting and attesting inter-agent messages
+hook = DocketAutoGenHook(
+    locator_map={"CUST-901": "snowflake://corp/crm/contacts"},
+    auto_hash=True,
+)
+agent.register_hook(hookable_method="process_message_before_send", hook=hook)
+```
+
+---
+
+## 16. Dynamic ABAC Policy Hooks & Sovereign Boundaries
+
+Configure Attribute-Based Access Control policies at runtime without gateway restarts:
+
+```python
+from docket import DocketClient
+
+client = DocketClient()
+
+# 1. Enforce Sovereign Data Residency (GDPR)
+client.configure_policy_hook(
+    "data_residency",
+    action="enable",
+    allowed_regions=["eu-central-1", "eu-west-1", "eu-north-1"],
+)
+
+# 2. Enforce Departmental Isolation (prevent cross-team access)
+client.configure_policy_hook("departmental_isolation", action="enable")
+
+# 3. Inspect active runtime hooks
+hooks = client.list_policy_hooks()
+print("Active ABAC Hooks:", hooks)
+
+# 4. Clear hooks
+client.configure_policy_hook("clear")
+```
+
+---
+
+## 17. In-Memory ASGI Testing & Transport Injection
+
+Test applications against the Prevalidator in-memory without binding external TCP sockets:
+
+```python
+from docket import DocketClient
+from prevalidator.proxy import create_prevalidator_app
+
+app = create_prevalidator_app(enforcer=enforcer)
+
+# Pass the FastAPI/Starlette app directly to the client
+with DocketClient(app=app) as client:
+    health = client.get_health()
+    assert health["status"] == "ok"
+```
+
+
