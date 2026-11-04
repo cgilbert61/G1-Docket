@@ -37,6 +37,7 @@ full = [
 
 [project.scripts]
 pod = "registry.cli:main"
+docket = "registry.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
