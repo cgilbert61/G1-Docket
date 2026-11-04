@@ -119,3 +119,15 @@ ingress:
     - secretName: g1-docket-tls
       hosts:
         - docket.internal.corp
+
+# Prometheus Operator Monitoring & Alerting
+monitoring:
+  serviceMonitor:
+    enabled: false
+    interval: "15s"
+    scrapeTimeout: "10s"
+    labels: {}
+  prometheusRule:
+    enabled: false
+    labels: {}
+

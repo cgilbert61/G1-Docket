@@ -1,0 +1,54 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "g1-docket.fullname" . }}
+  labels:
+    {{- include "g1-docket.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: g1-docket.alerts
+      rules:
+        - alert: G1DocketHighPolicyDenialRate
+          expr: rate(g1_docket_evaluations_by_decision_total{decision="deny"}[5m]) / rate(g1_docket_evaluations_total[5m]) > 0.15
+          for: 2m
+          labels:
+            severity: warning
+            system: g1-docket
+          annotations:
+            summary: "High rate of AI data attestation policy denials"
+            description: "G1 Docket Prevalidator is denying > 15% of inbound inference requests. Potential data exfiltration probing or stale client credentials."
+
+        - alert: G1DocketSubMillisecondSLABreached
+          expr: g1_docket_evaluation_duration_seconds{quantile="0.95"} > 0.005
+          for: 1m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "Sub-millisecond admission latency SLA breached"
+            description: "Prevalidator p95 evaluation latency has exceeded 5ms SLA budget (current: {{ "{{ $value }}" }}s)."
+
+        - alert: G1DocketActiveSnapshotExpiringSoon
+          expr: g1_docket_active_snapshot_sequence == 0
+          for: 5m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "No valid signed DSSE snapshot loaded"
+            description: "Prevalidator has no active cryptographic snapshot loaded. Gateway will fail-closed and deny all requests."
+
+        - alert: G1DocketQuarantineBacklog
+          expr: g1_docket_governance_quarantine_items{status="QUARANTINED"} > 50
+          for: 15m
+          labels:
+            severity: warning
+            system: g1-docket
+          annotations:
+            summary: "High volume of quarantined data objects awaiting human review"
+            description: "More than 50 quarantined records in G1 Governance awaiting Four-Eyes review or operator override."
+{{- end }}
