@@ -1013,6 +1013,7 @@
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('strip')">2. Strip (Confidential)</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('restricted')">3. Refuse (Restricted)</button>
             <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('unattested')">4. Refuse (Unattested)</button>
+            <button class="btn btn-dark" style="margin-right:4px;margin-bottom:4px;" onclick="loadPreset('snowflake')">5. Snowflake Gate</button>
           </div>
 
           <label style="font-size: 12px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">Protocol Endpoint</label>
@@ -1809,6 +1810,11 @@
         document.getElementById('callerKey').value = 'pod-key-public';
         document.getElementById('modelSelect').value = 'gpt-4o';
         document.getElementById('promptInput').value = '<pod:object locator="file://estate/fileshare/unverified_notes_ambiguous.txt">AMBIGUOUS_REF_9042</pod:object>';
+      } else if (name === 'snowflake') {
+        document.getElementById('endpointSelect').value = '/v1/chat/completions';
+        document.getElementById('callerKey').value = 'pod-key-public';
+        document.getElementById('modelSelect').value = 'gpt-4o';
+        document.getElementById('promptInput').value = 'Summarize customer profile from Snowflake warehouse:\n<pod:object locator="snowflake://contoso.us-east-1.snowflakecomputing.com/FINANCE_PROD/PUBLIC/DIM_CUSTOMER_CONTACTS">CUST-901 | elena.fisher@example.com | phone: 312-555-0199 | segment: Enterprise</pod:object>';
       }
     }
 
