@@ -314,3 +314,42 @@ def test_docket_framework_integrations_and_tool_decorator():
     permissive_handler.on_tool_end(output="42 rows")
     permissive_handler.on_tool_error(error=RuntimeError("tool failure"))
 
+
+def test_multi_agent_clearance_segregation():
+    """Verify that multi-agent teams with segregated caller keys enforce access policies."""
+    from docket.integrations import attested_tool, wrap_rag_documents
+
+    @attested_tool("snowflake://corp/fin/crm", auto_hash=True)
+    def fetch_crm():
+        return "customer_id:100 | spend:$950k"
+
+    record = fetch_crm()
+    assert '<pod:object locator="snowflake://corp/fin/crm" sha256=' in record
+
+    # Mock gateway returning 403 on public agent call, but 200 on cleared worker
+    def handler(request: httpx.Request) -> httpx.Response:
+        key = request.headers.get("x-pod-caller-key")
+        if key == "pod-key-public":
+            return httpx.Response(status_code=403, json={"error": {"message": "EGRESS_DENIED"}})
+        return httpx.Response(status_code=200, json={"choices": [{"message": {"content": "Processed"}}]})
+
+    transport = httpx.MockTransport(handler)
+    client = DocketClient()
+    client._client = httpx.Client(transport=transport)
+
+    # 1. Privileged worker passes
+    worker_res = client.chat_completions(
+        messages=[{"role": "user", "content": record}],
+        caller_key="pod-key-confidential",
+    )
+    assert worker_res["choices"][0]["message"]["content"] == "Processed"
+
+    # 2. Public agent is blocked
+    with pytest.raises(PolicyDenialError) as exc:
+        client.chat_completions(
+            messages=[{"role": "user", "content": record}],
+            caller_key="pod-key-public",
+        )
+    assert exc.value.status_code == 403
+
+
