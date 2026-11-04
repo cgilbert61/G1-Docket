@@ -90,6 +90,17 @@ The Helm chart includes pre-configured alerting thresholds under [`deploy/helm/g
 4. **`G1DocketQuarantineBacklog` (Warning)**:
    - **Condition**: More than 50 quarantined records pending review for $> 15\text{ minutes}$.
    - **Significance**: Requires operator attention in the Four-Eyes Dual-Key governance triage interface.
+5. **`G1DocketHashDriftSpike` (Critical)**:
+   - **Condition**: Rate of `HASH_DRIFT` policy denials exceeds 5 events within 5 minutes.
+   - **Significance**: Indicates inbound context payload SHA-256 digests deviating from the signed attestation snapshot (tamper/MITM attempt or stale pipeline cache).
+6. **`G1DocketWORMVerificationFailure` (Critical)**:
+   - **Condition**: `g1_docket_worm_chain_valid == 0` for 30 seconds.
+   - **Significance**: Cryptographic Merkle hash-chain verification detected broken SHA-256 links in the governance audit ledger; immediate security triage required.
+
+For vanilla Kubernetes deployments without Helm, apply the standalone manifest directly:
+```bash
+kubectl apply -f deploy/k8s/prometheus-alerts.yaml
+```
 
 ---
 
