@@ -27,6 +27,7 @@ class DocketRAGDocument:
     locator: str
     content: str
     sha256: str | None = None
+    chunk_proof: str | None = None
     title: str | None = None
     metadata: dict[str, Any] | None = None
 
@@ -36,6 +37,7 @@ class DocketRAGDocument:
             locator=self.locator,
             content=self.content,
             sha256=self.sha256,
+            chunk_proof=self.chunk_proof,
         )
 
 
@@ -43,6 +45,7 @@ def wrap_agent_tool_output(
     locator: str,
     content: Any,
     sha256: str | None = None,
+    chunk_proof: str | None = None,
     auto_hash: bool = False,
 ) -> str:
     """Wrap output returned by an agent tool (e.g. database query, web search, doc retrieval) into `<pod:object>`.
@@ -52,7 +55,7 @@ def wrap_agent_tool_output(
     text = str(content)
     if auto_hash and not sha256:
         sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return DocketClient.wrap_object(locator=locator, content=text, sha256=sha256)
+    return DocketClient.wrap_object(locator=locator, content=text, sha256=sha256, chunk_proof=chunk_proof)
 
 
 def attested_tool(
@@ -508,9 +511,9 @@ class DocketVectorRetriever:
         self.client = client or DocketClient()
         self.auto_hash = auto_hash
 
-    def format_chunk(self, content: str, locator: str, sha256: str | None = None) -> str:
+    def format_chunk(self, content: str, locator: str, sha256: str | None = None, chunk_proof: str | None = None) -> str:
         """Format an individual retrieved vector chunk into `<pod:object>` syntax."""
-        return wrap_agent_tool_output(locator=locator, content=content, sha256=sha256, auto_hash=self.auto_hash)
+        return wrap_agent_tool_output(locator=locator, content=content, sha256=sha256, chunk_proof=chunk_proof, auto_hash=self.auto_hash)
 
     def format_search_results(
         self,
@@ -518,6 +521,7 @@ class DocketVectorRetriever:
         content_key: str = "text",
         locator_key: str = "locator",
         sha256_key: str = "sha256",
+        proof_key: str = "chunk_proof",
     ) -> str:
         """Format a list of vector search matches into newline-delimited `<pod:object>` tokens."""
         blocks: list[str] = []
@@ -526,21 +530,25 @@ class DocketVectorRetriever:
                 content = str(hit.get(content_key) or hit.get("page_content") or hit.get("content", ""))
                 loc = str(hit.get(locator_key) or hit.get("source") or hit.get("id", "vector://unspecified"))
                 sha = hit.get(sha256_key)
+                proof = hit.get(proof_key)
             elif hasattr(hit, "page_content"):
                 content = str(hit.page_content)
                 meta = getattr(hit, "metadata", {}) or {}
                 loc = str(meta.get(locator_key, meta.get("source", "vector://unspecified")))
                 sha = meta.get(sha256_key)
+                proof = meta.get(proof_key)
             elif hasattr(hit, "text"):
                 content = str(hit.text)
                 meta = getattr(hit, "metadata", {}) or {}
                 loc = str(meta.get(locator_key, meta.get("source", "vector://unspecified")))
                 sha = meta.get(sha256_key)
+                proof = meta.get(proof_key)
             else:
                 content = str(hit)
                 loc = "vector://unspecified"
                 sha = None
-            blocks.append(self.format_chunk(content=content, locator=loc, sha256=sha))
+                proof = None
+            blocks.append(self.format_chunk(content=content, locator=loc, sha256=sha, chunk_proof=proof))
         return "\n".join(blocks)
 
 

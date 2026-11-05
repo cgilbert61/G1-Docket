@@ -36,11 +36,14 @@ def compute_file_sha256(path: str | Path) -> str:
     return h.hexdigest()
 
 
-def wrap_object_tag(locator: str, content: str, sha256: str | None = None) -> str:
+def wrap_object_tag(locator: str, content: str, sha256: str | None = None, chunk_proof: str | None = None) -> str:
     """Wrap content in an inline `<pod:object>` tag for AI Gateway evaluation."""
+    attrs = [f'locator="{locator}"']
     if sha256:
-        return f'<pod:object locator="{locator}" sha256="{sha256}">{content}</pod:object>'
-    return f'<pod:object locator="{locator}">{content}</pod:object>'
+        attrs.append(f'sha256="{sha256}"')
+    if chunk_proof:
+        attrs.append(f'chunk_proof="{chunk_proof}"')
+    return f'<pod:object {" ".join(attrs)}>{content}</pod:object>'
 
 
 class DocketClient:
@@ -479,9 +482,9 @@ class DocketClient:
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def wrap_object(locator: str, content: str, sha256: str | None = None) -> str:
+    def wrap_object(locator: str, content: str, sha256: str | None = None, chunk_proof: str | None = None) -> str:
         """Wrap text in a `<pod:object>` XML block."""
-        return wrap_object_tag(locator, content, sha256)
+        return wrap_object_tag(locator, content, sha256, chunk_proof)
 
     @staticmethod
     def hash_file(path: str | Path) -> str:

@@ -167,3 +167,34 @@ def test_prevalidator_enforces_chunk_proof_in_pod_tag():
     outcome_tampered = enforcer.evaluate_request(tampered_payload, headers={"x-pod-caller-clearance": "Internal"})
     assert outcome_tampered.allowed_to_forward is False
     assert "REASON_HASH_MISMATCH" in outcome_tampered.audit_entry.reason_codes
+
+
+def test_docket_vector_retriever_and_rag_document_with_chunk_proof():
+    """Verify DocketVectorRetriever and DocketRAGDocument automatically format chunk_proof attributes."""
+    from docket.integrations import DocketRAGDocument, DocketVectorRetriever
+
+    # 1. DocketRAGDocument
+    doc = DocketRAGDocument(
+        locator="s3://lake/doc1.pdf",
+        content="Patient has allergy to penicillin.",
+        chunk_proof="MTESTPROOF123",
+    )
+    tag = doc.to_pod_tag()
+    assert 'locator="s3://lake/doc1.pdf"' in tag
+    assert 'chunk_proof="MTESTPROOF123"' in tag
+    assert "Patient has allergy to penicillin." in tag
+
+    # 2. DocketVectorRetriever
+    retriever = DocketVectorRetriever(auto_hash=False)
+    hits = [
+        {
+            "id": "s3://lake/doc2.pdf",
+            "text": "EHR diagnostic summary note.",
+            "chunk_proof": "MPROOF456",
+        }
+    ]
+    formatted = retriever.format_search_results(hits, locator_key="id")
+    assert 'locator="s3://lake/doc2.pdf"' in formatted
+    assert 'chunk_proof="MPROOF456"' in formatted
+    assert "EHR diagnostic summary note." in formatted
+
