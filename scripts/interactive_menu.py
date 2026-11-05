@@ -27,8 +27,8 @@ if hasattr(sys.stdout, "reconfigure"):
 MENU_ITEMS = [
     {
         "id": 1,
-        "name": "Consolidated 15-Phase Enterprise CI/CD Scorecard",
-        "description": "Full end-to-end regression and verification suite",
+        "name": "Consolidated 17-Phase Enterprise CI/CD Scorecard",
+        "description": "Full end-to-end regression and verification suite across all 17 phases",
         "command": [sys.executable, "scripts/run_all_verifications.py"],
     },
     {
@@ -117,6 +117,24 @@ MENU_ITEMS = [
         "description": "Validates all 7 containerized services and live inference",
         "command": [sys.executable, "-m", "examples.verify_docker_stack"],
     },
+    {
+        "id": 15,
+        "name": "Enterprise SIEM & SOC OCSF/CEF Exporter Verification",
+        "description": "Validates OCSF v1.1.0, ArcSight CEF, and Datadog JSON event formatting",
+        "command": [sys.executable, "-m", "pytest", "tests/test_governance_siem.py", "-v"],
+    },
+    {
+        "id": 16,
+        "name": "Hyperscale Cryptographic Structures & Filters Suite",
+        "description": "Validates CountingBloomFilter (<10us) and 256-bit SparseMerkleTree",
+        "command": [sys.executable, "-m", "pytest", "tests/test_hyperscale.py", "-v"],
+    },
+    {
+        "id": 17,
+        "name": "Hyperscale Cascading Filter & SMT Proofs Demo",
+        "description": "5-scenario multi-billion object admission walkthrough with proofs",
+        "command": [sys.executable, "examples/hyperscale_cascading_filter_demo.py"],
+    },
 ]
 
 
@@ -166,7 +184,7 @@ def main() -> int:
     while True:
         display_menu()
         try:
-            raw = input("Select an action number [1-14] (0 to exit): ").strip()
+            raw = input("Select an action number [1-17] (0 to exit): ").strip()
         except (KeyboardInterrupt, EOFError):
             print("\nExiting.")
             return 0

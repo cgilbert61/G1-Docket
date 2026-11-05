@@ -86,7 +86,10 @@ async function openTriageModal(qid) {
     k1Btn.textContent = '1. Stage Key 1 Override';
     k2Btn.disabled = true;
     k2Btn.style.pointerEvents = 'none';
-    k2Btn.className = 'btn btn-secondary opacity-40 cursor-not-allowed';
+    k2Btn.style.backgroundColor = '#F1F5F9';
+    k2Btn.style.color = '#94A3B8';
+    k2Btn.style.borderColor = '#CBD5E1';
+    k2Btn.className = 'btn btn-secondary cursor-not-allowed';
     k2Btn.textContent = '🔒 Sign Key 2 & Execute Replay (Locked)';
     k2Btn.title = 'Locked: Complete Step 1 (Stage Key 1 Override) above first.';
     k2Op.disabled = true;
@@ -119,6 +122,9 @@ async function openTriageModal(qid) {
     k1Btn.textContent = '✓ Step 1 Staged';
     k2Btn.disabled = false;
     k2Btn.style.pointerEvents = 'auto';
+    k2Btn.style.backgroundColor = '';
+    k2Btn.style.color = '';
+    k2Btn.style.borderColor = '';
     k2Btn.className = 'btn btn-primary font-bold';
     k2Btn.textContent = '⚡ 2. Sign Key 2 & Execute Replay';
     k2Btn.title = 'Authorize emergency release and replay payload through :18082';

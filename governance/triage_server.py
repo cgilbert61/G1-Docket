@@ -211,6 +211,11 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
                     "siem_destinations": siem_dests,
                 },
             },
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
         )
 
     @app.get("/healthz")
