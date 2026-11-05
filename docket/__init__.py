@@ -25,6 +25,7 @@ from docket.integrations import (
     wrap_rag_documents,
 )
 
+from docket.hyperscale import CountingBloomFilter, SparseMerkleTree
 from docket.watermark import (
     WatermarkPayload,
     embed_invisible_watermark,
@@ -38,6 +39,8 @@ __all__ = [
     "AsyncDocketClient",
     "DocketError",
     "PolicyDenialError",
+    "CountingBloomFilter",
+    "SparseMerkleTree",
     "DocketRAGDocument",
     "DocketDocumentTransformer",
     "DocketLlamaIndexPostprocessor",
