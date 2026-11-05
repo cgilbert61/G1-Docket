@@ -18,6 +18,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 14: LlamaIndex Zero-Trust RAG Admission Demo
   Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
   Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
+  Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -157,6 +158,9 @@ def main() -> int:
 
     # Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
     phases.append(run_phase(16, "Enterprise SIEM & SOC OCSF/CEF Exporter", [sys.executable, "-m", "pytest", "tests/test_governance_siem.py", "-q"]))
+
+    # Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
+    phases.append(run_phase(17, "Hyperscale Cascading Filter & SMT Proofs", [sys.executable, "examples/hyperscale_cascading_filter_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)

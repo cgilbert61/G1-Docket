@@ -1,6 +1,6 @@
 # G1 Docket — High-Concurrency Latency & Throughput Benchmark
 
-**Date**: 2026-11-05 00:10:30 UTC  
+**Date**: 2026-11-05 00:18:06 UTC  
 **Target**: `http://localhost:18082/v1/chat/completions`  
 **Total Probes**: 2000  
 **Concurrency Level**: 25 parallel workers  
@@ -9,10 +9,10 @@
 
 | Workload | Throughput | Gateway p50 | Gateway p95 | Gateway p99 | < 1ms SLA | Success Rate |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Public Attested Passthrough (ALLOW)** | `33.2 RPS` | `177.7 μs` | `592.3 μs` | `1636.2 μs` | **`98.2%`** | `100.0%` |
-| **2. Multi-Object Clearance Gate (ALLOW)** | `31.2 RPS` | `225.3 μs` | `824.0 μs` | `2806.8 μs` | **`96.2%`** | `100.0%` |
-| **3. Zero-Trust Policy Denial (BLOCK 403)** | `44.0 RPS` | `0.0 μs` | `0.0 μs` | `0.0 μs` | **`100.0%`** | `100.0%` |
-| **4. Dynamic In-Flight Masking (MASK 200)** | `35.2 RPS` | `234.1 μs` | `834.1 μs` | `2968.2 μs` | **`96.6%`** | `100.0%` |
+| **1. Public Attested Passthrough (ALLOW)** | `31.4 RPS` | `180.7 μs` | `613.6 μs` | `1667.7 μs` | **`98.2%`** | `100.0%` |
+| **2. Multi-Object Clearance Gate (ALLOW)** | `28.2 RPS` | `227.6 μs` | `842.9 μs` | `5906.8 μs` | **`95.6%`** | `100.0%` |
+| **3. Zero-Trust Policy Denial (BLOCK 403)** | `42.4 RPS` | `0.0 μs` | `0.0 μs` | `0.0 μs` | **`100.0%`** | `100.0%` |
+| **4. Dynamic In-Flight Masking (MASK 200)** | `28.0 RPS` | `259.4 μs` | `1171.1 μs` | `4387.3 μs` | **`94.0%`** | `100.0%` |
 
 ## Verification of Sub-Millisecond (< 1 ms) In-Memory SLA
 

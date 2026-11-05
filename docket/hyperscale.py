@@ -108,15 +108,13 @@ for _i in range(256):
 
 
 class SparseMerkleTree:
-    """Authenticated 256-bit Sparse Merkle Tree (SMT).
-    
-    Maintains a deterministic 256-level trie where leaves are 256-bit SHA-256 hashes.
-    Supports logarithmic O(log N) inclusion/exclusion proof generation and verification.
-    """
+    """Deterministic 256-bit Sparse Merkle Tree supporting full inclusion proofs."""
 
     def __init__(self) -> None:
-        self.leaves: dict[bytes, bytes] = {}  # 32-byte key -> 32-byte value
-        self._root_cache: bytes | None = None
+        self.leaves: dict[bytes, bytes] = {}
+        # trie: node_path (bitstring) -> hash (32 bytes)
+        self._nodes: dict[str, bytes] = {}
+        self._root: bytes = _EMPTY_HASHES[256]
 
     @staticmethod
     def _to_32bytes(val: str | bytes) -> bytes:
@@ -132,99 +130,74 @@ class SparseMerkleTree:
         return val
 
     @staticmethod
-    def _get_bit(key: bytes, depth: int) -> int:
-        """Extract the depth-th bit (0..255) from a 32-byte key."""
-        byte_index = depth >> 3
-        bit_index = 7 - (depth & 7)
-        return (key[byte_index] >> bit_index) & 1
+    def _to_bits(k32: bytes) -> str:
+        """Convert 32-byte key to 256-character '0'/'1' bitstring."""
+        return "".join(f"{b:08b}" for b in k32)
 
     def update(self, key: str | bytes, value: str | bytes) -> bytes:
-        """Insert or update a leaf in the sparse tree and return the new root hash."""
         k32 = self._to_32bytes(key)
         v32 = self._to_32bytes(value)
         self.leaves[k32] = v32
-        self._root_cache = None
+
+        # Recompute tree paths
+        self._rebuild()
         return self.get_root()
 
-    def get_root(self) -> bytes:
-        """Compute or retrieve the cached 32-byte Merkle root hash."""
-        if self._root_cache is not None:
-            return self._root_cache
-
+    def _rebuild(self) -> None:
+        self._nodes.clear()
         if not self.leaves:
-            self._root_cache = _EMPTY_HASHES[256]
-            return self._root_cache
+            self._root = _EMPTY_HASHES[256]
+            return
 
-        # For single or multiple leaves, compute the deterministic tree root
-        # Start with all leaf node hashes
-        nodes: dict[tuple[int, int], bytes] = {}  # (depth, prefix_int) -> hash
-        # To avoid astronomical depth iterations when sparse, compute path for each leaf:
-        if len(self.leaves) == 1:
-            k, v = next(iter(self.leaves.items()))
-            curr = hashlib.sha256(k + v).digest()
-            for depth in range(256):
-                bit = self._get_bit(k, depth)
-                sibling = _EMPTY_HASHES[depth]
-                if bit == 0:
-                    curr = hashlib.sha256(curr + sibling).digest()
-                else:
-                    curr = hashlib.sha256(sibling + curr).digest()
-            self._root_cache = curr
-            return self._root_cache
+        # 1. Place leaf hashes at depth 256
+        layer: dict[str, bytes] = {}
+        for k32, v32 in self.leaves.items():
+            bits = self._to_bits(k32)
+            leaf_h = hashlib.sha256(k32 + v32).digest()
+            layer[bits] = leaf_h
+            self._nodes[bits] = leaf_h
 
-        # Multiple leaves: bottom-up tree evaluation
-        # Group leaves into tree structure
-        leaf_hashes = {k: hashlib.sha256(k + v).digest() for k, v in self.leaves.items()}
-        curr_layer = leaf_hashes
+        # 2. Bubble up to root (depth 256 down to 1)
+        for depth in range(256, 0, -1):
+            next_layer: dict[str, bytes] = {}
+            prefixes = set(path[:-1] for path in layer)
+            empty_sibling = _EMPTY_HASHES[256 - depth]
 
-        for depth in range(255, -1, -1):
-            next_layer: dict[bytes, bytes] = {}
-            # Group by 256-depth prefix
-            buckets: dict[bytes, list[tuple[bytes, bytes]]] = {}
-            for k, node_h in curr_layer.items():
-                prefix = k[:depth >> 3] if (depth & 7) == 0 else k[:(depth >> 3) + 1]
-                buckets.setdefault(prefix, []).append((k, node_h))
+            for parent_prefix in prefixes:
+                left_path = parent_prefix + "0"
+                right_path = parent_prefix + "1"
 
-            for prefix, items in buckets.items():
-                if len(items) == 1:
-                    k, node_h = items[0]
-                    bit = self._get_bit(k, depth)
-                    sibling = _EMPTY_HASHES[depth]
-                    parent_h = hashlib.sha256(node_h + sibling).digest() if bit == 0 else hashlib.sha256(sibling + node_h).digest()
-                    next_layer[k] = parent_h
-                else:
-                    # Sibling pair
-                    item0 = next((item for item in items if self._get_bit(item[0], depth) == 0), None)
-                    item1 = next((item for item in items if self._get_bit(item[0], depth) == 1), None)
-                    h0 = item0[1] if item0 else _EMPTY_HASHES[depth]
-                    h1 = item1[1] if item1 else _EMPTY_HASHES[depth]
-                    parent_h = hashlib.sha256(h0 + h1).digest()
-                    rep_key = item0[0] if item0 else item1[0]
-                    next_layer[rep_key] = parent_h
+                left_h = layer.get(left_path) or self._nodes.get(left_path, empty_sibling)
+                right_h = layer.get(right_path) or self._nodes.get(right_path, empty_sibling)
 
-            curr_layer = next_layer
-            if len(curr_layer) == 1 and all(len(buckets[p]) == 1 for p in buckets):
-                # Only 1 branch remaining, roll up to root
-                rep_k, curr = next(iter(curr_layer.items()))
-                for rem_depth in range(depth - 1, -1, -1):
-                    bit = self._get_bit(rep_k, rem_depth)
-                    sibling = _EMPTY_HASHES[rem_depth]
-                    curr = hashlib.sha256(curr + sibling).digest() if bit == 0 else hashlib.sha256(sibling + curr).digest()
-                self._root_cache = curr
-                return self._root_cache
+                parent_h = hashlib.sha256(left_h + right_h).digest()
+                next_layer[parent_prefix] = parent_h
+                self._nodes[parent_prefix] = parent_h
 
-        self._root_cache = next(iter(curr_layer.values())) if curr_layer else _EMPTY_HASHES[256]
-        return self._root_cache
+            layer = next_layer
+
+        self._root = self._nodes.get("", _EMPTY_HASHES[256])
+
+    def get_root(self) -> bytes:
+        return self._root
 
     def prove(self, key: str | bytes) -> list[tuple[int, bytes]]:
-        """Generate a compact logarithmic inclusion proof of siblings along the key path."""
+        """Generate 256-sibling audit trail for key."""
         k32 = self._to_32bytes(key)
+        bits = self._to_bits(k32)
         proof: list[tuple[int, bytes]] = []
 
-        for depth in range(256):
-            bit = self._get_bit(k32, depth)
-            # Find sibling in tree or use precomputed empty hash
-            proof.append((bit, _EMPTY_HASHES[depth]))
+        # From leaf (depth 256) up to root (depth 1)
+        for d in range(256, 0, -1):
+            prefix = bits[:d - 1]
+            current_bit = int(bits[d - 1])
+            sibling_bit = 1 - current_bit
+            sibling_path = prefix + str(sibling_bit)
+
+            empty_sibling = _EMPTY_HASHES[256 - d]
+            sibling_hash = self._nodes.get(sibling_path, empty_sibling)
+            proof.append((current_bit, sibling_hash))
+
         return proof
 
     @classmethod
@@ -235,7 +208,7 @@ class SparseMerkleTree:
         value: str | bytes,
         proof: list[tuple[int, bytes]],
     ) -> bool:
-        """Verify an inclusion proof against a signed root hash."""
+        """Verify inclusion proof against root hash."""
         k32 = cls._to_32bytes(key)
         v32 = cls._to_32bytes(value)
         curr = hashlib.sha256(k32 + v32).digest()
