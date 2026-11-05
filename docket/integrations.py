@@ -534,10 +534,26 @@ class DocketVectorRetriever:
         blocks: list[str] = []
         for hit in hits:
             if isinstance(hit, Mapping):
-                content = str(hit.get(content_key) or hit.get("page_content") or hit.get("content", ""))
-                loc = str(hit.get(locator_key) or hit.get("source") or hit.get("id", "vector://unspecified"))
-                sha = hit.get(sha256_key)
-                proof = hit.get(proof_key)
+                meta_dict = hit.get("metadata") or hit.get("payload") or {}
+                if not isinstance(meta_dict, Mapping):
+                    meta_dict = {}
+                content = str(
+                    hit.get(content_key)
+                    or meta_dict.get(content_key)
+                    or hit.get("page_content")
+                    or meta_dict.get("page_content")
+                    or hit.get("content")
+                    or meta_dict.get("content", "")
+                )
+                loc = str(
+                    hit.get(locator_key)
+                    or meta_dict.get(locator_key)
+                    or hit.get("source")
+                    or meta_dict.get("source")
+                    or hit.get("id", "vector://unspecified")
+                )
+                sha = hit.get(sha256_key) or meta_dict.get(sha256_key)
+                proof = hit.get(proof_key) or meta_dict.get(proof_key)
             elif hasattr(hit, "page_content"):
                 content = str(hit.page_content)
                 meta = getattr(hit, "metadata", {}) or {}
@@ -557,6 +573,144 @@ class DocketVectorRetriever:
                 proof = None
             blocks.append(self.format_chunk(content=content, locator=loc, sha256=sha, chunk_proof=proof))
         return "\n".join(blocks)
+
+
+class DocketVectorIndexer:
+    """Turnkey ingestion adapter for preparing vector database records with RFC-009 Merkle Chunk Trees.
+
+    Transforms text passages or document chunks into cryptographically bound vector payloads
+    compatible with Pinecone, Milvus, Qdrant, Chroma, and Weaviate.
+    """
+
+    @staticmethod
+    def prepare_chunks(
+        chunks: Sequence[str],
+        locator: str,
+        extra_metadata: Mapping[str, Any] | None = None,
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """Build an RFC-009 MerkleChunkTree over chunks and return (root_hex, records).
+
+        Each record contains:
+          - id: Canonical composite locator tag (e.g. `s3://corp/doc.pdf#chunk=0`)
+          - locator: Canonical document URI
+          - chunk_idx: 0-based index
+          - text: Chunk content
+          - sha256: Leaf content SHA-256
+          - chunk_tree_root: 32-byte Merkle root hex
+          - chunk_proof: Packed URL-safe base64 binary inclusion proof
+          - metadata: Merged extra metadata
+        """
+        from docket.chunking import MerkleChunkTree
+
+        if not chunks:
+            return "", []
+
+        tree = MerkleChunkTree(chunks)
+        root_hex = tree.root_hex
+        records: list[dict[str, Any]] = []
+
+        for idx, text in enumerate(chunks):
+            proof = tree.get_proof(idx)
+            proof_b64 = proof.to_base64()
+            sha256_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            meta = dict(extra_metadata or {})
+            meta.update({
+                "locator": locator,
+                "chunk_idx": idx,
+                "sha256": sha256_digest,
+                "chunk_tree_root": root_hex,
+                "chunk_proof": proof_b64,
+            })
+            records.append({
+                "id": f"{locator}#chunk={idx}",
+                "locator": locator,
+                "chunk_idx": idx,
+                "text": text,
+                "sha256": sha256_digest,
+                "chunk_tree_root": root_hex,
+                "chunk_proof": proof_b64,
+                "metadata": meta,
+            })
+
+        return root_hex, records
+
+    @staticmethod
+    def to_pinecone_vectors(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]],
+    ) -> list[dict[str, Any]]:
+        """Format records into Pinecone upsert vector objects."""
+        if len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        pinecone_vectors = []
+        for r, emb in zip(records, embeddings):
+            metadata = dict(r["metadata"])
+            metadata["text"] = r["text"]
+            pinecone_vectors.append({
+                "id": r["id"],
+                "values": list(emb),
+                "metadata": metadata,
+            })
+        return pinecone_vectors
+
+    @staticmethod
+    def to_qdrant_points(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]],
+    ) -> list[dict[str, Any]]:
+        """Format records into Qdrant PointStruct-compatible dicts."""
+        if len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        qdrant_points = []
+        for r, emb in zip(records, embeddings):
+            payload = dict(r["metadata"])
+            payload["text"] = r["text"]
+            qdrant_points.append({
+                "id": r["id"],
+                "vector": list(emb),
+                "payload": payload,
+            })
+        return qdrant_points
+
+    @staticmethod
+    def to_chroma_batch(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]] | None = None,
+    ) -> dict[str, list[Any]]:
+        """Format records into Chroma collection.add() keyword arguments."""
+        ids = [r["id"] for r in records]
+        documents = [r["text"] for r in records]
+        metadatas = [dict(r["metadata"]) for r in records]
+        batch: dict[str, list[Any]] = {
+            "ids": ids,
+            "documents": documents,
+            "metadatas": metadatas,
+        }
+        if embeddings is not None:
+            batch["embeddings"] = [list(e) for e in embeddings]
+        return batch
+
+    @staticmethod
+    def to_milvus_rows(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]],
+    ) -> list[dict[str, Any]]:
+        """Format records into Milvus collection.insert() row entities."""
+        if len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        milvus_rows = []
+        for r, emb in zip(records, embeddings):
+            milvus_rows.append({
+                "id": r["id"],
+                "vector": list(emb),
+                "text": r["text"],
+                "locator": r["locator"],
+                "chunk_idx": r["chunk_idx"],
+                "sha256": r["sha256"],
+                "chunk_tree_root": r["chunk_tree_root"],
+                "chunk_proof": r["chunk_proof"],
+            })
+        return milvus_rows
 
 
 def wrap_delegated_context(

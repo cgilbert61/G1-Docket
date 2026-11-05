@@ -308,4 +308,78 @@ def test_rag_framework_adapters_chunk_proof_propagation():
     assert 'chunk_proof="PROOF_COMP"' in comp_nodes[0].text
 
 
+def test_docket_vector_indexer_turnkey_adapters():
+    """Verify DocketVectorIndexer prepares RFC-009 Merkle proofs for Pinecone, Qdrant, Chroma, and Milvus."""
+    from docket.chunking import ChunkProof
+    from docket.integrations import DocketVectorIndexer, DocketVectorRetriever
+
+    locator = "s3://corp-knowledge/security_policy_2026.pdf"
+    chunks = [
+        "Section 1: Zero-trust architecture mandates all prompt data carry cryptographic provenance.",
+        "Section 2: Merkle Chunk Trees eliminate 256-chunk ceilings with logarithmic proof overhead.",
+        "Section 3: Edge gateways evaluate RFC 6962 inclusion proofs within a sub-5ms SLA.",
+        "Section 4: Four-eyes quarantine workflows isolate and log all detected hash drift incidents.",
+    ]
+    embeddings = [
+        [0.012, 0.045, -0.089],
+        [0.033, -0.012, 0.054],
+        [-0.091, 0.082, 0.011],
+        [0.044, 0.019, -0.067],
+    ]
+
+    # 1. Prepare raw chunk records with RFC-009 tree
+    root_hex, records = DocketVectorIndexer.prepare_chunks(
+        chunks=chunks,
+        locator=locator,
+        extra_metadata={"department": "Security", "tier": "Confidential"},
+    )
+    assert len(root_hex) == 64
+    assert len(records) == 4
+
+    for i, rec in enumerate(records):
+        assert rec["locator"] == locator
+        assert rec["chunk_idx"] == i
+        assert rec["chunk_tree_root"] == root_hex
+        assert rec["metadata"]["department"] == "Security"
+        # Validate proof directly against root
+        proof = ChunkProof.from_base64(rec["chunk_proof"])
+        assert proof.verify(chunks[i], root_hex) is True
+
+    # 2. Pinecone Adapter
+    pinecone_vecs = DocketVectorIndexer.to_pinecone_vectors(records, embeddings)
+    assert len(pinecone_vecs) == 4
+    assert pinecone_vecs[0]["id"] == f"{locator}#chunk=0"
+    assert pinecone_vecs[0]["values"] == embeddings[0]
+    assert pinecone_vecs[0]["metadata"]["chunk_proof"] == records[0]["chunk_proof"]
+    assert pinecone_vecs[0]["metadata"]["text"] == chunks[0]
+
+    # 3. Qdrant Adapter
+    qdrant_pts = DocketVectorIndexer.to_qdrant_points(records, embeddings)
+    assert len(qdrant_pts) == 4
+    assert qdrant_pts[1]["id"] == f"{locator}#chunk=1"
+    assert qdrant_pts[1]["vector"] == embeddings[1]
+    assert qdrant_pts[1]["payload"]["chunk_proof"] == records[1]["chunk_proof"]
+
+    # 4. Chroma Adapter
+    chroma_batch = DocketVectorIndexer.to_chroma_batch(records, embeddings)
+    assert len(chroma_batch["ids"]) == 4
+    assert chroma_batch["documents"][2] == chunks[2]
+    assert chroma_batch["embeddings"][2] == embeddings[2]
+    assert chroma_batch["metadatas"][2]["chunk_proof"] == records[2]["chunk_proof"]
+
+    # 5. Milvus Adapter
+    milvus_rows = DocketVectorIndexer.to_milvus_rows(records, embeddings)
+    assert len(milvus_rows) == 4
+    assert milvus_rows[3]["vector"] == embeddings[3]
+    assert milvus_rows[3]["chunk_proof"] == records[3]["chunk_proof"]
+
+    # 6. End-to-end round trip: Retrieve hits via DocketVectorRetriever
+    retriever = DocketVectorRetriever()
+    pod_tags = retriever.format_search_results(pinecone_vecs[0:2], content_key="text", locator_key="locator")
+    assert f'locator="{locator}"' in pod_tags
+    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags
+    assert chunks[0] in pod_tags
+
+
+
 
