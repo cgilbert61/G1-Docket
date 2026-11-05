@@ -1401,7 +1401,7 @@
             <h2 style="margin:0; font-size:15px; font-weight:600; color:var(--text);">Gateway Response (<span id="statusSpan">-</span>)</h2>
             <div id="telemetryHeaderBar" style="display:none; gap:6px; align-items:center; font-size:11px; font-family:var(--font-mono, monospace);">
               <span id="telemetryVerdict" class="badge badge-Public">ALLOW</span>
-              <span id="telemetryLatency" style="background:#F1F5F9; border:1px solid #CBD5E1; color:#334155; padding:2px 6px; border-radius:3px; font-variant-numeric:tabular-nums;">- μs</span>
+              <span id="telemetryLatency" style="background:#F1F5F9; border:1px solid #CBD5E1; color:#334155; padding:2px 6px; border-radius:3px; font-variant-numeric:tabular-nums;">- us</span>
               <span id="telemetrySeq" style="background:#F1F5F9; border:1px solid #CBD5E1; color:#334155; padding:2px 6px; border-radius:3px; font-variant-numeric:tabular-nums;">Seq #-</span>
               <span id="telemetrySig" style="background:#F1F5F9; border:1px solid #CBD5E1; color:#64748B; padding:2px 6px; border-radius:3px;" title="HMAC-SHA256 signature">Sig: -</span>
             </div>
@@ -2427,9 +2427,9 @@
         const vEl = document.getElementById('telemetryVerdict');
         vEl.textContent = verdict;
         vEl.className = 'badge ' + (verdict === 'ALLOW' ? 'badge-Public' : (verdict === 'MASK' ? 'badge-Internal' : 'badge-Restricted'));
-        document.getElementById('telemetryLatency').textContent = latUs ? `${latUs} μs` : '< 1 ms';
+        document.getElementById('telemetryLatency').textContent = latUs ? `${latUs} us` : '< 1 ms';
         document.getElementById('telemetrySeq').textContent = seq ? `Seq #${seq}` : 'Active';
-        document.getElementById('telemetrySig').textContent = sig ? `Sig: ${sig.slice(0, 10)}…` : 'HMAC: Verified';
+        document.getElementById('telemetrySig').textContent = sig ? `Sig: ${sig.slice(0, 10)}...` : 'HMAC: Verified';
       }
 
       // Hide previous watermark inspector output on new request
@@ -2463,14 +2463,14 @@
 
       if (hasZw) {
         resBox.innerHTML = `
-          <div style="color:#059669; font-weight:600; margin-bottom:4px;">✔ Invisible Steganographic Watermark Detected &amp; Verified</div>
+          <div style="color:#059669; font-weight:600; margin-bottom:4px;">[OK] Invisible Steganographic Watermark Detected &amp; Verified</div>
           <div>Encoding: Zero-Width Unicode (\\u200B/\\u200C/\\u200D)</div>
           <div>Origin: G1 Docket Gateway Non-Repudiation Envelope</div>
           <div>Status: Cryptographically Bound to Active Snapshot &amp; Caller Key</div>
         `;
       } else if (structMatch) {
         resBox.innerHTML = `
-          <div style="color:#059669; font-weight:600; margin-bottom:4px;">✔ Structural Provenance Token Detected</div>
+          <div style="color:#059669; font-weight:600; margin-bottom:4px;">[OK] Structural Provenance Token Detected</div>
           <div>Snapshot Sequence: #${structMatch[1]}</div>
           <div>Caller Identity: ${structMatch[2]}</div>
           <div>Attested Timestamp: ${structMatch[3]}</div>
@@ -3248,7 +3248,7 @@
       if (scoreVal) scoreVal.textContent = `${Number(data.readiness_score || 0).toFixed(1)}%`;
       if (bar) bar.style.width = `${Math.min(100, Math.max(3, Number(data.readiness_score || 0)))}%`;
       if (footnote && data.scale_config) {
-        footnote.textContent = `Target Cadence: ${data.scale_config.cadence_requirement} • In-Memory Sweep Rate: ${data.scale_config.daily_sweep_rate}`;
+        footnote.textContent = `Target Cadence: ${data.scale_config.cadence_requirement} &bull; In-Memory Sweep Rate: ${data.scale_config.daily_sweep_rate}`;
       }
 
       // 2. The 3 Exit Criteria
