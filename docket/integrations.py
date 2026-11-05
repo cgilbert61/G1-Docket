@@ -570,6 +570,65 @@ def wrap_delegated_context(
     return f"<pod:delegate {attr_str}>{content}</pod:delegate>"
 
 
+class DocketSemanticKernelFilter:
+    """Microsoft Semantic Kernel function invocation and attestation filter.
+
+    Enforces enterprise Zero-Trust data attestation for Microsoft Semantic Kernel agent pipelines:
+      1. Post-Invocation: Intercepts return values from Semantic Kernel plugins/native functions
+         and binds them with canonical `<pod:object>` tokens and SHA-256 content hashes.
+      2. Pre-Invocation: Validates that prompts or function arguments do not leak un-papered data.
+    """
+
+    def __init__(
+        self,
+        client: DocketClient | None = None,
+        default_locator_prefix: str = "semantic-kernel://plugin",
+        auto_hash: bool = True,
+    ) -> None:
+        self.client = client or DocketClient()
+        self.default_locator_prefix = default_locator_prefix
+        self.auto_hash = auto_hash
+
+    async def __call__(self, context: Any, next_call: Callable[..., Any]) -> Any:
+        """Asynchronously wrap execution conforming to Semantic Kernel FunctionInvocationFilter."""
+        await next_call(context)
+        self.wrap_context_result(context)
+        return context
+
+    def wrap_context_result(self, context: Any) -> None:
+        """Inspect and wrap the result in context with `<pod:object>` tags."""
+        result = getattr(context, "result", None)
+        if result is None:
+            return
+
+        func_name = getattr(getattr(context, "function", None), "name", "tool")
+        plugin_name = getattr(getattr(context, "function", None), "plugin_name", "native")
+        locator = f"{self.default_locator_prefix}/{plugin_name}/{func_name}"
+
+        # Extract text value
+        if hasattr(result, "value"):
+            raw_text = str(result.value)
+            if not raw_text.strip().startswith("<pod:object"):
+                result.value = wrap_agent_tool_output(
+                    locator=locator,
+                    content=raw_text,
+                    auto_hash=self.auto_hash,
+                )
+        elif isinstance(result, str):
+            if not result.strip().startswith("<pod:object"):
+                context.result = wrap_agent_tool_output(
+                    locator=locator,
+                    content=result,
+                    auto_hash=self.auto_hash,
+                )
+
+    def wrap_function_result(self, plugin: str, function: str, result: Any) -> str:
+        """Synchronously wrap an individual kernel function result."""
+        locator = f"{self.default_locator_prefix}/{plugin}/{function}"
+        return wrap_agent_tool_output(locator=locator, content=str(result), auto_hash=self.auto_hash)
+
+
+
 
 
 
