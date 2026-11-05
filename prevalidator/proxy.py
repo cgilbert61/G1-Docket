@@ -169,7 +169,8 @@ async def _mock_anthropic_sse_stream(model: str, text: str) -> AsyncIterator[byt
 
 
 # Load modular HTML templates from prevalidator/templates/
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
+_HOST_TPL = Path("/host_workspace/prevalidator/templates")
+_TEMPLATES_DIR = _HOST_TPL if _HOST_TPL.exists() else (Path(__file__).parent / "templates")
 
 def _load_template(filename: str) -> str:
     tpl_path = _TEMPLATES_DIR / filename

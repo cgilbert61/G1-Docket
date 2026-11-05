@@ -111,7 +111,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     )
 
     mock_cluster = MockReceiverCluster()
-    templates_dir = Path(__file__).parent / "templates"
+    _host_tpl = Path("/host_workspace/governance/templates")
+    templates_dir = _host_tpl if _host_tpl.exists() else (Path(__file__).parent / "templates")
     templates = Jinja2Templates(directory=str(templates_dir))
 
     @asynccontextmanager
@@ -174,7 +175,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         lifespan=lifespan,
     )
 
-    static_dir = Path(__file__).parent / "static"
+    _host_static = Path("/host_workspace/governance/static")
+    static_dir = _host_static if _host_static.exists() else (Path(__file__).parent / "static")
     if static_dir.exists():
         from fastapi.staticfiles import StaticFiles
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
