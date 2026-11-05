@@ -27,6 +27,7 @@ from docket.integrations import (
 )
 
 from docket.hyperscale import CountingBloomFilter, SparseMerkleTree
+from docket.federation import CentralGovernanceHub, RegionalPrevalidatorNode, FederatedAuditEntry
 from docket.watermark import (
     WatermarkPayload,
     embed_invisible_watermark,
@@ -42,6 +43,9 @@ __all__ = [
     "PolicyDenialError",
     "CountingBloomFilter",
     "SparseMerkleTree",
+    "CentralGovernanceHub",
+    "RegionalPrevalidatorNode",
+    "FederatedAuditEntry",
     "DocketRAGDocument",
     "DocketDocumentTransformer",
     "DocketLlamaIndexPostprocessor",

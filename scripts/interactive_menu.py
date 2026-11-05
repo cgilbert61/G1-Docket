@@ -27,8 +27,8 @@ if hasattr(sys.stdout, "reconfigure"):
 MENU_ITEMS = [
     {
         "id": 1,
-        "name": "Consolidated 19-Phase Enterprise CI/CD Scorecard",
-        "description": "Full end-to-end regression and verification suite across all 19 phases",
+        "name": "Consolidated 20-Phase Enterprise CI/CD Scorecard",
+        "description": "Full end-to-end regression and verification suite across all 20 phases",
         "command": [sys.executable, "scripts/run_all_verifications.py"],
     },
     {
@@ -146,6 +146,12 @@ MENU_ITEMS = [
         "name": "Microsoft Semantic Kernel Zero-Trust Agent Demo",
         "description": "Intercepts plugins, enforces ABAC clearance and watermarking",
         "command": [sys.executable, "examples/semantic_kernel_agent_demo.py"],
+    },
+    {
+        "id": 20,
+        "name": "Multi-Region Federation & Split-Brain Resiliency Demo",
+        "description": "Active-active 3-region sync, WAN partition autonomy, healing & WORM drain",
+        "command": [sys.executable, "examples/multi_region_federation_demo.py"],
     },
 ]
 

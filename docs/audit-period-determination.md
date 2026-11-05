@@ -77,3 +77,7 @@ During the run, everything is scanned — the full estate, every change within a
 ---
 
 *Figures are from the G1 Docket benchmark suite (in-memory snapshot model; attestation scan rate = record evaluation across the snapshot). G1 Docket is open source — the engine first, the prevalidator in front of the gateway you already run.*
+
+---
+
+*Companion sheets: [Core Architectural Principles](core-architecture.md); [Data Sizing, Memory Footprint & Throughput Benchmarks](benchmarks-sizing.md); [Doesn't Microsoft Purview Do the Same Thing?](purview-comparison.md). G1 Docket is open source: [github.com/cgilbert61/G1-Docket](https://github.com/cgilbert61/G1-Docket).*

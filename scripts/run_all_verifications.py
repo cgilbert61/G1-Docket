@@ -21,6 +21,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
   Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
   Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
+  Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -169,6 +170,12 @@ def main() -> int:
 
     # Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
     phases.append(run_phase(19, "Microsoft Semantic Kernel Zero-Trust Agent Demo", [sys.executable, "examples/semantic_kernel_agent_demo.py"]))
+
+    # Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
+    phases.append(run_phase(20, "Multi-Region Federation & Split-Brain Resiliency", [sys.executable, "-m", "pytest", "tests/test_federation.py", "-q"]))
+
+    # Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
+    phases.append(run_phase(20, "Multi-Region Federation & Split-Brain Resiliency", [sys.executable, "examples/multi_region_federation_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
