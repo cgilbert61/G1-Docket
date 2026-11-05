@@ -67,7 +67,9 @@ class DocketClient:
         self.timeout = timeout
         if app is not None and transport is None:
             transport = httpx.ASGITransport(app=app)
-        self._client = httpx.Client(timeout=timeout, transport=transport, base_url=self.base_url if transport else "")
+        elif transport is None:
+            transport = httpx.HTTPTransport(retries=2)
+        self._client = httpx.Client(timeout=timeout, transport=transport, base_url=self.base_url if app is not None else "")
 
     def close(self) -> None:
         """Close the underlying HTTP client."""

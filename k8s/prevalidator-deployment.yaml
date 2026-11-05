@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-docket-prevalidator
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket-prevalidator
+    app.kubernetes.io/part-of: g1-docket
+    tier: inference-gateway
+spec:
+  replicas: 6
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: g1-docket-prevalidator
+  template:
+    metadata:
+      labels:
+        app: g1-docket-prevalidator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/healthz"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: ["g1-docket-prevalidator"]
+                topologyKey: "topology.kubernetes.io/zone"
+      containers:
+        - name: prevalidator
+          image: ghcr.io/cgilbert61/g1-docket/prevalidator:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: g1-docket-config
+          env:
+            - name: POD_ADMIN_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: g1-docket-secrets
+                  key: prevalidator-admin-key
+          ports:
+            - name: http-proxy
+              containerPort: 8082
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "2000m"
+              memory: "4Gi"
+            limits:
+              cpu: "4000m"
+              memory: "8Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8082
+            initialDelaySeconds: 2
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: g1-docket-prevalidator
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket-prevalidator
+    app.kubernetes.io/part-of: g1-docket
+spec:
+  type: ClusterIP
+  selector:
+    app: g1-docket-prevalidator
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+      protocol: TCP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: g1-docket-prevalidator-hpa
+  namespace: g1-docket-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: g1-docket-prevalidator
+  minReplicas: 4
+  maxReplicas: 24
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65

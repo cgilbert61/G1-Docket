@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: g1-docket-governance
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket-governance
+    app.kubernetes.io/part-of: g1-docket
+    tier: governance-ledger
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: g1-docket-governance
+  template:
+    metadata:
+      labels:
+        app: g1-docket-governance
+    spec:
+      containers:
+        - name: governance
+          image: ghcr.io/cgilbert61/g1-docket/governance:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: g1-docket-config
+          env:
+            - name: GOVERNANCE_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: g1-docket-secrets
+                  key: governance-admin-key
+            - name: TRIAGE_APPROVER_KEY_1
+              valueFrom:
+                secretKeyRef:
+                  name: g1-docket-secrets
+                  key: triage-approver-key-1
+            - name: TRIAGE_APPROVER_KEY_2
+              valueFrom:
+                secretKeyRef:
+                  name: g1-docket-secrets
+                  key: triage-approver-key-2
+          ports:
+            - name: http-gov
+              containerPort: 8084
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10001
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: g1-docket-governance
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket-governance
+spec:
+  type: ClusterIP
+  selector:
+    app: g1-docket-governance
+  ports:
+    - name: http
+      port: 8084
+      targetPort: 8084
+      protocol: TCP
