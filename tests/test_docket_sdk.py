@@ -399,5 +399,45 @@ def test_autogen_hook_integration():
     assert '<pod:object locator="snowflake://corp/fin/crm" sha256=' in processed_dict["content"]
 
 
+@pytest.mark.asyncio
+async def test_semantic_kernel_filter_integration():
+    """Verify Microsoft Semantic Kernel invocation filter."""
+    from docket.integrations import DocketSemanticKernelFilter
+
+    sk_filter = DocketSemanticKernelFilter(
+        default_locator_prefix="semantic-kernel://azure-plugins",
+        auto_hash=True,
+    )
+
+    # 1. Test synchronous function result wrapping
+    wrapped = sk_filter.wrap_function_result("FinancePlugin", "GetRevenue", "$84.2M gross profit")
+    assert '<pod:object locator="semantic-kernel://azure-plugins/FinancePlugin/GetRevenue" sha256=' in wrapped
+    assert "$84.2M gross profit</pod:object>" in wrapped
+
+    # 2. Test async filter pipeline invocation
+    class MockFunction:
+        name = "QueryCustomerERP"
+        plugin_name = "SapConnector"
+
+    class MockContextResult:
+        def __init__(self, value: str):
+            self.value = value
+
+    class MockInvocationContext:
+        def __init__(self):
+            self.function = MockFunction()
+            self.result = MockContextResult("Customer: Contoso Ltd | Credit Limit: $5,000,000")
+
+    async def mock_next(ctx):
+        pass
+
+    ctx = MockInvocationContext()
+    await sk_filter(ctx, mock_next)
+
+    assert '<pod:object locator="semantic-kernel://azure-plugins/SapConnector/QueryCustomerERP" sha256=' in ctx.result.value
+    assert "Customer: Contoso Ltd | Credit Limit: $5,000,000</pod:object>" in ctx.result.value
+
+
+
 
 
