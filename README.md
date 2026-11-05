@@ -4,6 +4,13 @@
 
 # G1 Docket — by G1163RT Security Labs
 
+[![CI](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml/badge.svg)](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational.svg)](pyproject.toml)
+[![Latency SLA](https://img.shields.io/badge/p99%20hot--path-%E2%89%A4%205.0%20ms%20(zero--db)-success.svg)](docs/benchmarks-sizing.md)
+[![RFC-009](https://img.shields.io/badge/RFC--009-Merkle%20Chunk%20Trees-blueviolet.svg)](docs/rfc-009-merkle-chunk-trees.md)
+[![Community Profile](https://img.shields.io/badge/community%20standards-100%25%20green-success.svg)](CONTRIBUTING.md)
+
 **Cryptographic Data Attestation Framework & Zero-DB-Call AI Gateway Prevalidator (`v0.1`) — G1163RT Security Labs.**
 
 AI gateways govern requests. Nothing attests the data those requests touch. **G1 Docket** closes that gap with three components and one open contract:
