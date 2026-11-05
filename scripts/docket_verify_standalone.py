@@ -59,9 +59,20 @@ def verify_evidence_archive(zip_path: Path):
         if "04_AUDIT_RUNWAY_EXIT_CRITERIA.json" in zf.namelist():
             runway = json.loads(zf.read("04_AUDIT_RUNWAY_EXIT_CRITERIA.json").decode("utf-8"))
             crit = runway.get("exit_criteria", {})
-            cov_val = crit.get("coverage", {}).get("current", "0%")
-            stab_status = crit.get("stability", {}).get("status", "UNKNOWN")
+            cov = crit.get("coverage", {})
+            cov_val = f"{cov.get('current_pct')}%" if "current_pct" in cov else cov.get("current", "0%")
+            stab = crit.get("denial_stability", crit.get("stability", {}))
+            stab_status = stab.get("status", "STABLE" if stab.get("met") else "TRACKING")
             print(f"[+] Audit Runway Exit Criteria: Live Coverage = {cov_val}, Denial Velocity = {stab_status}")
+
+        # 4. Verify Consolidated CI/CD Scorecard if included
+        if "06_CONSOLIDATED_VERIFICATION_SCORECARD.json" in zf.namelist():
+            scorecard = json.loads(zf.read("06_CONSOLIDATED_VERIFICATION_SCORECARD.json").decode("utf-8"))
+            summary = scorecard.get("summary") if isinstance(scorecard.get("summary"), dict) else scorecard
+            passed = summary.get("passed_phases", 0)
+            total = summary.get("total_phases", 0)
+            status_str = "PASS" if summary.get("all_passed") or (passed and passed == total) else "FAIL"
+            print(f"[+] Verification Scorecard: {passed}/{total} Phases Validated ({status_str})")
 
     print("\n" + "=" * 65)
     print("VERDICT: CERTIFIED COMPLIANT (Independent Math Verified)")
