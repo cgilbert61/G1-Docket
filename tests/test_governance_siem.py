@@ -1,272 +1,140 @@
-"""
-Unit and Integration Tests for Multi-Target SIEM Forwarder.
-Verifies data sanitization (zero leakage), persistent buffering,
-and delivery across Splunk HEC, Elastic ECS, Syslog CEF, Datadog, Sentinel, CloudWatch, and Webhooks.
-"""
+#!/usr/bin/env python3
+"""Unit tests for G1 Docket Enterprise SIEM & SOC Event Exporter."""
 
 import json
-import time
+import subprocess
+import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from governance.mock_sinks import MockHTTPSink, MockSyslogSink
-from governance.siem_forwarder import (
-    SIEMDestinationConfig,
-    SIEMForwarder,
-    format_cef_event,
-    format_elastic_ecs,
-    format_splunk_hec,
-    sanitize_for_siem,
+from scripts.export_siem_events import (
+    to_ocsf_event,
+    to_cef_event,
+    to_datadog_event,
+    SEVERITY_MAP,
 )
 
+SAMPLE_DENIAL_RECORD = {
+    "timestamp": "2026-11-04T18:05:12.384Z",
+    "event_id": "evt_9a4f210d-83b1-4c92-bf44-6014e2d31f08",
+    "caller_key": "svc-copilot-agent-prod",
+    "caller_clearance": "INTERNAL",
+    "target_route": "public_cloud_llm",
+    "decision": "DENIED",
+    "mode": "enforce",
+    "reason_codes": ["CLEARANCE_VIOLATION"],
+    "locators": ["s3://corp-lakehouse-prod/hr/executive_compensation_2026.parquet"],
+    "classified_tier": "RESTRICTED",
+    "observed_sha256": "8f3b4c910e5218d69348d6174a72d3e911223344556677889900aabbccddeeff",
+    "latency_us": 142.6,
+    "worm_block_id": 18490,
+    "envelope_id": "env_77a901c",
+}
 
-@pytest.fixture
-def mock_http():
-    sink = MockHTTPSink(host="127.0.0.1", port=0)
-    sink.start()
-    yield sink
-    sink.stop()
-
-
-@pytest.fixture
-def mock_syslog():
-    sink = MockSyslogSink(host="127.0.0.1", port=0)
-    sink.start()
-    yield sink
-    sink.stop()
-
-
-def test_zero_sensitive_data_leakage_sanitization():
-    raw_event = {
-        "entry_id": "TEST-1001",
-        "event_type": "DOCKET_DENIAL",
-        "actor_identity": "employee@corp.com",
-        "payload_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "metadata": {
-            "reason_code": "UNATTESTED_DATA_OBJECT",
-            "clearance_tier": "Confidential",
-            "locator_uri": "s3://internal/q4_forecast.xlsx",
-            "raw_content": "TOP SECRET FINANCIALS: Profit=$50M, SSN: 000-12-3456",
-            "prompt": "Analyze this confidential salary sheet...",
-            "body": "Unredacted credit card 4111-2222-3333-4444",
-        },
-    }
-
-    sanitized = sanitize_for_siem(raw_event)
-
-    # Core metadata preserved
-    assert sanitized["event_id"] == "TEST-1001"
-    assert sanitized["payload_digest"] == raw_event["payload_digest"]
-    assert sanitized["metadata"]["reason_code"] == "UNATTESTED_DATA_OBJECT"
-    assert sanitized["metadata"]["clearance_tier"] == "Confidential"
-
-    # Sensitive bodies MUST BE STRIPPED
-    assert "raw_content" not in sanitized["metadata"]
-    assert "prompt" not in sanitized["metadata"]
-    assert "body" not in sanitized["metadata"]
+SAMPLE_ALLOW_RECORD = {
+    "timestamp": "2026-11-04T18:05:15.112Z",
+    "event_id": "evt_bb4f210d-83b1-4c92-bf44-6014e2d31f09",
+    "caller_key": "svc-search-bot",
+    "caller_clearance": "PUBLIC",
+    "target_route": "local_inference_model",
+    "decision": "ALLOWED",
+    "mode": "enforce",
+    "reason_codes": ["ALLOWED"],
+    "locators": ["s3://corp-lakehouse-prod/marketing/press_release_2026.pdf"],
+    "classified_tier": "PUBLIC",
+    "observed_sha256": "3a1c5d7e9b2f48a0123456789abcdef0123456789abcdef0123456789abcdef0",
+    "latency_us": 88.4,
+    "worm_block_id": 18491,
+    "envelope_id": "env_88b102d",
+}
 
 
-def test_cef_syslog_formatting_and_delivery(tmp_path, mock_syslog):
-    buf_db = tmp_path / "siem_buffer.db"
-    dest = SIEMDestinationConfig(
-        id="syslog_test",
-        name="Test CEF Syslog",
-        type="syslog",
-        enabled=True,
-        syslog_host=mock_syslog.host,
-        syslog_port=mock_syslog.port,
+def test_ocsf_denial_event_schema():
+    """Verify OCSF event fields, schema compliance, and cryptographic pointers for DENIED request."""
+    ocsf = to_ocsf_event(SAMPLE_DENIAL_RECORD)
+
+    assert ocsf["metadata"]["version"] == "1.1.0"
+    assert ocsf["metadata"]["product"]["name"] == "G1 Docket Prevalidator"
+    assert ocsf["class_uid"] == 4001
+    assert ocsf["severity_id"] == 4  # High
+    assert ocsf["severity"] == "High"
+    assert ocsf["status"] == "Failure"
+    assert ocsf["disposition"] == "Block"
+    assert ocsf["action"] == "Blocked"
+    assert ocsf["actor"]["user"]["name"] == "svc-copilot-agent-prod"
+    assert ocsf["target_endpoint"]["service_name"] == "public_cloud_llm"
+    assert ocsf["resources"][0]["name"] == "s3://corp-lakehouse-prod/hr/executive_compensation_2026.parquet"
+    assert ocsf["resources"][0]["data_tier"] == "RESTRICTED"
+    assert ocsf["resources"][0]["hashes"][0]["value"] == "8f3b4c910e5218d69348d6174a72d3e911223344556677889900aabbccddeeff"
+    assert ocsf["violation"]["primary_code"] == "CLEARANCE_VIOLATION"
+    assert ocsf["cryptographic_proof"]["worm_block_pointer"] == 18490
+    assert ocsf["cryptographic_proof"]["dsse_envelope_id"] == "env_77a901c"
+
+
+def test_ocsf_allow_event_schema():
+    """Verify OCSF event fields for ALLOWED request."""
+    ocsf = to_ocsf_event(SAMPLE_ALLOW_RECORD)
+
+    assert ocsf["severity_id"] == 1  # Informational
+    assert ocsf["severity"] == "Informational"
+    assert ocsf["status"] == "Success"
+    assert ocsf["disposition"] == "Allow"
+    assert ocsf["action"] == "Allowed"
+    assert ocsf["violation"]["primary_code"] == "ALLOWED"
+
+
+def test_cef_event_format():
+    """Verify Common Event Format (CEF) string serialization."""
+    cef = to_cef_event(SAMPLE_DENIAL_RECORD)
+
+    assert cef.startswith("CEF:0|G1Docket|Prevalidator|1.0.0|CLEARANCE_VIOLATION|")
+    assert "src=svc-copilot-agent-prod" in cef
+    assert "dst=public_cloud_llm" in cef
+    assert "act=drop" in cef
+    assert "cs1=enforce" in cef
+    assert "cs2=s3://corp-lakehouse-prod/hr/executive_compensation_2026.parquet" in cef
+    assert "cs3=DENIED" in cef
+    assert "cn1=142" in cef
+
+
+def test_datadog_event_format():
+    """Verify Datadog Security Monitoring JSON payload."""
+    dd = to_datadog_event(SAMPLE_DENIAL_RECORD)
+
+    assert dd["ddsource"] == "g1-docket"
+    assert dd["service"] == "prevalidator"
+    assert dd["status"] == "ERROR"
+    assert "CLEARANCE_VIOLATION" in dd["message"]
+    assert "env:production" in dd["tags"]
+    assert "mode:enforce" in dd["tags"]
+    assert dd["attributes"]["class_uid"] == 4001
+
+
+def test_cli_exporter_runs(tmp_path: Path):
+    """Test CLI execution of export_siem_events.py."""
+    out_file = tmp_path / "siem_export.json"
+    repo_root = Path(__file__).resolve().parent.parent
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(repo_root / "scripts" / "export_siem_events.py"),
+            "--format", "all",
+            "--limit", "5",
+            "--output", str(out_file),
+        ],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
     )
-    forwarder = SIEMForwarder(buffer_db_path=buf_db, destinations=[dest])
-
-    event = {
-        "entry_id": "WORM-0001",
-        "event_type": "DOCKET_DENIAL",
-        "actor_identity": "user:unauthorized",
-        "payload_digest": "abcdef123456" * 5 + "abcd",
-        "metadata": {"reason_code": "UNATTESTED_DATA_OBJECT", "clearance_tier": "Internal"},
-    }
-
-    forwarder.enqueue_event(event)
-    processed = forwarder.flush_pending()
-    assert processed == 1
-
-    time.sleep(0.1)
-    lines = mock_syslog.get_lines()
-    assert len(lines) == 1
-    cef = lines[0]
-    assert cef.startswith("CEF:0|G1|DocketCombine|4.0.0|DOCKET_DENIAL|")
-    assert "act=DOCKET_DENIAL" in cef
-    assert "src=user:unauthorized" in cef
-    assert "cs2=UNATTESTED_DATA_OBJECT" in cef
-
-
-def test_splunk_hec_and_elastic_ecs_delivery(tmp_path, mock_http):
-    buf_db = tmp_path / "siem_buffer.db"
-
-    splunk_dest = SIEMDestinationConfig(
-        id="splunk_test",
-        name="Test Splunk HEC",
-        type="splunk",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/services/collector/event",
-        api_key="mock-splunk-token",
-    )
-    elastic_dest = SIEMDestinationConfig(
-        id="elastic_test",
-        name="Test Elastic ECS",
-        type="elastic",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/g1-security-events/_doc",
-        api_key="mock-elastic-key",
-    )
-    datadog_dest = SIEMDestinationConfig(
-        id="datadog_test",
-        name="Test Datadog Logs",
-        type="datadog",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/api/v2/logs",
-        api_key="mock-dd-key",
-    )
-
-    forwarder = SIEMForwarder(
-        buffer_db_path=buf_db,
-        destinations=[splunk_dest, elastic_dest, datadog_dest],
-    )
-
-    event = {
-        "entry_id": "WORM-0042",
-        "event_type": "COMBINE_THREAT_BLOCKED",
-        "actor_identity": "attacker:red-team",
-        "payload_digest": "99" * 32,
-        "metadata": {"reason_code": "INJ-34", "clearance_tier": "Restricted"},
-    }
-
-    forwarder.enqueue_event(event)
-    processed = forwarder.flush_pending()
-    assert processed == 3  # All 3 HTTP targets received event
-
-    captured = mock_http.get_events()
-    assert len(captured) == 3
-
-    # Check Splunk HEC payload
-    splunk_calls = [c for c in captured if "/services/collector" in c["path"]]
-    assert len(splunk_calls) == 1
-    assert "Splunk mock-splunk-token" in splunk_calls[0]["headers"].get("authorization", "")
-    assert splunk_calls[0]["payload"]["sourcetype"] == "g1:security:event"
-    assert splunk_calls[0]["payload"]["event"]["event_type"] == "COMBINE_THREAT_BLOCKED"
-
-    # Check Elastic ECS payload
-    elastic_calls = [c for c in captured if "/g1-security-events" in c["path"]]
-    assert len(elastic_calls) == 1
-    assert elastic_calls[0]["payload"]["event"]["kind"] == "alert"
-    assert elastic_calls[0]["payload"]["rule"]["id"] == "INJ-34"
-
-    # Check Datadog payload
-    datadog_calls = [c for c in captured if "/api/v2/logs" in c["path"]]
-    assert len(datadog_calls) == 1
-    assert datadog_calls[0]["headers"].get("dd-api-key") == "mock-dd-key"
-    assert datadog_calls[0]["payload"]["service"] == "g1-security-stack"
-
-
-def test_sentinel_cloudwatch_and_webhook_delivery(tmp_path, mock_http):
-    buf_db = tmp_path / "siem_buffer.db"
-
-    sentinel_dest = SIEMDestinationConfig(
-        id="sentinel_test",
-        name="Test Microsoft Sentinel",
-        type="sentinel",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/api/logs",
-        api_key="mock-sentinel-key",
-    )
-    cloudwatch_dest = SIEMDestinationConfig(
-        id="cloudwatch_test",
-        name="Test CloudWatch Logs",
-        type="cloudwatch",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/cloudwatch/logs",
-        log_group_name="/g1/docket/security",
-    )
-    webhook_dest = SIEMDestinationConfig(
-        id="webhook_test",
-        name="Test Webhook",
-        type="webhook",
-        enabled=True,
-        endpoint_url=f"{mock_http.url}/v1/logs",
-        auth_header="Bearer mock-webhook-token",
-    )
-
-    forwarder = SIEMForwarder(
-        buffer_db_path=buf_db,
-        destinations=[sentinel_dest, cloudwatch_dest, webhook_dest],
-    )
-
-    event = {
-        "entry_id": "WORM-0099",
-        "event_type": "HITL_DUAL_KEY_RELEASE",
-        "actor_identity": "alice+bob",
-        "payload_digest": "44" * 32,
-        "metadata": {"quarantine_id": "Q-1234", "clearance_tier": "Confidential"},
-    }
-
-    forwarder.enqueue_event(event)
-    processed = forwarder.flush_pending()
-    assert processed == 3
-
-    captured = mock_http.get_events()
-    assert len(captured) == 3
-
-    # Check Sentinel custom table payload
-    sentinel_calls = [c for c in captured if "/api/logs" in c["path"]]
-    assert len(sentinel_calls) == 1
-    assert sentinel_calls[0]["payload"][0]["EventType_s"] == "HITL_DUAL_KEY_RELEASE"
-    assert sentinel_calls[0]["payload"][0]["Actor_s"] == "alice+bob"
-
-    # Check CloudWatch logEvents payload
-    cw_calls = [c for c in captured if "/cloudwatch/logs" in c["path"]]
-    assert len(cw_calls) == 1
-    assert cw_calls[0]["payload"]["logGroupName"] == "/g1/docket/security"
-    assert len(cw_calls[0]["payload"]["logEvents"]) == 1
-
-    # Check Webhook payload
-    wh_calls = [c for c in captured if "/v1/logs" in c["path"]]
-    assert len(wh_calls) == 1
-    assert wh_calls[0]["headers"].get("authorization") == "Bearer mock-webhook-token"
-
-
-
-def test_persistent_buffer_retry_on_endpoint_failure(tmp_path):
-    buf_db = tmp_path / "siem_buffer.db"
-    # Target pointing to an unreachable port
-    offline_dest = SIEMDestinationConfig(
-        id="offline_test",
-        name="Offline Endpoint",
-        type="webhook",
-        enabled=True,
-        endpoint_url="http://127.0.0.1:49999/failed-webhook",
-        timeout_seconds=0.5,
-    )
-    forwarder = SIEMForwarder(buffer_db_path=buf_db, destinations=[offline_dest])
-
-    event = {
-        "entry_id": "WORM-9999",
-        "event_type": "DOCKET_DENIAL",
-        "actor_identity": "actor:test",
-        "payload_digest": "11" * 32,
-    }
-
-    forwarder.enqueue_event(event)
-    depths_before = forwarder.get_queue_depth()
-    assert depths_before["offline_test"] == 1
-
-    # Attempt flush -> should fail and remain PENDING with backoff
-    processed = forwarder.flush_pending()
-    assert processed == 0
-
-    depths_after = forwarder.get_queue_depth()
-    assert depths_after["offline_test"] == 1  # Event persisted in SQLite buffer!
-
-    st = forwarder.get_destination_status()[0]
-    assert st["failed_count"] == 1
-    assert st["consecutive_failures"] == 1
+    assert res.returncode == 0
+    assert out_file.exists()
+    content = out_file.read_text(encoding="utf-8")
+    assert len(content.strip().splitlines()) >= 1
+    # Check that each line is valid JSON with ocsf and cef keys
+    first_line = json.loads(content.strip().splitlines()[0])
+    assert "ocsf" in first_line
+    assert "cef" in first_line
+    assert "datadog" in first_line

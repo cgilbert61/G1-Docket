@@ -17,6 +17,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 13: Vector Database & Chunk-Level RAG Admission Demo
   Phase 14: LlamaIndex Zero-Trust RAG Admission Demo
   Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
+  Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -153,6 +154,9 @@ def main() -> int:
 
     # Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
     phases.append(run_phase(15, "Multi-Agent Swarm Attestation Delegation", [sys.executable, "examples/multi_agent_swarm_delegation_demo.py"]))
+
+    # Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
+    phases.append(run_phase(16, "Enterprise SIEM & SOC OCSF/CEF Exporter", [sys.executable, "-m", "pytest", "tests/test_governance_siem.py", "-q"]))
 
     # Summary Scorecard
     total_phases = len(phases)

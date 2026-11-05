@@ -47,6 +47,7 @@ scripts/*
 !scripts/export_soc2_evidence.py
 !scripts/docket_verify_standalone.py
 !scripts/forensic_extractor.py
+!scripts/export_siem_events.py
 !scripts/interactive_menu.py
 
 # Audit evidence exports
