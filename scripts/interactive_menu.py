@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """G1 Docket — Interactive Operator & Auditor Verification Launcher.
 
-Provides a unified menu to run any of the 15 enterprise scenarios,
+Provides a unified menu to run any of the 23 enterprise scenarios,
 benchmarks, live walkthroughs, compliance evidence exports, or cluster diagnostics.
 """
 
