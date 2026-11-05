@@ -119,7 +119,7 @@ async function openTriageModal(qid) {
 
     k1Btn.disabled = true;
     k1Btn.className = 'btn btn-secondary';
-    k1Btn.textContent = '✓ Step 1 Staged';
+    k1Btn.textContent = '[OK] Step 1 Staged';
     k2Btn.disabled = false;
     k2Btn.style.pointerEvents = 'auto';
     k2Btn.style.backgroundColor = '';
