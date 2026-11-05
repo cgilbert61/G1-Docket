@@ -261,6 +261,54 @@ pipeline = IngestionPipeline(
 )
 ```
 
+### E. Turnkey Vector Database Ingestion (`DocketVectorIndexer`)
+
+`DocketVectorIndexer` constructs RFC-009 Merkle Chunk Trees over text passages, binds URL-safe base64 binary proofs (~192 bytes) to each chunk, and exports directly into vector database schema formats (Pinecone, Qdrant, Chroma, Milvus):
+
+```python
+from docket.integrations import DocketVectorIndexer
+
+chunks = [
+    "Paragraph 1: Core zero-trust architecture rules and invariants.",
+    "Paragraph 2: Merkle Chunk Trees eliminate 256-chunk envelope limits.",
+    "Paragraph 3: Sub-millisecond prevalidator evaluation hot path.",
+]
+locator = "s3://corp-knowledge/security_policy_2026.pdf"
+
+# 1. Build Merkle Chunk Tree & compute inclusion proofs
+root_hex, records = DocketVectorIndexer.prepare_chunks(
+    chunks=chunks,
+    locator=locator,
+    extra_metadata={"department": "Security", "tier": "Confidential"},
+)
+
+# 2. Export directly into vector DB schemas
+pinecone_upsert = DocketVectorIndexer.to_pinecone_vectors(records, embeddings)
+qdrant_points   = DocketVectorIndexer.to_qdrant_points(records, embeddings)
+chroma_batch    = DocketVectorIndexer.to_chroma_batch(records, embeddings)
+milvus_rows     = DocketVectorIndexer.to_milvus_rows(records, embeddings)
+```
+
+### F. Vector Database Retrieval Adapter (`DocketVectorRetriever`)
+
+The `DocketVectorRetriever` bridges vector search databases (Milvus, Pinecone, Qdrant, Weaviate, Chroma) and semantic chunk retrievers into G1 Docket zero-trust admission control. It automatically extracts nested metadata payloads and constructs verified `<pod:object>` tokens:
+
+```python
+from docket.integrations import DocketVectorRetriever
+
+retriever = DocketVectorRetriever()
+
+# Automatically handles Pinecone metadata, Qdrant payloads, or flat hits
+prompt_context = retriever.format_search_results(
+    hits=pinecone_search_results,
+    content_key="text",
+    locator_key="locator",
+)
+
+# Injects verified <pod:object locator="..." chunk_proof="..."> into prompt
+prompt = f"Answer using the attested passages below:\n\n{prompt_context}\n\nQuestion: {query}"
+```
+
 ---
 
 ## 6. Directory Prevalidation & Scanning
