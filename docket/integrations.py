@@ -106,25 +106,29 @@ def wrap_rag_documents(
             meta = getattr(doc, "metadata", {}) or {}
             loc = str(meta.get("locator") or meta.get("source") or meta.get("uri") or "urn:doc:langchain")
             sha = meta.get("sha256")
-            blocks.append(DocketClient.wrap_object(locator=loc, content=str(doc.page_content), sha256=sha))
+            proof = meta.get("chunk_proof")
+            blocks.append(DocketClient.wrap_object(locator=loc, content=str(doc.page_content), sha256=sha, chunk_proof=proof))
         elif hasattr(doc, "node") and hasattr(getattr(doc, "node"), "text"):
             # LlamaIndex NodeWithScore duck typing
             node = getattr(doc, "node")
             meta = getattr(node, "metadata", {}) or {}
             loc = str(meta.get("locator") or meta.get("file_path") or meta.get("source") or "urn:doc:llamaindex")
             sha = meta.get("sha256")
-            blocks.append(DocketClient.wrap_object(locator=loc, content=str(node.text), sha256=sha))
+            proof = meta.get("chunk_proof")
+            blocks.append(DocketClient.wrap_object(locator=loc, content=str(node.text), sha256=sha, chunk_proof=proof))
         elif hasattr(doc, "text") and hasattr(doc, "metadata"):
             # LlamaIndex BaseNode duck typing
             meta = getattr(doc, "metadata", {}) or {}
             loc = str(meta.get("locator") or meta.get("file_path") or meta.get("source") or "urn:doc:llamaindex")
             sha = meta.get("sha256")
-            blocks.append(DocketClient.wrap_object(locator=loc, content=str(doc.text), sha256=sha))
+            proof = meta.get("chunk_proof")
+            blocks.append(DocketClient.wrap_object(locator=loc, content=str(doc.text), sha256=sha, chunk_proof=proof))
         elif isinstance(doc, Mapping):
             loc = str(doc.get("locator") or doc.get("source") or doc.get("uri") or "urn:doc:unknown")
             content = str(doc.get("content") or doc.get("text") or doc.get("page_content") or "")
             sha = doc.get("sha256")
-            blocks.append(DocketClient.wrap_object(locator=loc, content=content, sha256=sha))
+            proof = doc.get("chunk_proof")
+            blocks.append(DocketClient.wrap_object(locator=loc, content=content, sha256=sha, chunk_proof=proof))
         elif isinstance(doc, (tuple, list)) and len(doc) >= 2:
             loc, content = str(doc[0]), str(doc[1])
             blocks.append(DocketClient.wrap_object(locator=loc, content=content))
@@ -171,9 +175,10 @@ class DocketDocumentTransformer:
                 meta = doc.metadata or {}
                 loc = str(meta.get("locator") or meta.get(self.default_locator_key) or meta.get("uri") or "urn:doc:unknown")
                 sha = meta.get("sha256")
+                proof = meta.get("chunk_proof")
                 if self.auto_hash and not sha:
                     sha = hashlib.sha256(str(doc.page_content).encode("utf-8")).hexdigest()
-                wrapped = DocketClient.wrap_object(locator=loc, content=str(doc.page_content), sha256=sha)
+                wrapped = DocketClient.wrap_object(locator=loc, content=str(doc.page_content), sha256=sha, chunk_proof=proof)
 
                 try:
                     cls = doc.__class__
@@ -204,10 +209,11 @@ class DocketLlamaIndexPostprocessor:
             meta = getattr(node, "metadata", {}) or {}
             loc = str(meta.get("locator") or meta.get(self.default_locator_key) or meta.get("source") or "urn:doc:unknown")
             sha = meta.get("sha256")
+            proof = meta.get("chunk_proof")
             text = getattr(node, "text", "")
             if self.auto_hash and not sha:
                 sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
-            wrapped = DocketClient.wrap_object(locator=loc, content=text, sha256=sha)
+            wrapped = DocketClient.wrap_object(locator=loc, content=text, sha256=sha, chunk_proof=proof)
             if hasattr(node, "text"):
                 node.text = wrapped
         return nodes
@@ -388,10 +394,11 @@ class DocketTransformComponent:
                 or "urn:doc:unknown"
             )
             sha = meta.get("sha256")
+            proof = meta.get("chunk_proof")
             text = getattr(node, "text", "")
             if self.auto_hash and not sha:
                 sha = hashlib.sha256(str(text).encode("utf-8")).hexdigest()
-            wrapped = DocketClient.wrap_object(locator=loc, content=str(text), sha256=sha)
+            wrapped = DocketClient.wrap_object(locator=loc, content=str(text), sha256=sha, chunk_proof=proof)
             if hasattr(node, "text"):
                 node.text = wrapped
         return nodes

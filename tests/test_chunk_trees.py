@@ -235,3 +235,77 @@ def test_batch_chunk_proof_octopus_algorithm():
     assert reconstituted.verify(target_chunks, root) is True
 
 
+def test_rag_framework_adapters_chunk_proof_propagation():
+    """Verify LangChain, LlamaIndex, and mapping adapters propagate chunk_proof into <pod:object>."""
+    from docket.integrations import (
+        DocketDocumentTransformer,
+        DocketLlamaIndexPostprocessor,
+        DocketRAGDocument,
+        DocketTransformComponent,
+        wrap_rag_documents,
+    )
+
+    # 1. DocketRAGDocument
+    rag_doc = DocketRAGDocument(
+        locator="s3://lake/rag1.pdf",
+        content="Passage from legal binder.",
+        chunk_proof="PROOF_RAG1",
+    )
+    tag = rag_doc.to_pod_tag()
+    assert 'chunk_proof="PROOF_RAG1"' in tag
+    assert 'locator="s3://lake/rag1.pdf"' in tag
+
+    # 2. Mapping dict in wrap_rag_documents
+    doc_map = {
+        "locator": "s3://lake/map.pdf",
+        "content": "Mapped section text.",
+        "chunk_proof": "PROOF_MAP",
+    }
+    wrapped_map = wrap_rag_documents([doc_map])
+    assert 'chunk_proof="PROOF_MAP"' in wrapped_map
+
+    # 3. Duck-typed LangChain Document in wrap_rag_documents & DocketDocumentTransformer
+    class MockLangChainDoc:
+        def __init__(self, page_content: str, metadata: dict):
+            self.page_content = page_content
+            self.metadata = metadata
+
+    lc_doc = MockLangChainDoc(
+        page_content="LangChain passage.",
+        metadata={"source": "s3://lake/lc.pdf", "chunk_proof": "PROOF_LC"},
+    )
+    wrapped_lc = wrap_rag_documents([lc_doc])
+    assert 'chunk_proof="PROOF_LC"' in wrapped_lc
+
+    transformer = DocketDocumentTransformer()
+    transformed_docs = transformer.transform_documents([lc_doc])
+    assert 'chunk_proof="PROOF_LC"' in transformed_docs[0].page_content
+
+    # 4. Duck-typed LlamaIndex Node in wrap_rag_documents & Postprocessor
+    class MockLlamaNode:
+        def __init__(self, text: str, metadata: dict):
+            self.text = text
+            self.metadata = metadata
+
+    class MockNodeWithScore:
+        def __init__(self, node: MockLlamaNode):
+            self.node = node
+
+    llama_node = MockLlamaNode("LlamaIndex text.", {"file_path": "s3://lake/llama.pdf", "chunk_proof": "PROOF_LLAMA"})
+    wrapped_llama = wrap_rag_documents([llama_node])
+    assert 'chunk_proof="PROOF_LLAMA"' in wrapped_llama
+
+    node_with_score = MockNodeWithScore(llama_node)
+    wrapped_nws = wrap_rag_documents([node_with_score])
+    assert 'chunk_proof="PROOF_LLAMA"' in wrapped_nws
+
+    postprocessor = DocketLlamaIndexPostprocessor()
+    post_nodes = postprocessor.postprocess_nodes([llama_node])
+    assert 'chunk_proof="PROOF_LLAMA"' in post_nodes[0].text
+
+    component = DocketTransformComponent()
+    comp_nodes = component.transform([MockLlamaNode("Comp text.", {"file_path": "s3://lake/c.pdf", "chunk_proof": "PROOF_COMP"})])
+    assert 'chunk_proof="PROOF_COMP"' in comp_nodes[0].text
+
+
+
