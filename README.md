@@ -306,7 +306,7 @@ G1 Docket provides turnkey zero-trust admission control adapters for all leading
 | Framework / Source | Adapter Class / Decorator | Primary Role & Guarantee |
 | :--- | :--- | :--- |
 | **LlamaIndex** | `DocketLlamaIndexPostprocessor` | Intercepts `NodeWithScore` batches, binds SHA-256 hashes, and rejects poisoned nodes or clearance mismatches |
-| **Vector DBs** *(Milvus, Pinecone, Qdrant, Weaviate, Chroma)* | `DocketVectorRetriever` | Formats similarity search chunks into verified `<pod:object>` envelopes with automatic digest computation |
+| **Vector DBs** *(Milvus, Pinecone, Qdrant, Weaviate, Chroma)* | `DocketVectorRetriever` | Formats similarity search chunks into verified `<pod:object>` envelopes with RFC-009 Merkle proofs & Octopus batch compression |
 | **LangChain** | `DocketLangChainCallbackHandler` | Pre-dispatch callback auditor catching untagged context, data smuggling, or character threshold breaches |
 | **CrewAI** | `DocketCrewAITool` / wrapper | Attests agent tool execution results before inter-agent communication or final delegation |
 | **LangGraph** | `@docket_langgraph_node` | Wraps state transitions and messages between graph nodes with cryptographic provenance |
