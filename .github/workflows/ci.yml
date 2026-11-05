@@ -37,6 +37,14 @@ jobs:
       run: |
         python examples/run_demo.py
 
+    - name: Run Vector RAG & Merkle Chunk Tree Demo
+      run: |
+        python examples/vector_rag_agent_demo.py
+
+    - name: Run RFC-009 Merkle Chunk Tree Benchmark
+      run: |
+        python benchmarks/benchmark_chunk_trees.py
+
   helm-lint:
     name: Helm Chart Validation
     runs-on: ubuntu-latest
