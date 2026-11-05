@@ -19,6 +19,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
   Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
   Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
+  Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -161,6 +162,9 @@ def main() -> int:
 
     # Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
     phases.append(run_phase(17, "Hyperscale Cascading Filter & SMT Proofs", [sys.executable, "examples/hyperscale_cascading_filter_demo.py"]))
+
+    # Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
+    phases.append(run_phase(18, "Live Red-Team Attack & Four-Eyes Quarantine Replay", [sys.executable, "examples/red_team_quarantine_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
