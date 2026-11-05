@@ -3,6 +3,8 @@
 **G1 DOCKET — DATA ATTESTATION FOR YOUR GATEWAY AND YOUR AI**  
 *G1163RT Security Labs · ops@g1163rt.ai · G1 Docket Core Architecture*
 
+> 📄 **Downloadable Whitepaper**: [`G1-Docket-Core-Architecture.pdf`](whitepapers/G1-Docket-Core-Architecture.pdf)
+
 ---
 
 G1 Docket does not require GPUs. Prevalidation operates on cryptographic byte hashing (SHA-256), Ed25519 DSSE signatures, and in-memory authenticated lookup against a signed snapshot. The workload is bound by **single-thread CPU clock speed, memory bandwidth, and network I/O** — not tensor compute. Every sizing figure in this document follows from that one principle.

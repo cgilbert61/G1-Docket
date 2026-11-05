@@ -3,6 +3,8 @@
 **G1 DOCKET — DATA ATTESTATION FOR YOUR GATEWAY AND YOUR AI**  
 *G1163RT Security Labs · ops@g1163rt.ai · G1 Docket vs Microsoft Purview*
 
+> 📄 **Downloadable Whitepaper**: [`G1-Docket-vs-Purview.pdf`](whitepapers/G1-Docket-vs-Purview.pdf)
+
 ---
 
 Yes and no. Purview attempts to address pieces of this — but there is a fundamental architectural gap between how Purview works and how modern AI chat and autonomous agents actually consume data. **Purview protects the file. AI consumes chunks, embeddings, and prompt payloads — assembled by headless agents that never touch an endpoint.** That is where the label stops working, and it is the ground G1 Docket was built for.

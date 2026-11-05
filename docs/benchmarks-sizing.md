@@ -3,6 +3,8 @@
 **G1 DOCKET — DATA ATTESTATION FOR YOUR GATEWAY AND YOUR AI**  
 *G1163RT Security Labs · ops@g1163rt.ai · G1 Docket Benchmarks*
 
+> 📄 **Downloadable Whitepaper**: [`G1-Docket-Benchmarks.pdf`](whitepapers/G1-Docket-Benchmarks.pdf)
+
 ---
 
 G1 Docket operates on an **in-memory snapshot model**: the Prevalidator holds cryptographic attestation records directly in memory, eliminating runtime database round-trips in the request path. Below are the empirical sizing requirements, memory footprints, and throughput metrics observed across local and cluster deployments.
