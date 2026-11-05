@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Disclosure
+    url: https://github.com/cgilbert61/G1-Docket/security/advisories/new
+    about: Please report security vulnerabilities privately via GitHub Security Advisories or by emailing security@g1163rt.com.
+  - name: G1 Docket Architecture Documentation
+    url: https://github.com/cgilbert61/G1-Docket/tree/main/docs
+    about: Consult the Core Architecture, Sizing Benchmarks, and Purview Comparison guides before opening an issue.

@@ -34,6 +34,8 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `terraform/` — AWS Infrastructure-as-Code foundation module provisioning dedicated KMS Customer Managed Keys (CMK), S3 Object Lock in non-erasable `COMPLIANCE` mode (7-year retention), and IAM IRSA service accounts
 - `reports/` — [High-Concurrency Latency Benchmark Report](reports/CONCURRENCY_BENCHMARK.md), [SOC 2 & ISO 27001 Cryptographic Compliance Audit](reports/COMPLIANCE_AUDIT_REPORT.md), [Consolidated 18-Phase Verification Scorecard](reports/VERIFICATION_SCORECARD.json), and [Dual-Plane Security Benchmark Report (Docket vs. Combine)](reports/DOCKET_VS_COMBINE_BENCHMARK_REPORT.md) (600-probe empirical benchmark evaluating cryptographic data provenance vs. NLP cognitive safety)
 - `scripts/` — Consolidated 18-phase verification suite (`run_all_verifications.py`), Interactive Operator & Auditor Control Menu (`interactive_menu.py`), Enterprise SIEM & SOC exporter (`export_siem_events.py`), SOC 2 evidence packager (`export_soc2_evidence.py`), standalone air-gapped auditor verifier (`docket_verify_standalone.py`), forensic token extractor (`forensic_extractor.py`), Prevalidator proxy launcher (`run_prevalidator.py`), interactive demo walkthrough (`demo_walkthrough.py`), and compliance report generator (`generate_compliance_report.py`)
+- `.github/` — GitHub Actions CI/CD workflows ([`ci.yml`](.github/workflows/ci.yml)), [Issue Templates](.github/ISSUE_TEMPLATE/) ([Bug Report](.github/ISSUE_TEMPLATE/bug_report.md), [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md)), and [Pull Request Template](.github/pull_request_template.md)
+- **Community Standards & Policies** — [Contributing Guidelines](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md), [Security Policy](SECURITY.md), and [Apache-2.0 License](LICENSE)
 
 ---
 
@@ -370,4 +372,17 @@ Pre-configured Prometheus alert definitions are bundled for Helm and vanilla Kub
 * **`G1DocketQuarantineBacklog`**: Warning alert when $> 50$ quarantined items await Four-Eyes dual-key triage.
 
 See the complete [Observability & Monitoring Guide](docs/observability.md) for Prometheus scrape configurations, Grafana dashboard JSON models, and ServiceMonitor manifests.
+
+---
+
+## Community & Security Standards
+
+G1 Docket follows enterprise open-source and institutional security standards:
+
+* **[Contributing Guidelines](CONTRIBUTING.md)**: Development environment setup, architectural invariants, latency budgets, and PR submission guidelines.
+* **[Code of Conduct](CODE_OF_CONDUCT.md)**: Contributor Covenant v2.1 community engagement pledge and enforcement standards.
+* **[Security Policy](SECURITY.md)**: Vulnerability disclosure program, supported versions, coordinated triage process, and reporting via `security@g1163rt.com`.
+* **[Issue Templates](.github/ISSUE_TEMPLATE/)**: Structured issue templates for [Bug Reports](.github/ISSUE_TEMPLATE/bug_report.md) and [Feature Proposals](.github/ISSUE_TEMPLATE/feature_request.md).
+* **[Pull Request Template](.github/pull_request_template.md)**: Standardized checklist verifying zero-database hot-paths, sub-millisecond evaluation latency, and cryptographic compliance.
+
 
