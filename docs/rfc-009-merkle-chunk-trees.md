@@ -126,3 +126,26 @@ RFC-009 specifies multi-proof generation using the **Octopus algorithm**:
   1. If `chunk_proof` header or query param is present, verify against `chunk_tree.tree_root`.
   2. Else if `att_chunks` is present, check set membership.
   3. Else verify against parent document SHA-256.
+
+---
+
+## 7. Empirical Performance & Compression Benchmarks
+
+Automated benchmarks are provided via `benchmarks/benchmark_chunk_trees.py` (and tracked in [`reports/MCT_OCTOPUS_BENCHMARK.md`](../reports/MCT_OCTOPUS_BENCHMARK.md)):
+
+### 1. Ingestion & Tree Construction Throughput
+- **64 chunks** (Depth 6): `0.22 ms` (~288,000 chunks/s)
+- **1,024 chunks** (Depth 10): `3.62 ms` (~283,000 chunks/s)
+- **16,384 chunks** (Depth 14): `58.27 ms` (~281,000 chunks/s)
+
+### 2. Hot-Path Single-Chunk Verification Latency (4,096-Chunk Tree)
+- **Wire Proof Size**: `391 bytes` binary (522 Base64URL characters).
+- **p50 Latency**: `20.0 µs` (in-memory traversal, zero database calls).
+- **p95 Latency**: `38.7 µs`.
+- **p99 Latency**: `94.5 µs` (well within the $\le 5.0\text{ ms}$ Prevalidator SLA budget).
+
+### 3. Octopus Multi-Chunk Batch Proof Compression (1,024-Chunk Tree)
+- **2 Contiguous Chunks**: $20 \rightarrow 9$ siblings (**55.0% payload savings**).
+- **4 Clustered Chunks**: $40 \rightarrow 9$ siblings (**77.5% payload savings**).
+- **8 Clustered Chunks**: $80 \rightarrow 8$ siblings (**90.0% payload savings**).
+- **16 Dispersed Chunks**: $160 \rightarrow 56$ siblings (**65.0% payload savings**).

@@ -165,6 +165,12 @@ MENU_ITEMS = [
         "description": "Validates RFC-009 domain separation, inclusion proofs, and batch compression",
         "command": [sys.executable, "-m", "pytest", "tests/test_chunk_trees.py", "-v"],
     },
+    {
+        "id": 23,
+        "name": "RFC-009 Merkle Chunk Trees & Octopus Benchmark",
+        "description": "Measures tree construction, sub-50us proofs, and batch compression",
+        "command": [sys.executable, "benchmarks/benchmark_chunk_trees.py"],
+    },
 ]
 
 
