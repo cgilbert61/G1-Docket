@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: g1-docket-servicemonitor
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket
+    app.kubernetes.io/part-of: g1-docket
+    release: prometheus-stack
+spec:
+  selector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values:
+          - g1-docket-prevalidator
+          - g1-docket-governance
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+    - port: http-gov
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s

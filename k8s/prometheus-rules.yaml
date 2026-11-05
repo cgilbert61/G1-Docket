@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: g1-docket-alerts
+  namespace: g1-docket-system
+  labels:
+    app.kubernetes.io/name: g1-docket
+    app.kubernetes.io/part-of: g1-docket
+    role: alert-rules
+spec:
+  groups:
+    - name: g1-docket-operational-alerts
+      rules:
+        - alert: G1DocketHighPolicyDenialRate
+          expr: (sum(rate(g1_docket_evaluations_by_decision_total{decision="deny"}[5m])) / sum(rate(g1_docket_evaluations_total[5m]))) > 0.15
+          for: 5m
+          labels:
+            severity: warning
+            system: g1-docket
+          annotations:
+            summary: "High rate of AI egress policy denials (>15%)"
+            description: "Over 15% of requests to the Prevalidator gateway are being blocked. Check for unpapered data ingestion or prompt injection attacks."
+
+        - alert: G1DocketSubMillisecondSLABreached
+          expr: histogram_quantile(0.95, sum(rate(g1_docket_evaluation_duration_seconds_bucket[5m])) by (le)) > 0.005
+          for: 1m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "Prevalidator p95 evaluation latency exceeds 5ms SLA"
+            description: "The zero-DB in-memory evaluation latency has exceeded the sub-millisecond institutional SLA."
+
+        - alert: G1DocketActiveSnapshotExpiringSoon
+          expr: g1_docket_active_snapshot_sequence == 0
+          for: 2m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "No valid signed snapshot loaded in Prevalidator"
+            description: "Prevalidator gateway is operating without an active signed snapshot and will fail closed."
+
+        - alert: G1DocketHashDriftSpike
+          expr: rate(g1_docket_policy_denials_by_reason_total{reason="HASH_DRIFT"}[5m]) > 5
+          for: 2m
+          labels:
+            severity: critical
+            system: g1-docket
+          annotations:
+            summary: "Hash drift spike detected across AI inference prompts"
+            description: "Payload content SHA-256 digests are deviating from signed attestation records. Investigate possible data tampering or pipeline cache drift."
+
+        - alert: G1DocketQuarantineBacklog
+          expr: sum(g1_docket_governance_quarantine_items{status="QUARANTINED"}) > 50
+          for: 15m
+          labels:
+            severity: warning
+            system: g1-docket
+          annotations:
+            summary: "Governance quarantine backlog exceeds 50 items"
+            description: "More than 50 data items are awaiting review in the Four-Eyes Dual-Key triage queue."
