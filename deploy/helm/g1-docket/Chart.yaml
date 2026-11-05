@@ -4,6 +4,10 @@ description: Production-grade Helm chart for G1 Docket Cryptographic Data Attest
 type: application
 version: 0.2.0
 appVersion: "4.0.0"
+home: https://github.com/cgilbert61/G1-Docket
+sources:
+  - https://github.com/cgilbert61/G1-Docket
+icon: https://raw.githubusercontent.com/cgilbert61/G1-Docket/main/docs/assets/icon.png
 keywords:
   - ai-gateway
   - data-attestation
