@@ -20,6 +20,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
   Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
   Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
+  Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -165,6 +166,9 @@ def main() -> int:
 
     # Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
     phases.append(run_phase(18, "Live Red-Team Attack & Four-Eyes Quarantine Replay", [sys.executable, "examples/red_team_quarantine_demo.py"]))
+
+    # Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
+    phases.append(run_phase(19, "Microsoft Semantic Kernel Zero-Trust Agent Demo", [sys.executable, "examples/semantic_kernel_agent_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)

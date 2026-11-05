@@ -27,8 +27,8 @@ if hasattr(sys.stdout, "reconfigure"):
 MENU_ITEMS = [
     {
         "id": 1,
-        "name": "Consolidated 18-Phase Enterprise CI/CD Scorecard",
-        "description": "Full end-to-end regression and verification suite across all 18 phases",
+        "name": "Consolidated 19-Phase Enterprise CI/CD Scorecard",
+        "description": "Full end-to-end regression and verification suite across all 19 phases",
         "command": [sys.executable, "scripts/run_all_verifications.py"],
     },
     {
@@ -140,6 +140,12 @@ MENU_ITEMS = [
         "name": "Live Red-Team Attack & Four-Eyes Quarantine Replay Demo",
         "description": "Injects hash drift attack, verifies 403 block, triggers dual-signoff replay",
         "command": [sys.executable, "examples/red_team_quarantine_demo.py"],
+    },
+    {
+        "id": 19,
+        "name": "Microsoft Semantic Kernel Zero-Trust Agent Demo",
+        "description": "Intercepts plugins, enforces ABAC clearance and watermarking",
+        "command": [sys.executable, "examples/semantic_kernel_agent_demo.py"],
     },
 ]
 

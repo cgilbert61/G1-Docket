@@ -704,6 +704,40 @@ Key features:
 - Enforces multi-tier clearance boundaries and prevents unpapered context smuggling.
 - Protects against vector poisoning and prompt injection through real-time hash drift detection.
 
+---
+
+## 20. Microsoft Semantic Kernel Integration (`DocketSemanticKernelFilter`)
+
+The `DocketSemanticKernelFilter` delivers native Zero-Trust data attestation for Microsoft Semantic Kernel agent pipelines, Azure OpenAI endpoints, and Microsoft 365 Copilot plugins:
+
+```python
+from docket import DocketClient, DocketSemanticKernelFilter
+
+# 1. Initialize client and Semantic Kernel filter
+client = DocketClient(base_url="http://localhost:18082")
+sk_filter = DocketSemanticKernelFilter(
+    client=client,
+    default_locator_prefix="semantic-kernel://azure-plugins",
+    auto_hash=True,
+)
+
+# 2. Register with your Semantic Kernel instance
+# kernel.add_filter("function_invocation", sk_filter)
+
+# 3. Or format plugin/native tool outputs directly
+wrapped_output = sk_filter.wrap_function_result(
+    plugin="SapConnector",
+    function="GetCustomerRecord",
+    result="Customer: Contoso Ltd | Credit Limit: $5,000,000",
+)
+```
+
+Key capabilities:
+- **Automatic Function Wrapping**: Intercepts native plugin function returns and encapsulates them in canonical `<pod:object>` tokens with SHA-256 integrity digests.
+- **Egress Boundary Enforcement**: Restricts sensitive SAP, Azure SQL, and SharePoint findings from being dispatched to untrusted public LLM models.
+- **Hash Drift & Prompt Injection Interception**: Hard-blocks tampered function outputs at the Gateway boundary before inference tokens are generated.
+
+
 
 
 
