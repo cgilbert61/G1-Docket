@@ -90,16 +90,90 @@ class MockVectorStore:
         return [chunk for _, chunk in scored[:top_k]]
 
 
+def _initialize_client() -> tuple[DocketClient, str]:
+    """Connect to live Gateway on localhost:18082 if available, or build self-contained in-memory Prevalidator."""
+    import os
+
+    gw_url = os.getenv("DOCKET_PREVALIDATOR_URL", "http://localhost:18082")
+    if os.getenv("DOCKET_STANDALONE") != "1":
+        try:
+            client = DocketClient(base_url=gw_url, timeout=1.5)
+            health = client.get_health()
+            mode = health.get("mode", "enforce")
+            print(f"\n[+] Live Gateway Online ({gw_url}): mode={mode} | snapshot_seq={health.get('snapshot_sequence')}")
+            return client, mode
+        except Exception:
+            pass
+
+    # Build standalone in-memory Prevalidator instance for CI / isolated execution
+    from datetime import datetime, timezone, timedelta
+    from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
+    from prevalidator.proxy import create_prevalidator_app
+    from registry.signing import Keyring
+
+    keyring = Keyring()
+    store = InMemorySnapshotStore(keyring)
+    exp = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
+
+    pub_loc = f"{VECTOR_DB_BASE}/PUBLIC_PRODUCT_SKU_CATALOG"
+    conf_loc = f"{VECTOR_DB_BASE}/DIM_CUSTOMER_CONTACTS"
+    pub_text = "SKU-100 | Quantum Router | $1,299.00 | Available"
+    conf_text = "CUST-901 | elena.fisher@example.com | phone: 312-555-0199 | segment: Enterprise"
+
+    store._snapshot_predicate = {
+        "sequence_number": 4421,
+        "expires_at": exp,
+        "entries": {
+            pub_loc: {
+                "record_id": "pod-rec-pub-001",
+                "locator": pub_loc,
+                "content_sha256": hashlib.sha256(pub_text.encode("utf-8")).hexdigest(),
+                "status": "active",
+                "minimum_clearance": "Public",
+                "egress_class": "public_api",
+                "ai_eligibility": "allow",
+                "record_expires_at": exp,
+            },
+            conf_loc: {
+                "record_id": "pod-rec-conf-042",
+                "locator": conf_loc,
+                "content_sha256": hashlib.sha256(conf_text.encode("utf-8")).hexdigest(),
+                "status": "active",
+                "minimum_clearance": "Confidential",
+                "egress_class": "private_cloud",
+                "ai_eligibility": "allow",
+                "record_expires_at": exp,
+            },
+        },
+    }
+    enforcer = PrevalidatorEnforcer(
+        snapshot_store=store,
+        mode="enforce",
+        route_egress_map={
+            "gpt-4o": "public_api",
+            "local-model": "local_only",
+            "vpc-model": "private_cloud",
+        },
+        caller_key_clearance_map={
+            "pod-key-public": "Public",
+            "pod-key-confidential": "Confidential",
+        },
+    )
+    app = create_prevalidator_app(enforcer=enforcer, upstream_gateway_url="mock://upstream")
+    client = DocketClient(app=app, base_url="http://localhost:18082")
+    health = client.get_health()
+    mode = health.get("mode", "enforce")
+    print(f"\n[+] Standalone In-Memory Prevalidator Online: mode={mode} | snapshot_seq={health.get('snapshot_sequence')}")
+    return client, mode
+
+
 def main() -> int:
     print("=" * 80)
     print("      G1 DOCKET: VECTOR DATABASE & CHUNK-LEVEL RAG ADMISSION SUITE      ")
     print("=" * 80)
 
-    # Initialize client connected to Gateway / Prevalidator (:18082)
-    client = DocketClient(base_url="http://localhost:18082")
-    health = client.get_health()
-    mode = health.get("mode", "enforce")
-    print(f"\n[+] Gateway Online: mode={mode} | snapshot_seq={health.get('snapshot_sequence')}")
+    # Initialize client connected to Gateway / Prevalidator (:18082) or standalone in-memory instance
+    client, mode = _initialize_client()
 
     print("\n[+] Initializing Enterprise Vector Store (Milvus / Pinecone / Qdrant mock)...")
     vector_db = MockVectorStore()

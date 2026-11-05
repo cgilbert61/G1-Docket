@@ -69,7 +69,13 @@ class DocketClient:
         self.default_caller_key = default_caller_key
         self.timeout = timeout
         if app is not None and transport is None:
-            transport = httpx.ASGITransport(app=app)
+            try:
+                from starlette.testclient import TestClient
+
+                self._client = TestClient(app, base_url=self.base_url)
+                return
+            except Exception:
+                transport = httpx.ASGITransport(app=app)
         elif transport is None:
             transport = httpx.HTTPTransport(retries=2)
         self._client = httpx.Client(timeout=timeout, transport=transport, base_url=self.base_url if app is not None else "")
