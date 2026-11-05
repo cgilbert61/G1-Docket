@@ -1,6 +1,6 @@
 # G1 Docket — Cryptographic Compliance & Zero-Trust Audit Dossier
 
-**Audit Timestamp:** `2026-11-05 16:53:27 UTC`  
+**Audit Timestamp:** `2026-11-05 17:22:08 UTC`  
 **Framework Version:** `G1 Docket v0.1 (Institutional Security Labs)`  
 **Audit Standard Reference:** `SOC 2 Type II (CC6.1, CC6.6, CC6.7) | ISO/IEC 27001:2022 (A.8.12, A.8.24) | NIST SP 800-207`  
 
@@ -51,7 +51,7 @@ All policy refusals, quarantine events, and emergency overrides are appended to 
 * **Audit Verification Algorithm:** Linear SHA-256 hash chaining over serialized DSSE envelopes.
 * **Total Ledger Records:** `0`
 * **Chain Validation Verdict:** **`PASS - Cryptographically Intact`**
-* **Active Tip Hash:** `4db3f7b5cd7583fdfc77901556ca4b626c1cdf203d5774015593f4f03247b235`
+* **Active Tip Hash:** `f6ac2285c6b94fdfe10e2a7bc2899e0ddf54d267f3c03d63b752a2131230c6df`
 
 ---
 
