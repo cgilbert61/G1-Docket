@@ -22,6 +22,8 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
   Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
   Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
+  Phase 21: Merkle Chunk Trees (RFC-009) & Octopus Proofs Suite
+  Phase 22: Audit Runway & 30-Day Go-Live Simulation
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -59,9 +61,9 @@ class PhaseResult:
     details: dict[str, Any]
 
 
-def run_phase(phase_id: int, name: str, command: list[str]) -> PhaseResult:
+def run_phase(phase_id: int, total_phases: int, name: str, command: list[str]) -> PhaseResult:
     cmd_str = " ".join(command)
-    print(f"\n[{phase_id}/7] Executing: {name}...")
+    print(f"\n[{phase_id}/{total_phases}] Executing: {name}...")
     print(f"      Command: {cmd_str}")
 
     t0 = time.perf_counter()
@@ -112,70 +114,74 @@ def main() -> int:
     print("=" * 85)
     print(f"Timestamp: {datetime.now(timezone.utc).isoformat()} | Root: {_REPO_ROOT}")
 
+    TOTAL_PHASES = 22
     phases: list[PhaseResult] = []
 
     # Phase 1: Doctor Diagnostics & WORM Chain
-    phases.append(run_phase(1, "Cluster Health & WORM Merkle Chain Audit", [sys.executable, "-m", "registry.cli", "doctor"]))
+    phases.append(run_phase(1, TOTAL_PHASES, "Cluster Health & WORM Merkle Chain Audit", [sys.executable, "-m", "registry.cli", "doctor"]))
 
     # Phase 2: Core Test Suite
-    phases.append(run_phase(2, "Core SDK, ABAC, and Prevalidator Test Suite", [sys.executable, "-m", "pytest", "tests/", "-q"]))
+    phases.append(run_phase(2, TOTAL_PHASES, "Core SDK, ABAC, and Prevalidator Test Suite", [sys.executable, "-m", "pytest", "tests/", "-q"]))
 
     # Phase 3: Conformance Suite
-    phases.append(run_phase(3, "Consumer Conformance Test Suite", [sys.executable, "-m", "pytest", "conformance/", "-q"]))
+    phases.append(run_phase(3, TOTAL_PHASES, "Consumer Conformance Test Suite", [sys.executable, "-m", "pytest", "conformance/", "-q"]))
 
     # Phase 4: Multi-Agent Orchestration Benchmark
-    phases.append(run_phase(4, "Multi-Agent Cross-Clearance Admission Control", [sys.executable, "examples/multi_agent_orchestration_demo.py"]))
+    phases.append(run_phase(4, TOTAL_PHASES, "Multi-Agent Cross-Clearance Admission Control", [sys.executable, "examples/multi_agent_orchestration_demo.py"]))
 
     # Phase 5: High-Concurrency Latency Benchmark
-    phases.append(run_phase(5, "High-Concurrency Latency & Throughput Benchmark", [sys.executable, "benchmarks/benchmark_gateway_concurrency.py"]))
+    phases.append(run_phase(5, TOTAL_PHASES, "High-Concurrency Latency & Throughput Benchmark", [sys.executable, "benchmarks/benchmark_gateway_concurrency.py"]))
 
     # Phase 6: Forensic Watermarking
-    phases.append(run_phase(6, "Forensic Watermarking & Provenance Verification", [sys.executable, "-m", "pytest", "tests/test_watermark.py", "-q"]))
+    phases.append(run_phase(6, TOTAL_PHASES, "Forensic Watermarking & Provenance Verification", [sys.executable, "-m", "pytest", "tests/test_watermark.py", "-q"]))
 
     # Phase 7: SOC 2 Compliance Report
-    phases.append(run_phase(7, "SOC 2 & ISO 27001 Cryptographic Audit Reporter", [sys.executable, "scripts/generate_compliance_report.py"]))
+    phases.append(run_phase(7, TOTAL_PHASES, "SOC 2 & ISO 27001 Cryptographic Audit Reporter", [sys.executable, "scripts/generate_compliance_report.py"]))
 
     # Phase 8: Snowflake Zero-Trust Admission Demo
-    phases.append(run_phase(8, "Snowflake Zero-Trust Admission Demo", [sys.executable, "examples/snowflake_rag_agent_demo.py"]))
+    phases.append(run_phase(8, TOTAL_PHASES, "Snowflake Zero-Trust Admission Demo", [sys.executable, "examples/snowflake_rag_agent_demo.py"]))
 
     # Phase 9: CrewAI Multi-Agent Team Demo
-    phases.append(run_phase(9, "CrewAI Multi-Agent Team Zero-Trust Demo", [sys.executable, "examples/crewai_agent_demo.py"]))
+    phases.append(run_phase(9, TOTAL_PHASES, "CrewAI Multi-Agent Team Zero-Trust Demo", [sys.executable, "examples/crewai_agent_demo.py"]))
 
     # Phase 10: LangGraph Workflow Admission Demo
-    phases.append(run_phase(10, "LangGraph Workflow State Admission Demo", [sys.executable, "examples/langgraph_agent_demo.py"]))
+    phases.append(run_phase(10, TOTAL_PHASES, "LangGraph Workflow State Admission Demo", [sys.executable, "examples/langgraph_agent_demo.py"]))
 
     # Phase 11: AutoGen Multi-Agent Message Hook Demo
-    phases.append(run_phase(11, "AutoGen Multi-Agent Message Hook Demo", [sys.executable, "examples/autogen_agent_demo.py"]))
+    phases.append(run_phase(11, TOTAL_PHASES, "AutoGen Multi-Agent Message Hook Demo", [sys.executable, "examples/autogen_agent_demo.py"]))
 
     # Phase 12: SOC 2 Evidence Packager & Standalone Air-Gapped Verification
-    phases.append(run_phase(12, "SOC 2 Evidence Export & Standalone Verifier", [sys.executable, "-c", "import subprocess, sys, glob, os; subprocess.check_call([sys.executable, 'scripts/export_soc2_evidence.py']); zips = glob.glob('audit_evidence_bundles/*.zip'); assert zips; subprocess.check_call([sys.executable, 'scripts/docket_verify_standalone.py', zips[-1]]); [os.remove(z) for z in zips]"]))
+    phases.append(run_phase(12, TOTAL_PHASES, "SOC 2 Evidence Export & Standalone Verifier", [sys.executable, "-c", "import subprocess, sys, glob, os; subprocess.check_call([sys.executable, 'scripts/export_soc2_evidence.py']); zips = glob.glob('audit_evidence_bundles/*.zip'); assert zips; subprocess.check_call([sys.executable, 'scripts/docket_verify_standalone.py', zips[-1]]); [os.remove(z) for z in zips]"]))
 
     # Phase 13: Vector Database & Chunk-Level RAG Admission Demo
-    phases.append(run_phase(13, "Vector Database & Chunk-Level RAG Admission Demo", [sys.executable, "examples/vector_rag_agent_demo.py"]))
+    phases.append(run_phase(13, TOTAL_PHASES, "Vector Database & Chunk-Level RAG Admission Demo", [sys.executable, "examples/vector_rag_agent_demo.py"]))
 
     # Phase 14: LlamaIndex Zero-Trust RAG Admission Demo
-    phases.append(run_phase(14, "LlamaIndex Zero-Trust RAG Admission Demo", [sys.executable, "examples/llamaindex_rag_agent_demo.py"]))
+    phases.append(run_phase(14, TOTAL_PHASES, "LlamaIndex Zero-Trust RAG Admission Demo", [sys.executable, "examples/llamaindex_rag_agent_demo.py"]))
 
     # Phase 15: Multi-Agent Swarm Attestation Delegation (<pod:delegate>)
-    phases.append(run_phase(15, "Multi-Agent Swarm Attestation Delegation", [sys.executable, "examples/multi_agent_swarm_delegation_demo.py"]))
+    phases.append(run_phase(15, TOTAL_PHASES, "Multi-Agent Swarm Attestation Delegation", [sys.executable, "examples/multi_agent_swarm_delegation_demo.py"]))
 
     # Phase 16: Enterprise SIEM & SOC OCSF/CEF Exporter Verification
-    phases.append(run_phase(16, "Enterprise SIEM & SOC OCSF/CEF Exporter", [sys.executable, "-m", "pytest", "tests/test_governance_siem.py", "-q"]))
+    phases.append(run_phase(16, TOTAL_PHASES, "Enterprise SIEM & SOC OCSF/CEF Exporter", [sys.executable, "-m", "pytest", "tests/test_governance_siem.py", "-q"]))
 
     # Phase 17: Hyperscale Cascading Filter & SMT Proof Verification
-    phases.append(run_phase(17, "Hyperscale Cascading Filter & SMT Proofs", [sys.executable, "examples/hyperscale_cascading_filter_demo.py"]))
+    phases.append(run_phase(17, TOTAL_PHASES, "Hyperscale Cascading Filter & SMT Proofs", [sys.executable, "examples/hyperscale_cascading_filter_demo.py"]))
 
     # Phase 18: Live Red-Team Penetration & Four-Eyes Quarantine Replay Demo
-    phases.append(run_phase(18, "Live Red-Team Attack & Four-Eyes Quarantine Replay", [sys.executable, "examples/red_team_quarantine_demo.py"]))
+    phases.append(run_phase(18, TOTAL_PHASES, "Live Red-Team Attack & Four-Eyes Quarantine Replay", [sys.executable, "examples/red_team_quarantine_demo.py"]))
 
     # Phase 19: Microsoft Semantic Kernel Zero-Trust Agent Demo
-    phases.append(run_phase(19, "Microsoft Semantic Kernel Zero-Trust Agent Demo", [sys.executable, "examples/semantic_kernel_agent_demo.py"]))
+    phases.append(run_phase(19, TOTAL_PHASES, "Microsoft Semantic Kernel Zero-Trust Agent Demo", [sys.executable, "examples/semantic_kernel_agent_demo.py"]))
 
-    # Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
-    phases.append(run_phase(20, "Multi-Region Federation & Split-Brain Resiliency", [sys.executable, "-m", "pytest", "tests/test_federation.py", "-q"]))
+    # Phase 20: Multi-Region Active-Active Federation Suite
+    phases.append(run_phase(20, TOTAL_PHASES, "Multi-Region Federation & Split-Brain Resiliency", [sys.executable, "examples/multi_region_federation_demo.py"]))
 
-    # Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
-    phases.append(run_phase(20, "Multi-Region Federation & Split-Brain Resiliency", [sys.executable, "examples/multi_region_federation_demo.py"]))
+    # Phase 21: Merkle Chunk Trees (RFC-009) & Octopus Proofs Suite
+    phases.append(run_phase(21, TOTAL_PHASES, "Merkle Chunk Trees & Octopus Proofs Suite", [sys.executable, "-m", "pytest", "tests/test_chunk_trees.py", "-q"]))
+
+    # Phase 22: Audit Runway & 30-Day Go-Live Simulation
+    phases.append(run_phase(22, TOTAL_PHASES, "Audit Runway & 30-Day Go-Live Simulation", [sys.executable, "scripts/simulate_audit_runway.py", "--speed", "0.001"]))
 
     # Summary Scorecard
     total_phases = len(phases)

@@ -27,8 +27,8 @@ if hasattr(sys.stdout, "reconfigure"):
 MENU_ITEMS = [
     {
         "id": 1,
-        "name": "Consolidated 20-Phase Enterprise CI/CD Scorecard",
-        "description": "Full end-to-end regression and verification suite across all 20 phases",
+        "name": "Consolidated 22-Phase Enterprise CI/CD Scorecard",
+        "description": "Full end-to-end regression and verification suite across all 22 phases",
         "command": [sys.executable, "scripts/run_all_verifications.py"],
     },
     {
