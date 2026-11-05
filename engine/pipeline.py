@@ -107,6 +107,7 @@ class AttestationEngine:
             fingerprint_method="raw_bytes_sha256",
             extracted_text_sha256=doc.extracted_text_sha256,
             chunk_hashes=doc.chunk_hashes,
+            chunk_tree_root=doc.chunk_tree_root,
             classifier_engine=verdict.classifier_engine,
             jurisdiction=jurisdiction,
             org_unit=org_unit,

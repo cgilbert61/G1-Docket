@@ -22,6 +22,7 @@ except ImportError:
     HAS_OPENPYXL = False
 
 from registry.signing import (
+    compute_chunk_tree_for_text,
     compute_extracted_text_and_chunk_hashes,
     compute_file_sha256,
     normalize_canonical_text,
@@ -43,6 +44,8 @@ class ExtractedDocument:
     extractor_used: str
     extracted_text_sha256: str = ""
     chunk_hashes: list[str] = field(default_factory=list)
+    chunk_tree_root: str = ""
+    chunk_tree_depth: int = 0
 
 
 class TikaDocumentExtractor:
@@ -79,7 +82,7 @@ class TikaDocumentExtractor:
         tika_result = self._try_tika_server(path)
         if tika_result is not None:
             text, meta, row_count = tika_result
-            extracted_text_sha256, chunk_hashes = compute_extracted_text_and_chunk_hashes(text)
+            extracted_text_sha256, chunk_hashes, tree = compute_chunk_tree_for_text(text)
             return ExtractedDocument(
                 locator=locator,
                 file_path=path,
@@ -91,12 +94,14 @@ class TikaDocumentExtractor:
                 metadata=meta,
                 extractor_used="apache-tika-server",
                 extracted_text_sha256=extracted_text_sha256,
-                chunk_hashes=chunk_hashes,
+                chunk_hashes=chunk_hashes[:256],
+                chunk_tree_root=tree.root_hex,
+                chunk_tree_depth=len(tree.levels) - 1,
             )
 
         # 2. Deterministic content extraction for spreadsheets (.xlsx, .csv) and documents (.docx, .txt, .md, .json)
         text, meta, row_count = self._extract_local_content(path, suffix)
-        extracted_text_sha256, chunk_hashes = compute_extracted_text_and_chunk_hashes(text)
+        extracted_text_sha256, chunk_hashes, tree = compute_chunk_tree_for_text(text)
         return ExtractedDocument(
             locator=locator,
             file_path=path,
@@ -108,7 +113,9 @@ class TikaDocumentExtractor:
             metadata=meta,
             extractor_used="apache-tika-local",
             extracted_text_sha256=extracted_text_sha256,
-            chunk_hashes=chunk_hashes,
+            chunk_hashes=chunk_hashes[:256],
+            chunk_tree_root=tree.root_hex,
+            chunk_tree_depth=len(tree.levels) - 1,
         )
 
     def _try_tika_server(self, path: Path) -> tuple[str, dict[str, Any], int | None] | None:

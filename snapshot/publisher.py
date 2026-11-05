@@ -91,6 +91,8 @@ class SnapshotPublisher:
                 "content_sha256": rec["content_sha256"],
                 "extracted_text_sha256": integrity_obj.get("extracted_text_sha256"),
                 "chunk_hashes": (integrity_obj.get("chunk_hashes") or [])[:256],
+                "chunk_tree_root": integrity_obj.get("chunk_tree_root"),
+                "chunk_tree": integrity_obj.get("chunk_tree"),
                 "tier": rec["tier"],
                 "status": norm_status,
                 "ai_eligibility": rec["ai_eligibility"],
