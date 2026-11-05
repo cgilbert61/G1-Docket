@@ -23,6 +23,7 @@ from registry.schema_validator import (
     parse_iso8601,
 )
 from registry.signing import Keyring, normalize_canonical_text, verify_dsse_envelope
+from docket.chunking import ChunkProof, MerkleChunkTree
 
 # Uniform denial message mandated by Phase 2 Consumer Conformance Suite (never leaks which rule fired)
 UNIFORM_DENIAL_MESSAGE = "Request denied by data attestation policy."
@@ -40,14 +41,14 @@ REASON_DELEGATION_VIOLATION = "DELEGATION_VIOLATION"
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
-    r'^<pod:object\s+locator="([^"<>]+)"(?:\s+sha256="([a-fA-F0-9]{64})")?\s*>$'
+    r'^<pod:object\s+locator="([^"<>]+)"(?:\s+(?:(?:sha256="([a-fA-F0-9]{64})"\s+chunk_proof="([A-Za-z0-9_-]+={0,2})")|(?:chunk_proof="([A-Za-z0-9_-]+={0,2})"\s+sha256="([a-fA-F0-9]{64})")|(?:sha256="([a-fA-F0-9]{64})")|(?:chunk_proof="([A-Za-z0-9_-]+={0,2})")))?\s*>$'
 )
 POD_CLOSE_TAG_STRICT_RE = re.compile(r"^</pod:object>$")
 POD_ANY_TAG_TOKEN_RE = re.compile(r"<\s*/?\s*pod:object\b[^>]*>?|<\s*/?\s*pod:object", re.IGNORECASE)
 
 # Regex matching balanced inline <pod:object locator="..." [sha256="..."]>...</pod:object> blocks
 POD_OBJECT_TAG_RE = re.compile(
-    r'<pod:object\s+locator="([^"<>]+)"(?:\s+sha256="([a-fA-F0-9]{64})")?\s*>(.*?)</pod:object>',
+    r'<pod:object\s+locator="([^"<>]+)"(?:\s+(?:(?:sha256="([a-fA-F0-9]{64})"\s+chunk_proof="([A-Za-z0-9_-]+={0,2})")|(?:chunk_proof="([A-Za-z0-9_-]+={0,2})"\s+sha256="([a-fA-F0-9]{64})")|(?:sha256="([a-fA-F0-9]{64})")|(?:chunk_proof="([A-Za-z0-9_-]+={0,2})")))?\s*>(.*?)</pod:object>',
     re.DOTALL,
 )
 
@@ -423,17 +424,17 @@ class PrevalidatorEnforcer:
         return ctx
 
     @staticmethod
-    def _validate_pod_tag_structure(text: str) -> tuple[bool, list[tuple[int, int, str, str | None, str]]]:
+    def _validate_pod_tag_structure(text: str) -> tuple[bool, list[tuple[int, int, str, str | None, str, str | None]]]:
         """Strictly validate `<pod:object>` tag balance, syntax, and absence of nesting or early-close smuggling.
 
-        Returns `(is_valid, parsed_blocks)` where each block is `(start, end, locator, sha256, inner_text)`.
+        Returns `(is_valid, parsed_blocks)` where each block is `(start, end, locator, sha256, inner_text, chunk_proof)`.
         """
         tokens = list(POD_ANY_TAG_TOKEN_RE.finditer(text))
         if not tokens:
             return True, []
 
-        blocks: list[tuple[int, int, str, str | None, str]] = []
-        open_token: tuple[int, int, str, str | None] | None = None
+        blocks: list[tuple[int, int, str, str | None, str, str | None]] = []
+        open_token: tuple[int, int, str, str | None, str | None] | None = None
 
         for tok in tokens:
             raw_tok = tok.group(0)
@@ -444,12 +445,12 @@ class PrevalidatorEnforcer:
                 if open_token is None:
                     # Early or orphan closing tag
                     return False, []
-                o_start, o_end, loc, sha = open_token
+                o_start, o_end, loc, sha, proof = open_token
                 inner_text = text[o_end : tok.start()]
                 # Ensure no nested or partial pod:object markers inside inner_text
                 if "pod:object" in inner_text.lower():
                     return False, []
-                blocks.append((o_start, tok.end(), loc, sha, inner_text))
+                blocks.append((o_start, tok.end(), loc, sha, inner_text, proof))
                 open_token = None
             else:
                 # Opening tag
@@ -459,7 +460,10 @@ class PrevalidatorEnforcer:
                 m = POD_OPEN_TAG_STRICT_RE.match(raw_tok)
                 if not m:
                     return False, []
-                open_token = (tok.start(), tok.end(), m.group(1), m.group(2))
+                loc = m.group(1)
+                sha = m.group(2) or m.group(5) or m.group(6)
+                proof = m.group(3) or m.group(4) or m.group(7)
+                open_token = (tok.start(), tok.end(), loc, sha, proof)
 
         if open_token is not None:
             # Unclosed opening tag at end of text
@@ -472,14 +476,37 @@ class PrevalidatorEnforcer:
         inner_text: str,
         inline_sha256: str | None,
         entry: dict[str, Any],
+        chunk_proof: str | None = None,
     ) -> bool:
-        """Verify live SHA-256 of `inner_text` against `content_sha256`, `extracted_text_sha256`, or `chunk_hashes`."""
+        """Verify live SHA-256 of `inner_text` against `content_sha256`, `extracted_text_sha256`, `chunk_hashes`, or Merkle `chunk_tree` proof."""
         raw_inner_sha256 = hashlib.sha256(inner_text.encode("utf-8")).hexdigest()
         norm_inner_sha256 = hashlib.sha256(normalize_canonical_text(inner_text)).hexdigest()
 
         att_content_sha = (entry.get("content_sha256") or "").lower()
         att_text_sha = (entry.get("extracted_text_sha256") or "").lower()
         att_chunks = {h.lower() for h in (entry.get("chunk_hashes") or [])}
+
+        tree_root = (
+            entry.get("chunk_tree_root")
+            or entry.get("tree_root")
+            or (entry.get("chunk_tree") or {}).get("tree_root")
+            or ((entry.get("integrity") or {}).get("chunk_tree") or {}).get("tree_root")
+            or (entry.get("integrity") or {}).get("chunk_tree_root")
+        )
+
+        # 0. Merkle Chunk Tree (MCT) cryptographic inclusion verification (RFC-009)
+        if chunk_proof and tree_root:
+            try:
+                proof_obj = ChunkProof.from_base64(chunk_proof)
+                if (
+                    proof_obj.verify(norm_inner_sha256, tree_root)
+                    or proof_obj.verify(raw_inner_sha256, tree_root)
+                    or proof_obj.verify(normalize_canonical_text(inner_text), tree_root)
+                    or proof_obj.verify(inner_text.encode("utf-8"), tree_root)
+                ):
+                    return True
+            except Exception:
+                pass
 
         # Never trust a caller-supplied sha256 attribute that contradicts the attested object or live inner digest
         if inline_sha256 is not None:
@@ -489,7 +516,15 @@ class PrevalidatorEnforcer:
                 valid_attested.add(att_text_sha)
             valid_attested.discard("")
             if supplied not in valid_attested:
-                return False
+                is_tree_verified = False
+                if chunk_proof and tree_root:
+                    try:
+                        p = ChunkProof.from_base64(chunk_proof)
+                        is_tree_verified = p.verify(supplied, tree_root)
+                    except Exception:
+                        pass
+                if not is_tree_verified:
+                    return False
             if supplied not in (att_content_sha, att_text_sha) and supplied not in (raw_inner_sha256, norm_inner_sha256):
                 return False
 
@@ -534,6 +569,7 @@ class PrevalidatorEnforcer:
         inner_text: str | None = None,
         verify_inline_text: bool | None = None,
         caller_context: dict[str, Any] | None = None,
+        chunk_proof: str | None = None,
     ) -> tuple[str, list[str]]:
         """Return `(action, reason_codes)` where action is `'allow' | 'strip' | 'deny'`."""
         entry = entries.get(locator)
@@ -551,7 +587,7 @@ class PrevalidatorEnforcer:
         # Live cryptographic verification of inline <pod:object> content
         effective_strict_inline = self.strict_inline_hash if verify_inline_text is None else verify_inline_text
         if inner_text is not None and effective_strict_inline:
-            if not self._verify_inner_text_cryptographically(inner_text, inline_sha256, entry):
+            if not self._verify_inner_text_cryptographically(inner_text, inline_sha256, entry, chunk_proof=chunk_proof):
                 return "deny", [REASON_HASH_MISMATCH, "HASH_DRIFT"]
         elif inline_sha256 and inline_sha256.lower() != entry["content_sha256"].lower():
             return "deny", [REASON_HASH_MISMATCH, "HASH_DRIFT"]
@@ -707,7 +743,7 @@ class PrevalidatorEnforcer:
             last_end = 0
             out_segments: list[str] = []
 
-            for start_idx, end_idx, loc, sha, inner_content in parsed_blocks:
+            for start_idx, end_idx, loc, sha, inner_content, proof in parsed_blocks:
                 untagged_seg = text[last_end:start_idx]
                 untagged_parts.append(untagged_seg)
                 last_end = end_idx
@@ -725,6 +761,7 @@ class PrevalidatorEnforcer:
                     inner_text=inner_content,
                     verify_inline_text=effective_strict_inline,
                     caller_context=caller_context,
+                    chunk_proof=proof,
                 )
                 if action == "deny":
                     reason_codes.extend(r_codes)
@@ -765,7 +802,8 @@ class PrevalidatorEnforcer:
                 rebuilt: list[str] = []
                 idx = 0
                 seg_idx = 0
-                for start_idx, end_idx, _loc, _sha, _inner in parsed_blocks:
+                for block in parsed_blocks:
+                    start_idx, end_idx = block[0], block[1]
                     rebuilt.append(text[idx:start_idx])
                     if seg_idx < len(out_segments):
                         rebuilt.append(out_segments[seg_idx])

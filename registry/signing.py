@@ -121,6 +121,76 @@ def compute_extracted_text_and_chunk_hashes(text: str) -> tuple[str, list[str]]:
     return extracted_text_sha256, list(seen.keys())[:256]
 
 
+def compute_chunk_tree_for_text(text: str) -> tuple[str, list[str], Any]:
+    """Compute extracted text SHA-256, chunk digests, and full RFC 6962 MerkleChunkTree without 256-chunk ceiling."""
+    from docket.chunking import MerkleChunkTree
+
+    norm_full = normalize_canonical_text(text)
+    extracted_text_sha256 = hashlib.sha256(norm_full).hexdigest()
+
+    seen: dict[str, None] = {}
+
+    def _add_chunk(candidate: str) -> None:
+        norm_bytes = normalize_canonical_text(candidate)
+        if norm_bytes:
+            seen[hashlib.sha256(norm_bytes).hexdigest()] = None
+        raw_bytes = candidate.encode("utf-8")
+        if raw_bytes:
+            seen[hashlib.sha256(raw_bytes).hexdigest()] = None
+
+    if text:
+        _add_chunk(text)
+        no_cr = unicodedata.normalize("NFC", text).replace("\r", "")
+        # Paragraph boundaries
+        for para in re.split(r"\n\s*\n", no_cr):
+            para_s = para.strip()
+            if not para_s:
+                continue
+            _add_chunk(para_s)
+            if len(para_s) > 500:
+                for start in range(0, min(len(para_s), 20000), 250):
+                    window = para_s[start : start + 500]
+                    if window.strip():
+                        _add_chunk(window)
+                    if start + 500 >= len(para_s):
+                        break
+
+        # Lines
+        lines = [ln.strip() for ln in no_cr.splitlines() if ln.strip()]
+        for ln in lines:
+            _add_chunk(ln)
+            if ln.startswith("#"):
+                heading_clean = ln.lstrip("#").strip()
+                if heading_clean:
+                    _add_chunk(heading_clean)
+            for delim in (" | ", "\t"):
+                if delim in ln:
+                    cells = [c.strip() for c in ln.split(delim) if c.strip()]
+                    n_cells = len(cells)
+                    if 1 < n_cells <= 12:
+                        for i in range(n_cells):
+                            for j in range(i + 1, n_cells + 1):
+                                _add_chunk(" | ".join(cells[i:j]))
+                                _add_chunk("\t".join(cells[i:j]))
+            if len(ln) > 500:
+                for start in range(0, min(len(ln), 20000), 250):
+                    window = ln[start : start + 500]
+                    if window.strip():
+                        _add_chunk(window)
+                    if start + 500 >= len(ln):
+                        break
+
+        # Spans
+        if 1 < len(lines) <= 100:
+            for i in range(len(lines)):
+                for span_len in range(2, min(7, len(lines) - i + 1)):
+                    _add_chunk("\n".join(lines[i : i + span_len]))
+
+    chunk_hashes = list(seen.keys())
+    tree = MerkleChunkTree(chunk_hashes)
+    return extracted_text_sha256, chunk_hashes, tree
+
+
 def compute_file_sha256(path: str | Path) -> str:
     """Return lowercase 64-character hex SHA-256 digest of a file on disk."""
     h = hashlib.sha256()
@@ -591,6 +661,8 @@ def build_attestation_statement(
     fingerprint_method: str = "raw_bytes_sha256",
     extracted_text_sha256: str | None = None,
     chunk_hashes: list[str] | None = None,
+    chunk_tree_root: str | None = None,
+    chunk_tree: dict[str, Any] | None = None,
     confidence: float = 0.95,
     sensitive_categories: list[dict[str, Any]] | None = None,
     classifier_engine: str = "presidio",
@@ -694,6 +766,11 @@ def build_attestation_statement(
             "tier_lower_approvals": tier_lower_approvals or [],
         },
     }
+
+    if chunk_tree_root:
+        predicate["integrity"]["chunk_tree_root"] = chunk_tree_root.lower()
+    if chunk_tree:
+        predicate["integrity"]["chunk_tree"] = chunk_tree
 
     statement = {
         "_type": INTOTO_STATEMENT_TYPE,

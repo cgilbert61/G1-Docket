@@ -185,6 +185,15 @@
             "pattern": "^[a-f0-9]{64}$"
           },
           "description": "Deterministic list of lowercase hex SHA-256 digests of normalized paragraphs, rows, and chunks."
+        },
+        "chunk_tree_root": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "RFC 6962 canonical Merkle Chunk Tree root hash."
+        },
+        "chunk_tree": {
+          "type": "object",
+          "description": "Optional Merkle Chunk Tree metadata."
         }
       }
     },

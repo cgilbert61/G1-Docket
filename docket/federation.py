@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any, Callable
 
-from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
 from registry.signing import Keyring
 
 
@@ -52,6 +51,7 @@ class RegionalPrevalidatorNode:
     """Active-active regional edge prevalidator node with zero external DB dependencies."""
 
     def __init__(self, region_id: str, mode: str = "enforce", keyring: Keyring | None = None):
+        from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
         self.region_id = region_id
         self.mode = mode
         self.keyring = keyring or Keyring()

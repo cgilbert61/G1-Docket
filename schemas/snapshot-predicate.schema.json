@@ -116,6 +116,13 @@
               "pattern": "^[a-f0-9]{64}$"
             }
           },
+          "chunk_tree_root": {
+            "type": ["string", "null"],
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "chunk_tree": {
+            "type": ["object", "null"]
+          },
           "jurisdiction": {
             "type": ["string", "null"]
           },
