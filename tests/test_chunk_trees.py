@@ -198,3 +198,40 @@ def test_docket_vector_retriever_and_rag_document_with_chunk_proof():
     assert 'chunk_proof="MPROOF456"' in formatted
     assert "EHR diagnostic summary note." in formatted
 
+
+def test_batch_chunk_proof_octopus_algorithm():
+    """Verify Multi-Chunk Batch Proofs (Octopus Algorithm) compress sibling trees and verify simultaneously."""
+    from docket.chunking import BatchChunkProof, MerkleChunkTree
+
+    # Create tree with 64 chunks
+    chunks = [f"Paragraph {i}: Sovereign data governance analysis statement." for i in range(64)]
+    tree = MerkleChunkTree(chunks)
+    root = tree.root
+
+    # Select a batch of 8 target chunks (some adjacent, some scattered)
+    target_indices = [4, 5, 6, 7, 20, 21, 50, 63]
+    target_chunks = [chunks[i] for i in target_indices]
+
+    # Generate minimal spanning batch proof
+    batch_proof = tree.get_batch_proof(target_indices)
+
+    # 1. Multi-proof verification
+    assert batch_proof.verify(target_chunks, root) is True
+    assert batch_proof.verify(target_chunks, tree.root_hex) is True
+
+    # 2. Tampered chunk in batch fails verification
+    tampered_batch = list(target_chunks)
+    tampered_batch[2] = "Tampered paragraph content"
+    assert batch_proof.verify(tampered_batch, root) is False
+
+    # 3. Payload compression comparison:
+    # 8 individual proofs of depth 6 = 8 * 6 = 48 sibling hashes.
+    # The Octopus algorithm merges shared branches:
+    assert batch_proof.lemma_count < 28  # Over 40% reduction in sibling hashes
+
+    # 4. JSON Serialization & Deserialization
+    serialized = batch_proof.to_dict()
+    reconstituted = BatchChunkProof.from_dict(serialized)
+    assert reconstituted.verify(target_chunks, root) is True
+
+
