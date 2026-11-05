@@ -135,6 +135,12 @@ MENU_ITEMS = [
         "description": "5-scenario multi-billion object admission walkthrough with proofs",
         "command": [sys.executable, "examples/hyperscale_cascading_filter_demo.py"],
     },
+    {
+        "id": 18,
+        "name": "Live Red-Team Attack & Four-Eyes Quarantine Replay Demo",
+        "description": "Injects hash drift attack, verifies 403 block, triggers dual-signoff replay",
+        "command": [sys.executable, "examples/red_team_quarantine_demo.py"],
+    },
 ]
 
 
