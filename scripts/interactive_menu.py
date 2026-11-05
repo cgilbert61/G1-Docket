@@ -153,6 +153,18 @@ MENU_ITEMS = [
         "description": "Active-active 3-region sync, WAN partition autonomy, healing & WORM drain",
         "command": [sys.executable, "examples/multi_region_federation_demo.py"],
     },
+    {
+        "id": 21,
+        "name": "Audit Runway & 30-Day Go-Live Readiness Simulation",
+        "description": "Simulates 3 empirical exit criteria transition from Day 1 to Day 30",
+        "command": [sys.executable, "scripts/simulate_audit_runway.py"],
+    },
+    {
+        "id": 22,
+        "name": "Merkle Chunk Trees (MCT) & Octopus Batch Proof Suite",
+        "description": "Validates RFC-009 domain separation, inclusion proofs, and batch compression",
+        "command": [sys.executable, "-m", "pytest", "tests/test_chunk_trees.py", "-v"],
+    },
 ]
 
 
@@ -202,7 +214,7 @@ def main() -> int:
     while True:
         display_menu()
         try:
-            raw = input("Select an action number [1-17] (0 to exit): ").strip()
+            raw = input(f"Select an action number [1-{len(MENU_ITEMS)}] (0 to exit): ").strip()
         except (KeyboardInterrupt, EOFError):
             print("\nExiting.")
             return 0
