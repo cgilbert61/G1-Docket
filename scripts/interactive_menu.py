@@ -171,6 +171,12 @@ MENU_ITEMS = [
         "description": "Measures tree construction, sub-50us proofs, and batch compression",
         "command": [sys.executable, "benchmarks/benchmark_chunk_trees.py"],
     },
+    {
+        "id": 24,
+        "name": "Turnkey Vector DB Adapters & MCT Payloads Suite (7 Engines)",
+        "description": "Validates Pinecone, Qdrant, Chroma, Milvus, Weaviate, PGVector, and OpenSearch",
+        "command": [sys.executable, "-m", "pytest", "tests/test_chunk_trees.py", "-k", "test_docket_vector_indexer_turnkey_adapters", "-v"],
+    },
 ]
 
 
