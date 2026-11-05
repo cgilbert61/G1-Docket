@@ -712,6 +712,49 @@ class DocketVectorIndexer:
             })
         return milvus_rows
 
+    @staticmethod
+    def to_weaviate_objects(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]] | None = None,
+        class_name: str = "DocumentChunk",
+    ) -> list[dict[str, Any]]:
+        """Format records into Weaviate collection batch data objects."""
+        weaviate_objs = []
+        for i, r in enumerate(records):
+            props = dict(r["metadata"])
+            props["text"] = r["text"]
+            obj: dict[str, Any] = {
+                "class": class_name,
+                "properties": props,
+            }
+            if embeddings is not None:
+                obj["vector"] = list(embeddings[i])
+            weaviate_objs.append(obj)
+        return weaviate_objs
+
+    @staticmethod
+    def to_pgvector_records(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]],
+    ) -> list[dict[str, Any]]:
+        """Format records for PostgreSQL / pgvector row insertion."""
+        if len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        pg_rows = []
+        for r, emb in zip(records, embeddings):
+            pg_rows.append({
+                "id": r["id"],
+                "locator": r["locator"],
+                "chunk_idx": r["chunk_idx"],
+                "text": r["text"],
+                "sha256": r["sha256"],
+                "chunk_tree_root": r["chunk_tree_root"],
+                "chunk_proof": r["chunk_proof"],
+                "embedding": list(emb),
+                "metadata": dict(r["metadata"]),
+            })
+        return pg_rows
+
 
 def wrap_delegated_context(
     content: str,

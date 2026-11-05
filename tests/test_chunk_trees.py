@@ -373,7 +373,21 @@ def test_docket_vector_indexer_turnkey_adapters():
     assert milvus_rows[3]["vector"] == embeddings[3]
     assert milvus_rows[3]["chunk_proof"] == records[3]["chunk_proof"]
 
-    # 6. End-to-end round trip: Retrieve hits via DocketVectorRetriever
+    # 6. Weaviate Adapter
+    weaviate_objs = DocketVectorIndexer.to_weaviate_objects(records, embeddings)
+    assert len(weaviate_objs) == 4
+    assert weaviate_objs[0]["class"] == "DocumentChunk"
+    assert weaviate_objs[0]["properties"]["chunk_proof"] == records[0]["chunk_proof"]
+    assert weaviate_objs[0]["vector"] == embeddings[0]
+
+    # 7. PGVector Adapter
+    pg_rows = DocketVectorIndexer.to_pgvector_records(records, embeddings)
+    assert len(pg_rows) == 4
+    assert pg_rows[1]["id"] == f"{locator}#chunk=1"
+    assert pg_rows[1]["chunk_proof"] == records[1]["chunk_proof"]
+    assert pg_rows[1]["embedding"] == embeddings[1]
+
+    # 8. End-to-end round trip: Retrieve hits via DocketVectorRetriever
     retriever = DocketVectorRetriever()
     pod_tags = retriever.format_search_results(pinecone_vecs[0:2], content_key="text", locator_key="locator")
     assert f'locator="{locator}"' in pod_tags
