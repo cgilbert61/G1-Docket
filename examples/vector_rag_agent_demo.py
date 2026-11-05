@@ -282,8 +282,56 @@ def main() -> int:
     print(f"  [>] Multi-Chunk Batch [{batch_indices}] Sibling Count: {batch_proof.lemma_count} (vs {len(batch_indices)*5} individual)")
     print("  [+] Octopus Batch Proof: All 4 Chunks Verified Simultaneously (PASS)")
 
+    # -------------------------------------------------------------------------
+    # Case 7: Turnkey Vector DB Ingestion & Retrieval Round-Trip (Pinecone/Qdrant)
+    # -------------------------------------------------------------------------
+    print("\n" + "-" * 80)
+    print("[Case 7] Turnkey Vector DB Ingestion & Retrieval Round-Trip (Pinecone / Qdrant)")
+    print("-" * 80)
+    from docket.integrations import DocketVectorIndexer, DocketVectorRetriever
+
+    vdb_chunks = [
+        "Policy Rule 1: All multi-agent LLM requests must bind to an attested source locator.",
+        "Policy Rule 2: Hash drift incidents trigger automated four-eyes triage quarantine.",
+        "Policy Rule 3: Merkle Chunk Trees eliminate discrete 256-chunk snapshot limitations.",
+    ]
+    vdb_locator = "s3://corp-knowledge/enterprise_master_handbook.pdf"
+    vdb_embeddings = [
+        [0.051, -0.012, 0.088],
+        [-0.034, 0.091, 0.022],
+        [0.019, 0.044, -0.076],
+    ]
+
+    # Ingestion: build tree and generate DB records
+    root_hex, vdb_records = DocketVectorIndexer.prepare_chunks(
+        chunks=vdb_chunks,
+        locator=vdb_locator,
+        extra_metadata={"department": "Engineering", "tier": "Internal"},
+    )
+    print(f"  [>] Ingestion Tree Root: {root_hex}")
+    print(f"  [>] Prepared {len(vdb_records)} records with RFC-009 inclusion proofs.")
+
+    # Export to Pinecone & Qdrant formats
+    pinecone_batch = DocketVectorIndexer.to_pinecone_vectors(vdb_records, vdb_embeddings)
+    qdrant_batch = DocketVectorIndexer.to_qdrant_points(vdb_records, vdb_embeddings)
+    print(f"  [>] Pinecone Upsert Batch Size: {len(pinecone_batch)} vectors")
+    print(f"  [>] Qdrant Point Payload Size:  {len(qdrant_batch)} points")
+
+    # Retrieval: format simulated search hits
+    retriever_instance = DocketVectorRetriever()
+    formatted_context = retriever_instance.format_search_results(
+        pinecone_batch[0:2],
+        content_key="text",
+        locator_key="locator",
+    )
+    assert f'locator="{vdb_locator}"' in formatted_context
+    assert f'chunk_proof="{vdb_records[0]["chunk_proof"]}"' in formatted_context
+    assert vdb_chunks[0] in formatted_context
+    print("  [+] Simulated Pinecone Search Hit Formatted cleanly into verified <pod:object> tokens")
+    print(f"  [>] Sample Prompt Token:\n      {formatted_context.splitlines()[0][:100]}...")
+
     print("\n" + "=" * 80)
-    print("          ALL 6 VECTOR RAG ZERO-TRUST ADMISSION CASES PASSED          ")
+    print("          ALL 7 VECTOR RAG ZERO-TRUST ADMISSION CASES PASSED          ")
     print("=" * 80)
     return 0
 
