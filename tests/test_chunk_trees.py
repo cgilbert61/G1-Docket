@@ -387,12 +387,29 @@ def test_docket_vector_indexer_turnkey_adapters():
     assert pg_rows[1]["chunk_proof"] == records[1]["chunk_proof"]
     assert pg_rows[1]["embedding"] == embeddings[1]
 
-    # 8. End-to-end round trip: Retrieve hits via DocketVectorRetriever
+    # 8. OpenSearch / Elasticsearch Adapter
+    os_docs = DocketVectorIndexer.to_opensearch_docs(records, embeddings, index_name="knowledge_chunks")
+    assert len(os_docs) == 4
+    assert os_docs[0]["_index"] == "knowledge_chunks"
+    assert os_docs[0]["_source"]["chunk_proof"] == records[0]["chunk_proof"]
+    assert os_docs[0]["_source"]["chunk_vector"] == embeddings[0]
+
+    # 9. End-to-end round trip: Retrieve hits via DocketVectorRetriever across Pinecone, Weaviate, OpenSearch
     retriever = DocketVectorRetriever()
-    pod_tags = retriever.format_search_results(pinecone_vecs[0:2], content_key="text", locator_key="locator")
-    assert f'locator="{locator}"' in pod_tags
-    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags
-    assert chunks[0] in pod_tags
+
+    # Pinecone
+    pod_tags_pinecone = retriever.format_search_results(pinecone_vecs[0:2], content_key="text", locator_key="locator")
+    assert f'locator="{locator}"' in pod_tags_pinecone
+    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags_pinecone
+    assert chunks[0] in pod_tags_pinecone
+
+    # Weaviate (properties dict)
+    pod_tags_weaviate = retriever.format_search_results(weaviate_objs[0:1], content_key="text", locator_key="locator")
+    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags_weaviate
+
+    # OpenSearch (_source dict)
+    pod_tags_opensearch = retriever.format_search_results(os_docs[0:1], content_key="text", locator_key="locator")
+    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags_opensearch
 
 
 

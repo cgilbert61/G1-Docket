@@ -289,6 +289,7 @@ chroma_batch    = DocketVectorIndexer.to_chroma_batch(records, embeddings)
 milvus_rows     = DocketVectorIndexer.to_milvus_rows(records, embeddings)
 weaviate_objs   = DocketVectorIndexer.to_weaviate_objects(records, embeddings)
 pgvector_rows   = DocketVectorIndexer.to_pgvector_records(records, embeddings)
+opensearch_docs = DocketVectorIndexer.to_opensearch_docs(records, embeddings)
 ```
 
 ### F. Vector Database Retrieval Adapter (`DocketVectorRetriever`)

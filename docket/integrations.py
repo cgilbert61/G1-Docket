@@ -534,7 +534,13 @@ class DocketVectorRetriever:
         blocks: list[str] = []
         for hit in hits:
             if isinstance(hit, Mapping):
-                meta_dict = hit.get("metadata") or hit.get("payload") or {}
+                meta_dict = (
+                    hit.get("metadata")
+                    or hit.get("payload")
+                    or hit.get("_source")
+                    or hit.get("properties")
+                    or {}
+                )
                 if not isinstance(meta_dict, Mapping):
                     meta_dict = {}
                 content = str(
@@ -754,6 +760,36 @@ class DocketVectorIndexer:
                 "metadata": dict(r["metadata"]),
             })
         return pg_rows
+
+    @staticmethod
+    def to_opensearch_docs(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]] | None = None,
+        index_name: str = "document_chunks",
+        vector_field: str = "chunk_vector",
+    ) -> list[dict[str, Any]]:
+        """Format records for OpenSearch / Elasticsearch bulk indexing (k-NN plugin format)."""
+        if embeddings is not None and len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        os_docs = []
+        for i, r in enumerate(records):
+            source = dict(r["metadata"])
+            source.update({
+                "text": r["text"],
+                "locator": r["locator"],
+                "chunk_idx": r["chunk_idx"],
+                "sha256": r["sha256"],
+                "chunk_tree_root": r["chunk_tree_root"],
+                "chunk_proof": r["chunk_proof"],
+            })
+            if embeddings is not None:
+                source[vector_field] = list(embeddings[i])
+            os_docs.append({
+                "_index": index_name,
+                "_id": r["id"],
+                "_source": source,
+            })
+        return os_docs
 
 
 def wrap_delegated_context(
