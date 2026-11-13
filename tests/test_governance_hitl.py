@@ -245,3 +245,71 @@ siem_destinations: []
     assert resp_k2_hdr.status_code == 200
     assert resp_k2_hdr.json()["status"] == "RELEASED"
     assert resp_k2_hdr.json()["approver"] == "approver_ciso@company.com"
+
+
+def test_demo_vs_production_mode_governance(tmp_path, monkeypatch):
+    from governance.triage_server import is_demo_mode
+
+    # 1. Test DOCKET_ENVIRONMENT precedence
+    monkeypatch.setenv("DOCKET_ENVIRONMENT", "demo")
+    assert is_demo_mode() is True
+
+    monkeypatch.setenv("DOCKET_ENVIRONMENT", "production")
+    assert is_demo_mode() is False
+
+    # 2. Test legacy DOCKET_DEMO_MODE compatibility
+    monkeypatch.delenv("DOCKET_ENVIRONMENT", raising=False)
+    monkeypatch.setenv("DOCKET_DEMO_MODE", "false")
+    assert is_demo_mode() is False
+
+    monkeypatch.setenv("DOCKET_DEMO_MODE", "true")
+    assert is_demo_mode() is True
+
+    # 3. Test production enforcement rejecting demo identities
+    p_str = str(tmp_path).replace("\\", "/")
+    cfg_file = tmp_path / "test_config_prod.yaml"
+    cfg_file.write_text(f"""
+server:
+  host: "127.0.0.1"
+  port: 18083
+  inference_gateway_url: "http://127.0.0.1:18082"
+storage:
+  worm_sqlite_path: "{p_str}/worm.db"
+  worm_jsonl_path: "{p_str}/worm.jsonl"
+  quarantine_db_path: "{p_str}/quarantine.db"
+  siem_buffer_db_path: "{p_str}/siem.db"
+  keys_dir: "{p_str}/keys"
+siem_destinations: []
+""", encoding="utf-8")
+
+    app = create_governance_app(config_path=cfg_file)
+    client = TestClient(app)
+
+    monkeypatch.setenv("DOCKET_ENVIRONMENT", "production")
+    resp_health = client.get("/healthz")
+    assert resp_health.status_code == 200
+    assert resp_health.json()["environment"] == "production"
+    assert resp_health.json()["demo_mode"] is False
+
+    # Stage an item via the intercept API
+    resp_inc = client.post(
+        "/api/intercept",
+        json={
+            "event_type": "DOCKET_DENIAL",
+            "reason_code": "UNATTESTED_DATA_OBJECT",
+            "payload_digest": "55" * 32,
+            "raw_payload": {"messages": []},
+            "locator_uri": "file:///test_prod.pdf",
+            "claimed_tier": "Internal",
+            "extracted_text": "sample text",
+        },
+    )
+    assert resp_inc.status_code == 200
+    qid = resp_inc.json()["quarantine_id"]
+
+    resp_demo_k1 = client.post(
+        f"/api/quarantine/{qid}/stage-override",
+        json={"requester_id": "demo-requester", "rationale": "testing production mode"},
+    )
+    assert resp_demo_k1.status_code == 403
+    assert "Demo requester identities are not permitted in production mode" in resp_demo_k1.json()["detail"]
