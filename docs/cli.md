@@ -39,6 +39,9 @@ pod --help
 | **`review-list`** | HITL | List pending human review triage items |
 | **`review-approve`** | HITL | Approve and finalize classification for an object in review |
 | **`doctor`** | Diagnostics | Probe cluster endpoints, check latencies, and audit WORM chain |
+| **`login`** | Authentication | Authenticate operator credentials with optional RFC 6238 TOTP 2FA |
+| **`whoami`** | Authentication | Inspect active operator session, roles, and expiration horizon |
+| **`logout`** | Authentication | Revoke active session token locally and against governance server |
 | **`watermark-inspect`** | Forensics | Extract and verify cryptographic provenance watermark from text or file |
 | **`watermark-embed`** | Forensics | Embed an invisible zero-width cryptographic watermark into a file |
 
@@ -239,5 +242,46 @@ Or select **Option 25** in the interactive menu (`python scripts/interactive_men
 | **Four-Eyes Dual-Key** | Single-key simulated review permitted | Strict: Self-approvals (`key1 == key2`) or mock identities blocked |
 | **WORM Audit Trail** | Memory / Local SQLite ledger | Immutable append-only SQLite/PostgreSQL with Merkle chaining |
 | **Cluster Health Indicator** | Marked with `[DEMO - NON-ENFORCING]` badges | Institutional production assertion |
+
+---
+
+## 12. Operator Authentication & Session Management (`login`, `whoami`, `logout`)
+
+The CLI commands `login`, `whoami`, and `logout` provide zero-trust session management for cluster operators interacting with the G1 Docket Governance and Triage subsystem.
+
+### Authenticate an Operator Session (`login`)
+Prompts for password securely and accepts an optional 6-digit RFC 6238 TOTP hardware/authenticator code:
+
+```bash
+docket login --username admin --endpoint http://127.0.0.1:8000
+# or with TOTP code
+docket login --username admin --totp 123456
+```
+
+Upon successful PBKDF2 verification, an HMAC-SHA256 signed session token is minted and persisted with restricted permissions (`0600`) to `~/.docket/session.json`.
+
+### Inspect Active Operator Identity (`whoami`)
+Displays the authenticated operator's username, assigned RBAC roles, target endpoint, and session validity status:
+
+```bash
+docket whoami
+```
+
+Example Output:
+```text
+Authenticated Operator: admin
+Roles: admin, triage_operator, security_approver
+Server Endpoint: http://127.0.0.1:8000
+Session Token: 4668ba454a8e...
+Status: ACTIVE (Sliding 30-minute idle window)
+```
+
+### Revoke Session (`logout`)
+Terminates the active session both locally (removing `~/.docket/session.json`) and notifies the Governance server to cryptographically append an `OPERATOR_LOGOUT` audit record to the WORM Merkle ledger:
+
+```bash
+docket logout
+```
+
 
 
