@@ -61,6 +61,10 @@
                 "algorithm": {
                   "type": "string",
                   "enum": ["Ed25519", "ECDSA_P256_SHA256"]
+                },
+                "kmsUri": {
+                  "type": "string",
+                  "description": "Optional canonical Cloud KMS / HSM key URI (e.g. awskms://..., azurekms://..., gcpkms://...)"
                 }
               }
             }

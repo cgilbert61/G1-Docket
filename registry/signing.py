@@ -9,6 +9,7 @@ import os
 import re
 import unicodedata
 import uuid
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
 from registry.schema_validator import (
     ATTESTATION_PREDICATE_TYPE,
@@ -230,6 +232,249 @@ class VerificationResult:
     predicate_type: str
     subject_name: str
     subject_sha256: str
+
+
+class BaseKMSSigner(ABC):
+    """Abstract Base Class for hardware / cloud key management service signers.
+
+    KMS signers keep private key material strictly inside the HSM / KMS boundary.
+    Signing is performed remotely via API, while public keys are exported and
+    verified locally at sub-millisecond latency with zero KMS egress or runtime dependency.
+    """
+
+    @property
+    @abstractmethod
+    def keyid(self) -> str:
+        """Deterministic 16-hex character SPKI key identifier."""
+        ...
+
+    @property
+    @abstractmethod
+    def algorithm(self) -> str:
+        """Key algorithm identifier, e.g. 'ECDSA_P256_SHA256' or 'Ed25519'."""
+        ...
+
+    @property
+    @abstractmethod
+    def kms_uri(self) -> str:
+        """Canonical KMS resource URI (e.g. 'awskms://arn:aws:kms:...')."""
+        ...
+
+    @abstractmethod
+    def get_public_key_pem(self) -> str:
+        """Return SubjectPublicKeyInfo PEM string exported from KMS."""
+        ...
+
+    @abstractmethod
+    def sign(self, data: bytes) -> bytes:
+        """Sign payload bytes using the remote KMS/HSM key. Returns raw/DER signature bytes."""
+        ...
+
+
+class MockKMSSigner(BaseKMSSigner):
+    """Hermetic mock KMS/HSM signer simulating a hardware boundary.
+
+    Used for hermetic unit testing, offline CI/CD, and simulated HSM environments.
+    The internal private key is never exported to the Keyring or written to disk.
+    """
+
+    def __init__(
+        self,
+        algorithm: str = "ECDSA_P256_SHA256",
+        kms_uri: str = "mockkms://vault-1/hsm-key-01",
+        private_key: Any | None = None,
+    ) -> None:
+        self._algorithm = algorithm
+        self._kms_uri = kms_uri
+        if private_key is not None:
+            self._private_key = private_key
+        elif algorithm == "ECDSA_P256_SHA256":
+            self._private_key = ec.generate_private_key(ec.SECP256R1())
+        elif algorithm == "Ed25519":
+            self._private_key = ed25519.Ed25519PrivateKey.generate()
+        else:
+            raise ValueError(f"Unsupported algorithm for MockKMSSigner: {algorithm}")
+
+        pub = self._private_key.public_key()
+        self._public_key_pem = pub.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8")
+        self._keyid = compute_spki_keyid(pub)
+        self.sign_call_count = 0
+
+    @property
+    def keyid(self) -> str:
+        return self._keyid
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    @property
+    def kms_uri(self) -> str:
+        return self._kms_uri
+
+    def get_public_key_pem(self) -> str:
+        return self._public_key_pem
+
+    def sign(self, data: bytes) -> bytes:
+        self.sign_call_count += 1
+        if self._algorithm == "ECDSA_P256_SHA256":
+            return self._private_key.sign(data, ec.ECDSA(hashes.SHA256()))
+        elif self._algorithm == "Ed25519":
+            return self._private_key.sign(data)
+        raise ValueError(f"Unsupported algorithm: {self._algorithm}")
+
+
+class AWSKMSSigner(BaseKMSSigner):
+    """AWS Key Management Service (KMS) Customer Managed Key (CMK) / HSM Signer.
+
+    Supports ECC_NIST_P256 (ECDSA_SHA_256). Works with standard boto3 or custom client.
+    """
+
+    def __init__(
+        self,
+        key_arn: str,
+        kms_client: Any | None = None,
+        algorithm: str = "ECDSA_P256_SHA256",
+        region_name: str | None = None,
+        public_key_pem: str | None = None,
+    ) -> None:
+        self.key_arn = key_arn
+        self._algorithm = algorithm
+        self._region_name = region_name
+        self._kms_client = kms_client
+        self._public_key_pem = public_key_pem
+        self._keyid: str | None = None
+
+    @property
+    def kms_uri(self) -> str:
+        return f"awskms://{self.key_arn}"
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    def _get_client(self) -> Any:
+        if self._kms_client is not None:
+            return self._kms_client
+        try:
+            import boto3
+
+            self._kms_client = boto3.client("kms", region_name=self._region_name)
+            return self._kms_client
+        except ImportError as err:
+            raise RuntimeError("boto3 is required for AWS KMS signing. Install with `pip install boto3`.") from err
+
+    def get_public_key_pem(self) -> str:
+        if self._public_key_pem:
+            return self._public_key_pem
+        client = self._get_client()
+        resp = client.get_public_key(KeyId=self.key_arn)
+        der_bytes = resp["PublicKey"]
+        pub_key = serialization.load_der_public_key(der_bytes)
+        self._public_key_pem = pub_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8")
+        return self._public_key_pem
+
+    @property
+    def keyid(self) -> str:
+        if self._keyid is None:
+            pem = self.get_public_key_pem()
+            pub_key = serialization.load_pem_public_key(pem.encode("utf-8"))
+            self._keyid = compute_spki_keyid(pub_key)
+        return self._keyid
+
+    def sign(self, data: bytes) -> bytes:
+        client = self._get_client()
+        resp = client.sign(
+            KeyId=self.key_arn,
+            Message=data,
+            MessageType="RAW",
+            SigningAlgorithm="ECDSA_SHA_256",
+        )
+        return resp["Signature"]
+
+
+class AzureKeyVaultSigner(BaseKMSSigner):
+    """Azure Key Vault / Managed HSM Signer.
+
+    Supports EC P-256 keys (ES256). Works with azure-keyvault-keys or custom client.
+    Automatically encodes IEEE P1363 (r||s) signatures into ASN.1 DER.
+    """
+
+    def __init__(
+        self,
+        vault_url: str,
+        key_name: str,
+        key_version: str | None = None,
+        crypto_client: Any | None = None,
+        algorithm: str = "ECDSA_P256_SHA256",
+        public_key_pem: str | None = None,
+    ) -> None:
+        self.vault_url = vault_url.rstrip("/")
+        self.key_name = key_name
+        self.key_version = key_version
+        self._algorithm = algorithm
+        self._crypto_client = crypto_client
+        self._public_key_pem = public_key_pem
+        self._keyid: str | None = None
+
+    @property
+    def kms_uri(self) -> str:
+        ver_part = f"/{self.key_version}" if self.key_version else ""
+        return f"azurekms://{self.vault_url}/keys/{self.key_name}{ver_part}"
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    def _get_client(self) -> Any:
+        if self._crypto_client is not None:
+            return self._crypto_client
+        try:
+            from azure.identity import DefaultAzureCredential
+            from azure.keyvault.keys import KeyClient
+            from azure.keyvault.keys.crypto import CryptographyClient
+
+            key_client = KeyClient(vault_url=self.vault_url, credential=DefaultAzureCredential())
+            key = key_client.get_key(self.key_name, self.key_version)
+            self._crypto_client = CryptographyClient(key, credential=DefaultAzureCredential())
+            return self._crypto_client
+        except ImportError as err:
+            raise RuntimeError(
+                "azure-identity and azure-keyvault-keys are required for Azure Key Vault signing. "
+                "Install with `pip install azure-identity azure-keyvault-keys`."
+            ) from err
+
+    def get_public_key_pem(self) -> str:
+        if self._public_key_pem:
+            return self._public_key_pem
+        raise SignatureVerificationError(
+            "Public key PEM must be supplied or retrieved for AzureKeyVaultSigner."
+        )
+
+    @property
+    def keyid(self) -> str:
+        if self._keyid is None:
+            pem = self.get_public_key_pem()
+            pub_key = serialization.load_pem_public_key(pem.encode("utf-8"))
+            self._keyid = compute_spki_keyid(pub_key)
+        return self._keyid
+
+    def sign(self, data: bytes) -> bytes:
+        digest = hashlib.sha256(data).digest()
+        client = self._get_client()
+        res = client.sign("ES256", digest)
+        sig = res.signature if hasattr(res, "signature") else res
+        if len(sig) == 64:
+            r = int.from_bytes(sig[:32], "big")
+            s = int.from_bytes(sig[32:], "big")
+            return encode_dss_signature(r, s)
+        return sig
 
 
 class Keyring:
