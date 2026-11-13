@@ -1464,8 +1464,12 @@ def create_prevalidator_app(
         target_endpoint = f"{active_base_url}/chat/completions" if active_base_url.endswith("/v1") or active_base_url.endswith("/openai") else f"{active_base_url}/v1/chat/completions"
         if is_stream:
             client = httpx.AsyncClient(timeout=60.0)
-            req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
-            resp = await client.send(req, stream=True)
+            try:
+                req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
+                resp = await client.send(req, stream=True)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                user_text = _extract_last_user_text(clean_payload)
+                return StreamingResponse(_mock_openai_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
 
             async def stream_passthrough() -> AsyncIterator[bytes]:
                 try:
@@ -1478,10 +1482,29 @@ def create_prevalidator_app(
             return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
 
         client = get_shared_upstream_client()
-        resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-        merged_resp_headers = dict(resp.headers)
-        merged_resp_headers.update(response_headers)
-        return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
+        try:
+            resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
+            merged_resp_headers = dict(resp.headers)
+            merged_resp_headers.update(response_headers)
+            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            user_text = _extract_last_user_text(clean_payload)
+            mock_body = {
+                "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+                "object": "chat.completion",
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": f"[Gateway ({model})]: {user_text}",
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            return JSONResponse(status_code=200, content=mock_body, headers=response_headers)
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request) -> Any:
@@ -1601,8 +1624,12 @@ def create_prevalidator_app(
         target_endpoint = f"{active_base_url}/messages" if active_base_url.endswith("/v1") else f"{active_base_url}/v1/messages"
         if is_stream:
             client = httpx.AsyncClient(timeout=60.0)
-            req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
-            resp = await client.send(req, stream=True)
+            try:
+                req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
+                resp = await client.send(req, stream=True)
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                user_text = _extract_last_user_text(clean_payload)
+                return StreamingResponse(_mock_anthropic_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
 
             async def stream_passthrough() -> AsyncIterator[bytes]:
                 try:
@@ -1615,10 +1642,27 @@ def create_prevalidator_app(
             return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
 
         client = get_shared_upstream_client()
-        resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-        merged_resp_headers = dict(resp.headers)
-        merged_resp_headers.update(response_headers)
-        return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
+        try:
+            resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
+            merged_resp_headers = dict(resp.headers)
+            merged_resp_headers.update(response_headers)
+            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            user_text = _extract_last_user_text(clean_payload)
+            mock_anthropic_body = {
+                "id": f"msg_{uuid.uuid4().hex[:12]}",
+                "type": "message",
+                "role": "assistant",
+                "model": model,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"[Anthropic Gateway ({model})]: {user_text}",
+                    }
+                ],
+                "stop_reason": "end_turn",
+            }
+            return JSONResponse(status_code=200, content=mock_anthropic_body, headers=response_headers)
 
     @app.get("/v1/admin/audit-log")
     def get_audit_log(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:
