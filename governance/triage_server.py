@@ -8,9 +8,11 @@ and real-time Server-Sent Events (SSE) telemetry feed.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -313,9 +315,16 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             password = parsed.get("password", [""])[0]
 
         client_ip = get_client_ip(request)
+        auth_digest = hashlib.sha256(f"{username}:{client_ip}:{int(time.time())}".encode("utf-8")).hexdigest()
         try:
             user = auth_manager.authenticate(username, password, client_ip)
             if not user:
+                worm_ledger.append_event(
+                    event_type="OPERATOR_AUTH_FAILURE",
+                    actor_identity=f"operator:{username or 'unknown'}",
+                    payload_digest=auth_digest,
+                    metadata={"client_ip": client_ip, "reason": "invalid_credentials"},
+                )
                 if "application/json" in content_type:
                     return JSONResponse(status_code=401, content={"error": "Invalid operator ID or password."})
                 return templates.TemplateResponse(
@@ -328,6 +337,12 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
                     },
                     status_code=401,
                 )
+            worm_ledger.append_event(
+                event_type="OPERATOR_AUTH_SUCCESS",
+                actor_identity=f"operator:{user.username}",
+                payload_digest=auth_digest,
+                metadata={"client_ip": client_ip, "role": user.role, "display_name": user.display_name},
+            )
             token = auth_manager.create_session_token(user)
             if "application/json" in content_type:
                 resp = JSONResponse(
@@ -353,6 +368,12 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             )
             return resp
         except ValueError as e:
+            worm_ledger.append_event(
+                event_type="OPERATOR_AUTH_LOCKOUT",
+                actor_identity=f"operator:{username or 'unknown'}",
+                payload_digest=auth_digest,
+                metadata={"client_ip": client_ip, "reason": str(e)},
+            )
             if "application/json" in content_type:
                 return JSONResponse(status_code=429, content={"error": str(e)})
             return templates.TemplateResponse(
@@ -367,7 +388,17 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             )
 
     @app.get("/logout")
-    async def logout_view():
+    async def logout_view(request: Request):
+        sess = get_current_user_session(request)
+        if sess and sess.get("sub"):
+            client_ip = get_client_ip(request)
+            logout_digest = hashlib.sha256(f"logout:{sess['sub']}:{client_ip}:{int(time.time())}".encode("utf-8")).hexdigest()
+            worm_ledger.append_event(
+                event_type="OPERATOR_LOGOUT",
+                actor_identity=f"operator:{sess['sub']}",
+                payload_digest=logout_digest,
+                metadata={"client_ip": client_ip},
+            )
         resp = RedirectResponse(url="/login", status_code=302)
         resp.delete_cookie(SESSION_COOKIE_NAME)
         return resp

@@ -199,3 +199,44 @@ siem_destinations: []
     )
     assert resp_approver.status_code == 200
     assert resp_approver.json()["status"] == "RELEASED"
+
+
+def test_auth_events_recorded_in_worm_ledger(tmp_path):
+    p_str = str(tmp_path).replace("\\", "/")
+    cfg_file = tmp_path / "test_config.yaml"
+    cfg_file.write_text(f"""
+server:
+  host: "127.0.0.1"
+  port: 18083
+  inference_gateway_url: "http://127.0.0.1:18082"
+storage:
+  worm_sqlite_path: "{p_str}/worm.db"
+  worm_jsonl_path: "{p_str}/worm.jsonl"
+  quarantine_db_path: "{p_str}/quarantine.db"
+  siem_buffer_db_path: "{p_str}/siem.db"
+  keys_dir: "{p_str}/keys"
+siem_destinations: []
+""", encoding="utf-8")
+
+    app = create_governance_app(config_path=cfg_file)
+    client = TestClient(app)
+    worm_ledger = app.state.worm_ledger
+
+    # 1. Failed login -> records OPERATOR_AUTH_FAILURE
+    client.post("/login", data={"username": "operator1", "password": "WrongPassword"})
+    events = worm_ledger.get_events(event_type="OPERATOR_AUTH_FAILURE")
+    assert len(events) >= 1
+    assert events[-1]["actor_identity"] == "operator:operator1"
+
+    # 2. Successful login -> records OPERATOR_AUTH_SUCCESS
+    resp_login = client.post("/login", data={"username": "operator1", "password": "TriageOperator2026!"})
+    events_ok = worm_ledger.get_events(event_type="OPERATOR_AUTH_SUCCESS")
+    assert len(events_ok) >= 1
+    assert events_ok[-1]["actor_identity"] == "operator:operator1"
+
+    # 3. Logout -> records OPERATOR_LOGOUT
+    client.get("/logout")
+    events_logout = worm_ledger.get_events(event_type="OPERATOR_LOGOUT")
+    assert len(events_logout) >= 1
+    assert events_logout[-1]["actor_identity"] == "operator:operator1"
+
