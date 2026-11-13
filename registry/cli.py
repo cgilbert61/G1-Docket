@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Sequence
@@ -32,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     # attest
     p_att = sub.add_parser("attest", help="Discover, classify, and attest a file, directory share, or database")
     p_att.add_argument("target", help="File path, directory path, or database SQLAlchemy URL")
-    p_att.add_argument("--owner", default="data-governance@example.org", help="Accountable owner identifier")
+    p_att.add_argument("--owner", default=os.getenv("DOCKET_DEFAULT_OWNER", "data-governance@example.org"), help="Accountable owner identifier")
     p_att.add_argument("--locator", default=None, help="Optional canonical locator URI override")
     p_att.add_argument("--output", default=None, help="Optional path to write the signed DSSE envelope JSON")
 

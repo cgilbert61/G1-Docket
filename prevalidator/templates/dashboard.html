@@ -2871,8 +2871,8 @@
           `The Prevalidator blocks all AI requests referencing this object until you click <strong>1. Run Attestation on Directory (Engine)</strong>.`;
       } else {
         banner.className = 'english-verdict';
-        const ownerVal = own.owner || rec.owner || cached.owner || 'fileshare-owners@example.org';
-        const stewardVal = own.steward || cached.steward || 'data-governance-steward@contoso.com';
+        const ownerVal = own.owner || rec.owner || cached.owner || 'Unassigned (Data Governance)';
+        const stewardVal = own.steward || cached.steward || 'Unassigned (Data Steward)';
         const aiRuleVal = pol.ai_eligibility || rec.ai_eligibility || cached.ai_eligibility || (snapEntry && snapEntry.ai_eligibility) || 'deny';
         const egressVal = pol.egress_class || rec.egress_class || cached.egress_class || (snapEntry && snapEntry.egress_class) || 'local_only';
         banner.innerHTML = `<strong>Signed Attestation Record:</strong> <code>${fileName}</code> is owned by <strong>${ownerVal}</strong> (Steward: <strong>${stewardVal}</strong>), ` +
@@ -2881,8 +2881,8 @@
       }
 
       // Group 1 & 2: Ownership & Identity
-      document.getElementById('inspOwner').textContent = own.owner || rec.owner || cached.owner || (isFound ? 'fileshare-owners@example.org' : 'Unassigned (Unattested File)');
-      document.getElementById('inspSteward').textContent = own.steward || cached.steward || (isFound ? 'data-governance-steward@contoso.com' : 'None &mdash; Awaiting Attestation');
+      document.getElementById('inspOwner').textContent = own.owner || rec.owner || cached.owner || (isFound ? 'Unassigned (Data Governance)' : 'Unassigned (Unattested File)');
+      document.getElementById('inspSteward').textContent = own.steward || cached.steward || (isFound ? 'Unassigned (Data Steward)' : 'None &mdash; Awaiting Attestation');
       document.getElementById('inspOrgUnit').textContent = own.org_unit || cached.org_unit || (isFound ? 'Enterprise Data & AI Governance' : '-');
       document.getElementById('inspJurisdiction').textContent = own.jurisdiction || cached.jurisdiction || (isFound ? 'GLOBAL' : '-');
       document.getElementById('inspRecordId').textContent = ident.record_id || rec.record_id || cached.record_id || 'NONE (Unattested)';
