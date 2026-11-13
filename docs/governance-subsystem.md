@@ -103,10 +103,12 @@ In enterprise deployments fronted by an API Gateway or Reverse Proxy (e.g., Clou
 - `X-Forwarded-Email`, `X-Auth-Request-Email`, `CF-Access-Authenticated-User-Email`
 - `X-MS-Client-Principal-Name`, `X-Goog-Authenticated-User-Email`, `X-Forwarded-User`, `Remote-User`
 
-When `DOCKET_DEMO_MODE=false` is configured:
+When `DOCKET_ENVIRONMENT=production` (or legacy `DOCKET_DEMO_MODE=false`) is configured:
 - Quick-fill demo analyst buttons are hidden in the Four-Eyes Dual-Key triage modal.
 - Form inputs require verified enterprise operator emails matching your organization's domain.
-- The Four-Eyes principle strictly prevents self-approval: requester and approver must possess distinct, verified corporate credentials.
+- Mock identities (`demo-*`) are blocked with HTTP 403.
+- The Four-Eyes principle strictly prevents self-approval: requester and approver must possess distinct, verified corporate credentials ($K_1 \neq K_2$).
+- The cluster health indicator displays an institutional production badge.
 
 
 ---

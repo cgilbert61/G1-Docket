@@ -217,3 +217,27 @@ docket watermark-embed confidential_memo.md \
   --output watermarked_memo.md
 ```
 
+---
+
+## 11. Environment Mode & Governance Audit (`check_mode`)
+
+G1 Docket distinguishes between **Demo** and **Production** environments using `DOCKET_ENVIRONMENT` (or legacy `DOCKET_DEMO_MODE`).
+
+To audit the active environment mode, operational safeguards, and Dual-Key governance enforcement:
+
+```bash
+python scripts/check_mode.py
+```
+
+Or select **Option 25** in the interactive menu (`python scripts/interactive_menu.py`).
+
+### Environmental Safeguards Comparison:
+
+| Policy Enforcement | Demo Mode (`demo`) | Production Mode (`production`) |
+| :--- | :--- | :--- |
+| **SSO & Operator Auth** | Permissive (allows `demo-analyst`, `demo-steward`) | Strict: Enforces corporate IdP SSO subject matching |
+| **Four-Eyes Dual-Key** | Single-key simulated review permitted | Strict: Self-approvals (`key1 == key2`) or mock identities blocked |
+| **WORM Audit Trail** | Memory / Local SQLite ledger | Immutable append-only SQLite/PostgreSQL with Merkle chaining |
+| **Cluster Health Indicator** | Marked with `[DEMO - NON-ENFORCING]` badges | Institutional production assertion |
+
+
