@@ -552,6 +552,136 @@ class GCPCloudKMSSigner(BaseKMSSigner):
         return response.signature if hasattr(response, "signature") else response
 
 
+class HashiCorpVaultTransitSigner(BaseKMSSigner):
+    """HashiCorp Vault Transit Secrets Engine Signer.
+
+    Supports asymmetric keys in Vault Transit (e.g. ecdsa-p256 or ed25519).
+    Works with standard hvac client or direct HTTP/REST with httpx.
+    """
+
+    def __init__(
+        self,
+        key_name: str,
+        vault_addr: str = "http://127.0.0.1:8200",
+        mount_path: str = "transit",
+        token: str | None = None,
+        algorithm: str = "ECDSA_P256_SHA256",
+        vault_client: Any | None = None,
+        public_key_pem: str | None = None,
+    ) -> None:
+        self.key_name = key_name
+        self.vault_addr = vault_addr.rstrip("/")
+        self.mount_path = mount_path.strip("/")
+        self.token = token or os.environ.get("VAULT_TOKEN", "")
+        self._algorithm = algorithm
+        self._vault_client = vault_client
+        self._public_key_pem = public_key_pem
+        self._keyid: str | None = None
+
+    @property
+    def kms_uri(self) -> str:
+        clean_addr = re.sub(r"^https?://", "", self.vault_addr)
+        return f"vaultkms://{clean_addr}/{self.mount_path}/keys/{self.key_name}"
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    def get_public_key_pem(self) -> str:
+        if self._public_key_pem:
+            return self._public_key_pem
+
+        if self._vault_client is not None:
+            if hasattr(self._vault_client, "read_key"):
+                res = self._vault_client.read_key(name=self.key_name, mount_point=self.mount_path)
+            elif hasattr(self._vault_client, "secrets") and hasattr(self._vault_client.secrets, "transit"):
+                res = self._vault_client.secrets.transit.read_key(name=self.key_name, mount_point=self.mount_path)
+            elif hasattr(self._vault_client, "get"):
+                res = self._vault_client.get(f"{self.vault_addr}/v1/{self.mount_path}/keys/{self.key_name}")
+            else:
+                res = {}
+            data = res.get("data", res) if isinstance(res, dict) else getattr(res, "data", {})
+            keys = data.get("keys", {})
+            latest_version = str(max([int(k) for k in keys.keys()])) if keys else "1"
+            self._public_key_pem = keys.get(latest_version, {}).get("public_key")
+            if self._public_key_pem:
+                return self._public_key_pem
+
+        try:
+            import httpx
+
+            url = f"{self.vault_addr}/v1/{self.mount_path}/keys/{self.key_name}"
+            headers = {"X-Vault-Token": self.token} if self.token else {}
+            resp = httpx.get(url, headers=headers, timeout=5.0)
+            resp.raise_for_status()
+            data = resp.json().get("data", {})
+            keys = data.get("keys", {})
+            latest_version = str(max([int(k) for k in keys.keys()])) if keys else "1"
+            self._public_key_pem = keys.get(latest_version, {}).get("public_key")
+            if not self._public_key_pem:
+                raise ValueError(f"Vault Transit key '{self.key_name}' did not return a public_key.")
+            return self._public_key_pem
+        except Exception as err:
+            raise RuntimeError(f"Failed to fetch public key from HashiCorp Vault Transit: {err}") from err
+
+    @property
+    def keyid(self) -> str:
+        if self._keyid is None:
+            pem = self.get_public_key_pem()
+            pub_key = serialization.load_pem_public_key(pem.encode("utf-8"))
+            self._keyid = compute_spki_keyid(pub_key)
+        return self._keyid
+
+    def sign(self, data: bytes) -> bytes:
+        b64_input = base64.b64encode(data).decode("ascii")
+        sig_str: str | None = None
+
+        if self._vault_client is not None:
+            if hasattr(self._vault_client, "sign_data"):
+                res = self._vault_client.sign_data(
+                    name=self.key_name,
+                    mount_point=self.mount_path,
+                    prompt_input=b64_input,
+                )
+            elif hasattr(self._vault_client, "secrets") and hasattr(self._vault_client.secrets, "transit"):
+                res = self._vault_client.secrets.transit.sign_data(
+                    name=self.key_name,
+                    mount_point=self.mount_path,
+                    prompt_input=b64_input,
+                )
+            elif hasattr(self._vault_client, "post"):
+                res = self._vault_client.post(
+                    f"{self.vault_addr}/v1/{self.mount_path}/sign/{self.key_name}",
+                    json={"input": b64_input},
+                )
+            else:
+                raise ValueError("Unrecognized vault_client interface")
+
+            data_res = res.get("data", res) if isinstance(res, dict) else getattr(res, "data", {})
+            sig_str = data_res.get("signature")
+
+        if not sig_str:
+            try:
+                import httpx
+
+                url = f"{self.vault_addr}/v1/{self.mount_path}/sign/{self.key_name}"
+                headers = {"X-Vault-Token": self.token} if self.token else {}
+                resp = httpx.post(url, json={"input": b64_input}, headers=headers, timeout=5.0)
+                resp.raise_for_status()
+                sig_str = resp.json().get("data", {}).get("signature")
+            except Exception as err:
+                raise RuntimeError(f"HashiCorp Vault Transit signing failed: {err}") from err
+
+        if not sig_str or not sig_str.startswith("vault:"):
+            raise ValueError(f"Unexpected Vault signature format: {sig_str}")
+
+        parts = sig_str.split(":")
+        if len(parts) < 3:
+            raise ValueError(f"Malformed Vault Transit signature string: {sig_str}")
+        raw_b64 = parts[2]
+        return base64.b64decode(raw_b64)
+
+
 class Keyring:
     """In-boundary operator keyring supporting privilege-separated private signing keys and public verification keys."""
 

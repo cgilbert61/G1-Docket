@@ -66,20 +66,28 @@ def run_single_probe(
     payload: dict[str, Any],
     headers: dict[str, str],
     expected_status: int,
+    max_retries: int = 3,
 ) -> tuple[float, float, int]:
     """Execute a single probe, returning (client_latency_ms, gateway_latency_us, status_code)."""
-    t0 = time.perf_counter()
-    resp = client.post(GATEWAY_URL, json=payload, headers=headers)
-    t1 = time.perf_counter()
-    client_lat_ms = (t1 - t0) * 1000.0
+    for attempt in range(max_retries):
+        try:
+            t0 = time.perf_counter()
+            resp = client.post(GATEWAY_URL, json=payload, headers=headers)
+            t1 = time.perf_counter()
+            client_lat_ms = (t1 - t0) * 1000.0
 
-    raw_us = resp.headers.get("x-pod-decision-latency-us", "0")
-    try:
-        gateway_lat_us = float(raw_us)
-    except ValueError:
-        gateway_lat_us = 0.0
+            raw_us = resp.headers.get("x-pod-decision-latency-us", "0")
+            try:
+                gateway_lat_us = float(raw_us)
+            except ValueError:
+                gateway_lat_us = 0.0
 
-    return client_lat_ms, gateway_lat_us, resp.status_code
+            return client_lat_ms, gateway_lat_us, resp.status_code
+        except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectError):
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(0.05)
+    return 0.0, 0.0, 500
 
 
 def execute_workload(

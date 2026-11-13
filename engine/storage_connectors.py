@@ -928,12 +928,23 @@ class EnterpriseDataStoreManager:
             if obj.object_type in ("database_table", "warehouse_table")
             else "raw_bytes_sha256"
         )
+        # Extract explicit owner or steward tags from catalog classifications (Unity Catalog, Snowflake, Purview)
+        resolved_owner = obj.owner or cfg.owner
+        resolved_steward = None
+        for tag in obj.catalog_classifications:
+            t_lower = tag.lower().strip()
+            if t_lower.startswith("owner:"):
+                resolved_owner = tag.split(":", 1)[1].strip()
+            elif t_lower.startswith("steward:"):
+                resolved_steward = tag.split(":", 1)[1].strip()
+
         return self.registry.issue_or_queue_finding(
             locator=obj.locator,
             content_sha256=obj.content_sha256,
             schema_sha256=obj.schema_sha256,
             tier=verdict.tier,
-            owner=obj.owner or cfg.owner,
+            owner=resolved_owner,
+            steward=resolved_steward,
             confidence=verdict.confidence,
             low_confidence=verdict.low_confidence,
             sensitive_categories=[f.to_dict() for f in verdict.sensitive_categories],

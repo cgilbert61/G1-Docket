@@ -14,6 +14,7 @@ from registry.signing import (
     AWSKMSSigner,
     AzureKeyVaultSigner,
     GCPCloudKMSSigner,
+    HashiCorpVaultTransitSigner,
     Keyring,
     MockKMSSigner,
     SignatureVerificationError,
@@ -298,3 +299,111 @@ def test_kms_key_rotation_and_revocation(tmp_path):
 
     # Key 2 envelope still verifies
     assert verify_dsse_envelope(env2, keyring).verified is True
+
+
+def test_hashicorp_vault_transit_signer_ecdsa(tmp_path):
+    """Test HashiCorp Vault Transit Engine ECDSA P-256 signing and offline verification."""
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    vault_priv_key = ec.generate_private_key(ec.SECP256R1())
+    vault_pub_pem = vault_priv_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+
+    mock_vault_client = MagicMock()
+    mock_vault_client.read_key.return_value = {
+        "data": {
+            "type": "ecdsa-p256",
+            "keys": {
+                "1": {"public_key": vault_pub_pem}
+            },
+        }
+    }
+
+    def _mock_sign_data(name, mount_point, prompt_input):
+        raw_data = base64.b64decode(prompt_input)
+        sig = vault_priv_key.sign(raw_data, ec.ECDSA(hashes.SHA256()))
+        sig_b64 = base64.b64encode(sig).decode("ascii")
+        return {"data": {"signature": f"vault:v1:{sig_b64}"}}
+
+    mock_vault_client.sign_data.side_effect = _mock_sign_data
+
+    keyring = Keyring(public_key_dir=tmp_path / "pub", private_key_dir=tmp_path / "priv")
+    signer = HashiCorpVaultTransitSigner(
+        key_name="docket-ecdsa-key",
+        vault_addr="https://vault.corp.internal:8200",
+        mount_path="transit",
+        algorithm="ECDSA_P256_SHA256",
+        vault_client=mock_vault_client,
+    )
+
+    meta = keyring.register_kms_signer(signer, activate=True)
+    assert meta["is_kms"] is True
+    assert meta["kms_uri"] == "vaultkms://vault.corp.internal:8200/transit/keys/docket-ecdsa-key"
+    assert meta["algorithm"] == "ECDSA_P256_SHA256"
+
+    # Sign statement using Vault Transit
+    stmt = _sample_attestation_statement()
+    envelope = sign_statement(stmt, keyring)
+
+    # Verify DSSE envelope
+    assert envelope["signatures"][0]["keyid"] == signer.keyid
+    sigstore = envelope["sigstoreBundle"]["verificationMaterial"]["publicKey"]
+    assert sigstore["kmsUri"] == "vaultkms://vault.corp.internal:8200/transit/keys/docket-ecdsa-key"
+
+    # Offline verification with zero Vault calls
+    res = verify_dsse_envelope(envelope, keyring)
+    assert res.verified is True
+    assert res.keyid == signer.keyid
+
+
+def test_hashicorp_vault_transit_signer_ed25519(tmp_path):
+    """Test HashiCorp Vault Transit Engine Ed25519 signing and offline verification."""
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    vault_priv_key = ed25519.Ed25519PrivateKey.generate()
+    vault_pub_pem = vault_priv_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+
+    mock_vault_client = MagicMock()
+    mock_vault_client.read_key.return_value = {
+        "data": {
+            "type": "ed25519",
+            "keys": {
+                "1": {"public_key": vault_pub_pem}
+            },
+        }
+    }
+
+    def _mock_sign_data(name, mount_point, prompt_input):
+        raw_data = base64.b64decode(prompt_input)
+        sig = vault_priv_key.sign(raw_data)
+        sig_b64 = base64.b64encode(sig).decode("ascii")
+        return {"data": {"signature": f"vault:v1:{sig_b64}"}}
+
+    mock_vault_client.sign_data.side_effect = _mock_sign_data
+
+    keyring = Keyring(public_key_dir=tmp_path / "pub", private_key_dir=tmp_path / "priv")
+    signer = HashiCorpVaultTransitSigner(
+        key_name="docket-ed25519-key",
+        vault_addr="http://127.0.0.1:8200",
+        mount_path="transit",
+        algorithm="Ed25519",
+        vault_client=mock_vault_client,
+    )
+
+    meta = keyring.register_kms_signer(signer, activate=True)
+    assert meta["is_kms"] is True
+    assert meta["kms_uri"] == "vaultkms://127.0.0.1:8200/transit/keys/docket-ed25519-key"
+    assert meta["algorithm"] == "Ed25519"
+
+    stmt = _sample_attestation_statement()
+    envelope = sign_statement(stmt, keyring)
+
+    res = verify_dsse_envelope(envelope, keyring)
+    assert res.verified is True
+    assert res.algorithm == "Ed25519"
+

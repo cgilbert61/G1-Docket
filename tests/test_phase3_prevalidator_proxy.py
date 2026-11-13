@@ -853,3 +853,57 @@ def test_prometheus_metrics_exposition(tmp_path: Path):
 
     registry.close()
 
+
+def test_catalog_owner_and_steward_tag_extraction(tmp_path: Path):
+    """Test 12: Verify dynamic extraction of catalog tags into owner and steward in Enterprise Storage Connectors."""
+    from engine.pipeline import AttestationEngine
+    from engine.storage_connectors import EnterpriseDataStoreManager, _build_obj
+
+    db_url = f"sqlite:///{(tmp_path / 'catalog_tags.db').as_posix()}"
+    registry = RegistryService(db_url=db_url, key_dir=tmp_path / "keys")
+    eng = AttestationEngine(registry=registry)
+    mgr = EnterpriseDataStoreManager(
+        registry=registry,
+        engine=eng,
+        estate_dir=tmp_path / "estate",
+    )
+    custom_uri = "databricks://analytics.cloud.databricks.net/gold/corporate_finance"
+    mgr.register_store({
+        "uri": custom_uri,
+        "name": "Databricks Gold Lakehouse",
+        "provider": "Databricks Unity Catalog",
+        "store_kind": "warehouse",
+        "auth_mode": "oauth_m2m",
+    })
+
+    # Add object with catalog tags for owner and steward
+    tagged_obj = _build_obj(
+        locator=f"{custom_uri}/dim_revenue_targets",
+        display_name="gold.corporate_finance.dim_revenue_targets",
+        object_type="warehouse_table",
+        store_uri=custom_uri,
+        provider="Databricks Unity Catalog",
+        sample_text="q1_target:15000000 | q2_target:18000000 | currency:USD",
+        catalog_classifications=[
+            "Confidential",
+            "owner:finance-controller@yourcompany.com",
+            "steward:compliance-lead@yourcompany.com",
+        ],
+    )
+    mgr.store_objects[custom_uri] = [tagged_obj]
+
+    res = mgr.crawl_and_attest_store(custom_uri)
+    assert res["attested_active_count"] == 1
+    file_info = res["files"][0]
+    assert file_info["owner"] == "finance-controller@yourcompany.com"
+    assert file_info["steward"] == "compliance-lead@yourcompany.com"
+
+    # Also verify stored in registry database
+    rec = mgr.registry.lookup_by_locator(tagged_obj.locator)
+    assert rec is not None
+    pred = rec["statement"]["predicate"]
+    assert pred["ownership"]["owner"] == "finance-controller@yourcompany.com"
+    assert pred["ownership"]["steward"] == "compliance-lead@yourcompany.com"
+
+    registry.close()
+
