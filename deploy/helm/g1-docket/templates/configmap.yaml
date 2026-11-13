@@ -13,6 +13,7 @@ data:
   POD_SNAPSHOT_PUBLISHER_URL: "http://{{ include "g1-docket.fullname" . }}-publisher:{{ .Values.snapshotPublisher.service.port }}"
   POD_ENGINE_URL: "http://{{ include "g1-docket.fullname" . }}-engine:{{ .Values.engine.service.port }}"
   POD_GOVERNANCE_URL: "http://{{ include "g1-docket.fullname" . }}-governance:{{ .Values.governance.service.port }}"
+  DOCKET_ENVIRONMENT: {{ .Values.global.environment | default "production" | quote }}
   DOCKET_DEMO_MODE: {{ .Values.enterprise.demoMode | default false | quote }}
   DOCKET_DEFAULT_OWNER: {{ .Values.enterprise.defaultOwner | default "" | quote }}
   DOCKET_DEFAULT_STEWARD: {{ .Values.enterprise.defaultSteward | default "" | quote }}

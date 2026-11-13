@@ -125,6 +125,8 @@ services:
       POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION: ${POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION:-true}
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
+      DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -133,9 +135,6 @@ services:
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state:ro
       - ${DOCKET_HOST_WORKSPACE:-.}:/host_workspace
-      - C:/Users/chuck:/host_user:ro
-      - d:/:/host_d:ro
-      - C:/:/host_c:ro
 
   engine:
     build:
@@ -159,7 +158,8 @@ services:
       POD_PREVALIDATOR_URL: http://prevalidator:8082
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
-      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
       DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
       DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
       DOCKET_CRAWL_DIRECTORY: ${DOCKET_CRAWL_DIRECTORY:-/var/lib/pod/state/estate}
@@ -167,9 +167,6 @@ services:
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state
       - ${DOCKET_HOST_WORKSPACE:-.}:/host_workspace
-      - C:/Users/chuck:/host_user
-      - d:/:/host_d
-      - C:/:/host_c
     ports:
       - "${POD_ENGINE_PORT:-18083}:8083"
 
@@ -192,7 +189,8 @@ services:
       WORM_JSONL_PATH: /var/lib/pod/state/worm_ledger.jsonl
       QUARANTINE_DB_PATH: /var/lib/pod/state/quarantine.db
       SIEM_BUFFER_DB_PATH: /var/lib/pod/state/siem_buffer.db
-      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
       DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
       DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
       DOCKET_STEWARD_TIER_RESTRICTED: ${DOCKET_STEWARD_TIER_RESTRICTED:-}
