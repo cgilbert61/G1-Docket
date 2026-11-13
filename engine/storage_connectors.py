@@ -28,6 +28,43 @@ from registry.schema_validator import format_iso8601
 from registry.store import RegistryService, TIER_ORDER
 
 
+
+def _get_default_owner() -> str:
+    """Resolve default owner from environment variables or enterprise domain."""
+    owner = os.getenv("DOCKET_DEFAULT_OWNER")
+    if owner:
+        return owner
+    domain = os.getenv("DOCKET_COMPANY_DOMAIN", "").strip()
+    if domain:
+        return f"data-platform@{domain}"
+    return "data-platform@contoso.com"
+
+
+def _resolve_steward_for_tier(tier: str, explicit: str | None = None) -> str:
+    """Resolve dynamic steward address by tier, environment mapping, or enterprise domain."""
+    if explicit:
+        return explicit
+    tier_env_map = {
+        "Restricted": os.getenv("DOCKET_STEWARD_RESTRICTED") or os.getenv("DOCKET_STEWARD_TIER_RESTRICTED"),
+        "Confidential": os.getenv("DOCKET_STEWARD_CONFIDENTIAL") or os.getenv("DOCKET_STEWARD_TIER_CONFIDENTIAL"),
+        "Internal": os.getenv("DOCKET_STEWARD_INTERNAL") or os.getenv("DOCKET_STEWARD_TIER_INTERNAL"),
+        "Public": os.getenv("DOCKET_STEWARD_PUBLIC") or os.getenv("DOCKET_STEWARD_TIER_PUBLIC"),
+    }
+    resolved = tier_env_map.get(tier) or os.getenv("DOCKET_DEFAULT_STEWARD")
+    if resolved:
+        return resolved
+    domain = os.getenv("DOCKET_COMPANY_DOMAIN", "").strip()
+    if domain:
+        return f"{tier.lower()}-steward@{domain}"
+    fallback_map = {
+        "Restricted": "privacy-compliance-steward@contoso.com",
+        "Confidential": "dlp-security-steward@contoso.com",
+        "Internal": "engineering-data-steward@contoso.com",
+        "Public": "open-data-steward@contoso.com",
+    }
+    return fallback_map.get(tier, "data-governance-steward@contoso.com")
+
+
 @dataclass
 class EnterpriseStoreObject:
     """A single object, file, Parquet partition, or warehouse table discovered in an enterprise data store."""
@@ -43,7 +80,7 @@ class EnterpriseStoreObject:
     size_bytes: int
     row_count: int | None = None
     schema_sha256: str | None = None
-    owner: str = "data-platform@contoso.com"
+    owner: str = field(default_factory=_get_default_owner)
     sensitivity_label: str | None = None
     catalog_classifications: list[str] = field(default_factory=list)
     column_samples: dict[str, list[str]] = field(default_factory=dict)
@@ -63,7 +100,7 @@ class DataStoreConnectionConfig:
     store_kind: str  # 'object_store' | 'database' | 'warehouse' | 'fileshare'
     region: str
     auth_mode: str  # 'iam_role' | 'managed_identity' | 'workload_identity' | 'access_key' | 'key_pair' | 'connection_string'
-    owner: str = "data-platform@contoso.com"
+    owner: str = field(default_factory=_get_default_owner)
     endpoint_url: str | None = None
     max_sample_bytes: int = 4 * 1024 * 1024
     etag_fast_path: bool = True
@@ -612,7 +649,7 @@ class EnterpriseDataStoreManager:
         name = str(payload.get("name") or f"{provider} - {uri}")
         region = str(payload.get("region") or "us-east-1")
         auth_mode = str(payload.get("auth_mode") or "iam_role")
-        owner = str(payload.get("owner") or "data-platform@contoso.com")
+        owner = str(payload.get("owner") or _get_default_owner())
         endpoint_url = payload.get("endpoint_url")
 
         store_id = _slugify(uri)
@@ -778,7 +815,7 @@ class EnterpriseDataStoreManager:
                         "classifier_engine": classif.get("classifier_engine", "presidio"),
                         "sensitive_categories": classif.get("sensitive_categories", []),
                         "owner": rec.get("owner") or own.get("owner") or cfg.owner,
-                        "steward": own.get("steward") or os.getenv("DOCKET_STEWARD_CONFIDENTIAL") or os.getenv("DOCKET_DEFAULT_STEWARD", "dlp-security-steward@contoso.com"),
+                        "steward": own.get("steward") or _resolve_steward_for_tier(rec["tier"]),
                         "org_unit": own.get("org_unit") or "Cloud Lakehouse & AI Corpus Operations",
                         "jurisdiction": own.get("jurisdiction") or "GLOBAL",
                         "attested_by": prov.get("attested_by", "pod-engine-v0.1"),
@@ -823,7 +860,7 @@ class EnterpriseDataStoreManager:
                         "classifier_engine": meta.get("classifier_engine", "presidio"),
                         "sensitive_categories": meta.get("sensitive_categories", []),
                         "owner": meta.get("owner") or cfg.owner,
-                        "steward": os.getenv("DOCKET_STEWARD_RESTRICTED") or os.getenv("DOCKET_DEFAULT_STEWARD", "privacy-compliance-steward@contoso.com"),
+                        "steward": _resolve_steward_for_tier(rev.get("proposed_tier", "Restricted")),
                         "org_unit": "Enterprise Data & AI Governance",
                         "jurisdiction": "GLOBAL",
                         "attested_by": "pod-engine-v0.1",
