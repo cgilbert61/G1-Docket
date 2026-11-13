@@ -28,6 +28,7 @@ COPY pyproject.toml LICENSE ./
 COPY schemas ./schemas
 COPY registry ./registry
 COPY snapshot ./snapshot
+COPY docket ./docket
 RUN pip install --no-cache-dir --no-deps -e .
 
 RUN mkdir -p /var/lib/pod/private_keys /var/lib/pod/public_keys /var/lib/pod/state && \

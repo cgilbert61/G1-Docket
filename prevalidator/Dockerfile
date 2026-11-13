@@ -32,6 +32,7 @@ COPY registry ./registry
 COPY engine ./engine
 COPY prevalidator ./prevalidator
 COPY governance ./governance
+COPY docket ./docket
 RUN pip install --no-cache-dir --no-deps -e .
 
 RUN mkdir -p /var/lib/pod/public_keys /var/lib/pod/state && \
