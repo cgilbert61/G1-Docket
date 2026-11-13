@@ -394,7 +394,16 @@ def test_docket_vector_indexer_turnkey_adapters():
     assert os_docs[0]["_source"]["chunk_proof"] == records[0]["chunk_proof"]
     assert os_docs[0]["_source"]["chunk_vector"] == embeddings[0]
 
-    # 9. End-to-end round trip: Retrieve hits via DocketVectorRetriever across Pinecone, Weaviate, OpenSearch
+    # 9. LanceDB Adapter
+    lance_rows = DocketVectorIndexer.to_lancedb_records(records, embeddings)
+    assert len(lance_rows) == 4
+    assert lance_rows[0]["id"] == f"{locator}#chunk=0"
+    assert lance_rows[0]["vector"] == embeddings[0]
+    assert lance_rows[0]["chunk_proof"] == records[0]["chunk_proof"]
+    assert lance_rows[0]["text"] == chunks[0]
+    assert lance_rows[0]["department"] == "Security"
+
+    # 10. End-to-end round trip: Retrieve hits via DocketVectorRetriever across Pinecone, Weaviate, OpenSearch, LanceDB
     retriever = DocketVectorRetriever()
 
     # Pinecone
@@ -410,6 +419,11 @@ def test_docket_vector_indexer_turnkey_adapters():
     # OpenSearch (_source dict)
     pod_tags_opensearch = retriever.format_search_results(os_docs[0:1], content_key="text", locator_key="locator")
     assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags_opensearch
+
+    # LanceDB
+    pod_tags_lance = retriever.format_search_results(lance_rows[0:1], content_key="text", locator_key="locator")
+    assert f'chunk_proof="{records[0]["chunk_proof"]}"' in pod_tags_lance
+
 
 
 
