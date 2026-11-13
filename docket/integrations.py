@@ -791,6 +791,30 @@ class DocketVectorIndexer:
             })
         return os_docs
 
+    @staticmethod
+    def to_lancedb_records(
+        records: Sequence[dict[str, Any]],
+        embeddings: Sequence[Sequence[float]],
+    ) -> list[dict[str, Any]]:
+        """Format records for LanceDB zero-trust vector table ingestion."""
+        if len(records) != len(embeddings):
+            raise ValueError(f"Length mismatch: {len(records)} records vs {len(embeddings)} embeddings")
+        lance_records = []
+        for r, emb in zip(records, embeddings):
+            row = dict(r["metadata"])
+            row.update({
+                "id": r["id"],
+                "vector": list(emb),
+                "text": r["text"],
+                "locator": r["locator"],
+                "chunk_idx": r["chunk_idx"],
+                "sha256": r["sha256"],
+                "chunk_tree_root": r["chunk_tree_root"],
+                "chunk_proof": r["chunk_proof"],
+            })
+            lance_records.append(row)
+        return lance_records
+
 
 def wrap_delegated_context(
     content: str,
