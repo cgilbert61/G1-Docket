@@ -181,6 +181,17 @@ class AuthManager:
             display_name="SOC2 Compliance Auditor",
             email="auditor@external.audit",
         )
+        # Dedicated 2FA account with RFC 6238 TOTP seed
+        mfa_pass = os.environ.get("DOCKET_MFA_PASSWORD", "MfaOperator2026!")
+        mfa_secret = os.environ.get("DOCKET_MFA_SECRET", "JBSWY3DPEHPK3PXP")
+        self.users["mfa_operator"] = UserAccount(
+            username="mfa_operator",
+            password_hash=hash_password(mfa_pass),
+            role="security_approver",
+            display_name="2FA Enforced Officer (Key 2)",
+            email="mfa.officer@internal.corp",
+            totp_secret=mfa_secret,
+        )
 
     def check_rate_limit(self, identifier: str) -> bool:
         """Return True if identifier is currently rate-limited/locked out."""
@@ -202,8 +213,14 @@ class AuthManager:
         """Clear lockout records upon successful authentication."""
         self._login_failures.pop(identifier, None)
 
-    def authenticate(self, username: str, plain_pass: str, client_ip: str) -> Optional[UserAccount]:
-        """Authenticate user against password credentials with brute-force protection."""
+    def authenticate(
+        self,
+        username: str,
+        plain_pass: str,
+        client_ip: str,
+        totp_code: Optional[str] = None,
+    ) -> Optional[UserAccount]:
+        """Authenticate user against password credentials and optional/enforced TOTP code."""
         u_key = username.strip().lower()
         ip_key = f"ip:{client_ip}"
         user_lock_key = f"user:{u_key}"
@@ -218,12 +235,20 @@ class AuthManager:
             self.record_login_failure(user_lock_key)
             return None
 
+        # TOTP 2FA Verification
+        if user.totp_secret:
+            if not totp_code or not verify_totp_code(user.totp_secret, totp_code):
+                self.record_login_failure(ip_key)
+                self.record_login_failure(user_lock_key)
+                logger.warning("Invalid or missing TOTP 2FA code for user '%s'", username)
+                return None
+
         self.record_login_success(ip_key)
         self.record_login_success(user_lock_key)
         return user
 
     def create_session_token(self, user: UserAccount, ttl_seconds: int = DEFAULT_SESSION_TTL_SECONDS) -> str:
-        """Issue an HMAC-SHA256 signed session cookie payload."""
+        """Issue an HMAC-SHA256 signed session cookie payload with sliding inactivity tracking."""
         now = int(time.time())
         payload = {
             "sub": user.username,
@@ -231,6 +256,7 @@ class AuthManager:
             "display_name": user.display_name,
             "email": user.email,
             "iat": now,
+            "last_active": now,
             "exp": now + ttl_seconds,
             "nonce": secrets.token_hex(8),
         }
@@ -241,7 +267,7 @@ class AuthManager:
         return f"{b64_payload}.{b64_sig}"
 
     def verify_session_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """Validate HMAC-SHA256 signature and expiration on a session token."""
+        """Validate HMAC-SHA256 signature, expiration, and sliding inactivity timeout."""
         try:
             parts = token.split(".")
             if len(parts) != 2:
@@ -259,8 +285,16 @@ class AuthManager:
             payload_pad = b64_payload + "=" * (-len(b64_payload) % 4)
             payload = json.loads(base64.urlsafe_b64decode(payload_pad).decode("utf-8"))
 
-            if payload.get("exp", 0) < int(time.time()):
+            now = int(time.time())
+            # Absolute TTL check
+            if payload.get("exp", 0) < now:
                 return None
+            # Sliding idle inactivity check (30 minutes default)
+            last_active = payload.get("last_active", payload.get("iat", 0))
+            if (now - last_active) > DEFAULT_INACTIVITY_TIMEOUT_SECONDS:
+                logger.info("Session for '%s' expired due to inactivity (%d seconds idle)", payload.get("sub"), now - last_active)
+                return None
+
             return payload
         except Exception:
             return None
