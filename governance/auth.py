@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import secrets
+import struct
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -23,11 +24,9 @@ from fastapi import HTTPException, Request, Response, status
 logger = logging.getLogger("g1.governance.auth")
 
 SESSION_COOKIE_NAME = "docket_session"
-DEFAULT_SESSION_TTL_SECONDS = 8 * 3600  # 8 hours
+DEFAULT_SESSION_TTL_SECONDS = 8 * 3600  # 8 hours maximum session limit
+DEFAULT_INACTIVITY_TIMEOUT_SECONDS = 1800  # 30 minutes idle inactivity timeout
 MAX_FAILED_ATTEMPTS = 5
-LOCKOUT_DURATION_SECONDS = 300  # 5 minutes
-
-# Lockout configuration
 LOCKOUT_DURATION_SECONDS = 300  # 5 minutes
 
 
@@ -38,6 +37,40 @@ class UserAccount:
     role: str           # "admin" | "triage_operator" | "security_approver" | "auditor"
     display_name: str
     email: str
+    totp_secret: Optional[str] = None  # Base32 RFC 6238 secret if 2FA enabled
+
+
+def generate_totp_secret() -> str:
+    """Generate a random 20-byte base32 TOTP secret string."""
+    return base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+
+
+def compute_totp_code(secret_b32: str, for_time: Optional[int] = None) -> str:
+    """Compute 6-digit RFC 6238 TOTP code for a given base32 secret and timestamp."""
+    if for_time is None:
+        for_time = int(time.time())
+    steps = int(for_time // 30)
+    pad_len = -len(secret_b32) % 8
+    padded = secret_b32.upper() + ("=" * pad_len)
+    key_bytes = base64.b32decode(padded)
+    time_bytes = struct.pack(">Q", steps)
+    h = hmac.new(key_bytes, time_bytes, hashlib.sha1).digest()
+    offset = h[-1] & 0x0F
+    code_int = struct.unpack(">I", h[offset:offset + 4])[0] & 0x7FFFFFFF
+    return f"{code_int % 1_000_000:06d}"
+
+
+def verify_totp_code(secret_b32: str, code: str, window: int = 1) -> bool:
+    """Verify 6-digit TOTP code with clock-skew tolerance (+/- window 30s steps)."""
+    clean_code = code.strip().replace(" ", "").replace("-", "")
+    if len(clean_code) != 6 or not clean_code.isdigit():
+        return False
+    now = int(time.time())
+    for step_offset in range(-window, window + 1):
+        expected = compute_totp_code(secret_b32, for_time=now + (step_offset * 30))
+        if hmac.compare_digest(expected, clean_code):
+            return True
+    return False
 
 
 def hash_password(password: str, salt: Optional[str] = None) -> str:
