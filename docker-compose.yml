@@ -132,7 +132,7 @@ services:
     volumes:
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state:ro
-      - d:/attestation:/host_workspace
+      - ${DOCKET_HOST_WORKSPACE:-.}:/host_workspace
       - C:/Users/chuck:/host_user:ro
       - d:/:/host_d:ro
       - C:/:/host_c:ro
@@ -159,10 +159,14 @@ services:
       POD_PREVALIDATOR_URL: http://prevalidator:8082
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
+      DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
+      DOCKET_CRAWL_DIRECTORY: ${DOCKET_CRAWL_DIRECTORY:-/var/lib/pod/state/estate}
     volumes:
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state
-      - d:/attestation:/host_workspace
+      - ${DOCKET_HOST_WORKSPACE:-.}:/host_workspace
       - C:/Users/chuck:/host_user
       - d:/:/host_d
       - C:/:/host_c
@@ -188,11 +192,18 @@ services:
       WORM_JSONL_PATH: /var/lib/pod/state/worm_ledger.jsonl
       QUARANTINE_DB_PATH: /var/lib/pod/state/quarantine.db
       SIEM_BUFFER_DB_PATH: /var/lib/pod/state/siem_buffer.db
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
+      DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
+      DOCKET_STEWARD_TIER_RESTRICTED: ${DOCKET_STEWARD_TIER_RESTRICTED:-}
+      DOCKET_STEWARD_TIER_CONFIDENTIAL: ${DOCKET_STEWARD_TIER_CONFIDENTIAL:-}
+      DOCKET_STEWARD_TIER_INTERNAL: ${DOCKET_STEWARD_TIER_INTERNAL:-}
+      DOCKET_STEWARD_TIER_PUBLIC: ${DOCKET_STEWARD_TIER_PUBLIC:-}
     volumes:
       - pod_private_keys:/var/lib/pod/private_keys:ro
       - pod_public_keys:/var/lib/pod/public_keys:ro
       - pod_state:/var/lib/pod/state
-      - d:/attestation:/host_workspace
+      - ${DOCKET_HOST_WORKSPACE:-.}:/host_workspace
     ports:
       - "${POD_GOVERNANCE_PORT:-18084}:8084"
     command: ["uvicorn", "governance.triage_server:app", "--host", "0.0.0.0", "--port", "8084"]

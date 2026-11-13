@@ -102,6 +102,18 @@ secrets:
   controlPlaneToken: "change-me-in-production-token"
   jwtSecret: "change-me-in-production-jwt-secret-at-least-32-chars"
 
+# Enterprise Governance, Data Stewards & Crawl Target Configuration
+enterprise:
+  demoMode: false
+  defaultOwner: "data-governance@yourcompany.com"
+  defaultSteward: "data-stewards@yourcompany.com"
+  crawlDirectory: "/var/lib/pod/state/estate"
+  stewards:
+    tierRestricted: "security-stewards@yourcompany.com"
+    tierConfidential: "compliance-stewards@yourcompany.com"
+    tierInternal: "data-stewards@yourcompany.com"
+    tierPublic: "open-data@yourcompany.com"
+
 # Ingress configuration
 ingress:
   enabled: true
