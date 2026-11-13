@@ -94,6 +94,20 @@ def run_checks() -> int:
         else:
             info.append(f"WORM Compliance Ledger: {worm_path}")
 
+        # 6. Check Production Crawl Target
+        crawl_dir = os.getenv("DOCKET_CRAWL_DIRECTORY", "")
+        if not crawl_dir or "pc_demo_folder" in crawl_dir:
+            warnings.append(f"DOCKET_CRAWL_DIRECTORY is pointing to local demo folder ({crawl_dir or 'unset'}). Set to enterprise share or lakehouse URI in production.")
+        else:
+            info.append(f"Production Storage Target: {crawl_dir}")
+
+        # 7. Check Enterprise Data Steward Routing
+        steward = os.getenv("DOCKET_DEFAULT_STEWARD", "")
+        if not steward or "@" not in steward or "example.org" in steward or "contoso.com" in steward or "demo.internal" in steward:
+            warnings.append("DOCKET_DEFAULT_STEWARD is unset or using a synthetic demo email address.")
+        else:
+            info.append(f"Accountable Data Steward: {steward}")
+
     print("\n--- Diagnostic Findings ---")
     for msg in info:
         print(f"  [i] {msg}")
