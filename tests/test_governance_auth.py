@@ -4,6 +4,7 @@ Verifies PBKDF2 password derivation, HMAC session signing, brute-force lockout,
 and Role-Based Access Control (RBAC) in dual-control triage flows.
 """
 
+import json
 import os
 from pathlib import Path
 import pytest
@@ -356,5 +357,80 @@ siem_destinations: []
     assert len(mfa_successes) >= 1
     assert mfa_successes[-1]["actor_identity"] == "operator:mfa_operator"
     assert mfa_successes[-1]["metadata"]["mfa_enforced"] is True
+
+
+def test_cli_operator_login_whoami_logout(tmp_path, monkeypatch, capsys):
+    from registry.cli import main as cli_main
+    import json
+    import urllib.request
+
+    session_file = tmp_path / "test_session.json"
+    fake_token = "fake.payload.sig"
+
+    class FakeHTTPResponse:
+        def __init__(self, body_dict, headers=None, status=200):
+            self.body = json.dumps(body_dict).encode("utf-8")
+            self.headers = headers or {}
+            self.status = status
+
+        def read(self):
+            return self.body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+    def mock_urlopen(req, *args, **kwargs):
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if url.endswith("/login"):
+            return FakeHTTPResponse(
+                {"status": "authenticated", "operator": "operator1", "role": "triage_operator", "display_name": "Triage Specialist"},
+                headers={"Set-Cookie": f"docket_session={fake_token}; Path=/; HttpOnly"},
+            )
+        if url.endswith("/api/auth/session"):
+            return FakeHTTPResponse(
+                {"authenticated": True, "operator": "operator1", "role": "triage_operator", "display_name": "Triage Specialist", "email": "operator1@internal.corp"}
+            )
+        if url.endswith("/logout"):
+            return FakeHTTPResponse({"status": "logged_out"})
+        raise ValueError(f"Unexpected URL: {url}")
+
+    monkeypatch.setattr(urllib.request, "urlopen", mock_urlopen)
+
+    # 1. Test CLI login
+    rc_login = cli_main([
+        "login",
+        "--url", "http://mock-governance:18084",
+        "--username", "operator1",
+        "--password", "TriageOperator2026!",
+        "--session-file", str(session_file),
+    ])
+    assert rc_login == 0
+    assert session_file.exists()
+    saved = json.loads(session_file.read_text(encoding="utf-8"))
+    assert saved["operator"] == "operator1"
+    assert saved["role"] == "triage_operator"
+    assert saved["token"] == fake_token
+
+    # 2. Test CLI whoami
+    capsys.readouterr()
+    rc_whoami = cli_main(["whoami", "--session-file", str(session_file)])
+    assert rc_whoami == 0
+    out = capsys.readouterr().out
+    assert "operator1" in out
+    assert "triage_operator" in out
+    assert "Active (Server-Verified)" in out
+
+    # 3. Test CLI logout
+    rc_logout = cli_main(["logout", "--session-file", str(session_file)])
+    assert rc_logout == 0
+    assert not session_file.exists()
+
+    # 4. Test whoami when logged out -> returns 1
+    rc_whoami_after = cli_main(["whoami", "--session-file", str(session_file)])
+    assert rc_whoami_after == 1
+
 
 
