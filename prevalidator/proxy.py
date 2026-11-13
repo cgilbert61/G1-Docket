@@ -1142,9 +1142,15 @@ def create_prevalidator_app(
     @app.get("/healthz")
     def healthz() -> dict[str, Any]:
         snap = enforcer.snapshot_store.get_active_snapshot()
+        env_mode = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
+        if not env_mode:
+            legacy = os.environ.get("DOCKET_DEMO_MODE", "").strip().lower()
+            env_mode = "demo" if legacy not in ("false", "0", "no") else "production"
         return {
             "status": "ok" if snap is not None else "stale_or_missing_snapshot",
             "mode": enforcer.mode,
+            "environment": env_mode,
+            "demo_mode": env_mode in ("demo", "dev", "test"),
             "snapshot_sequence": snap["sequence_number"] if snap else None,
             "latency": enforcer.get_latency_telemetry(),
         }
