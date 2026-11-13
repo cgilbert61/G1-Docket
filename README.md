@@ -304,6 +304,16 @@ default
    - Zero sensitive data leakage: payloads are scrubbed to hashes, rule IDs, and ticket identifiers.
    - Offline resilience: failed socket transmissions automatically persist to a local SQLite buffer queue and retry upon network reconnection.
    - Integrated GUI editor: update live endpoints, API keys, and Syslog TLS parameters on the fly with automatic persistence to `governance/config.yaml`.
+4. **Institutional Operator Authentication & RBAC (`auth.py`)**:
+   - Institutional login portal (`/login` on port `:18084`) enforcing PBKDF2 password derivation (100,000 iterations with CSPRNG salt) and tamper-resistant HMAC-SHA256 session tokens (`docket_session`).
+   - Role-Based Access Control (`admin`, `operator`, `auditor`, `user`) with `@require_role` decorators guarding administrative and quarantine triage endpoints.
+   - Automated brute-force lockout (5 consecutive failures -> 15-minute IP/account rate-limit lock) and sliding inactivity expiration.
+   - Native RFC 6238 TOTP hardware/authenticator app two-factor authentication.
+   - Cryptographic WORM audit chaining: every authentication event (`OPERATOR_AUTH_SUCCESS`, `OPERATOR_AUTH_FAILURE`, `OPERATOR_MFA_SUCCESS`, `OPERATOR_MFA_FAILURE`, `OPERATOR_LOCKOUT`, `OPERATOR_LOGOUT`) is automatically appended to the immutable Merkle chain.
+5. **Environment Pre-Flight & Production Readiness Enforcement (`docket.cli`)**:
+   - `python -m docket.cli --check-mode` assesses operational readiness before deployment.
+   - In `DEMO` mode, enables zero-config local prototyping with in-memory fallbacks and sample keyrings.
+   - In `PRODUCTION` mode, strictly fails closed if an authoritative gateway (`POD_UPSTREAM_GATEWAY_URL`), dedicated PostgreSQL database URL, or hardened credentials are missing.
 
 ---
 
