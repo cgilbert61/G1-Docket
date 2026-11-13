@@ -246,7 +246,7 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             request=request,
             name="dashboard.html",
             context={
-                "demo_mode": os.getenv("DOCKET_DEMO_MODE", "true").lower() in ("true", "1", "yes"),
+                "demo_mode": is_demo_mode(),
                 "current_user": current_user,
                 "quarantine_items": q_items,
                 "worm_events": w_events,
@@ -269,6 +269,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         return {
             "status": "healthy",
             "service": "governance-triage",
+            "environment": "demo" if is_demo_mode() else "production",
+            "demo_mode": is_demo_mode(),
             "quarantine_pending": quarantine_store.count_by_status().get("QUARANTINED", 0),
             "worm_events": worm_ledger.count_events(),
         }
@@ -355,6 +357,14 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             effective_requester = (req.requester_id or auth_operator or "").strip()
             if not effective_requester:
                 raise HTTPException(status_code=400, detail="Requester identity required.")
+            if not is_demo_mode():
+                if auth_operator and req.requester_id and req.requester_id.strip().lower() != auth_operator.strip().lower():
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Identity mismatch in production mode: Authenticated operator '{auth_operator}' does not match requester ID '{req.requester_id}'."
+                    )
+                if effective_requester.lower().startswith("demo-"):
+                    raise HTTPException(status_code=403, detail="Demo requester identities are not permitted in production mode.")
             res = dual_key_manager.stage_override(
                 quarantine_id=quarantine_id,
                 requester_id=effective_requester,
@@ -377,6 +387,14 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             effective_approver = (req.approver_id or auth_operator or "").strip()
             if not effective_approver:
                 raise HTTPException(status_code=400, detail="Approver identity required.")
+            if not is_demo_mode():
+                if auth_operator and req.approver_id and req.approver_id.strip().lower() != auth_operator.strip().lower():
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Identity mismatch in production mode: Authenticated operator '{auth_operator}' does not match requested approver ID '{req.approver_id}'."
+                    )
+                if effective_approver.lower().startswith("demo-"):
+                    raise HTTPException(status_code=403, detail="Demo approver identities are not permitted in production mode.")
             res = dual_key_manager.approve_and_release(
                 quarantine_id=quarantine_id,
                 approver_id=effective_approver,
