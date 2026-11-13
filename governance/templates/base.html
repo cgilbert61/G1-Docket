@@ -106,6 +106,10 @@
         <span>Cognitive Gateway: <strong class="text-[#0F172A]">:8000</strong></span>
         <span class="text-[#E2E8F0]">|</span>
         <span class="badge badge-success">WORM Active</span>
+        {% if current_user %}
+        <span class="text-[#E2E8F0]">|</span>
+        <span class="badge badge-neutral text-[#1E293B] font-semibold" title="Verified IdP / SSO Operator">👤 {{ current_user }}</span>
+        {% endif %}
       </div>
     </div>
   </header>

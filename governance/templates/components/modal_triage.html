@@ -55,7 +55,7 @@
             </div>
           </div>
           <div class="grid grid-cols-3 gap-2">
-            <input type="text" id="k1-operator" placeholder="Requester ID (e.g. secops-analyst-1)" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1">
+            <input type="text" id="k1-operator" value="{{ current_user or '' }}" placeholder="{% if current_user %}{{ current_user }} (Verified SSO){% else %}Requester ID (e.g. secops-analyst-1){% endif %}" class="border border-[#E2E8F0] rounded p-2 text-xs col-span-1">
             <input type="text" id="k1-rationale" placeholder="Emergency operational rationale..." class="border border-[#E2E8F0] rounded p-2 text-xs col-span-2">
           </div>
           <div class="flex justify-end">

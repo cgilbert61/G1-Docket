@@ -207,3 +207,41 @@ siem_destinations: []
     resp_q_csv = client.get("/api/quarantine/export?format=csv")
     assert resp_q_csv.status_code == 200
     assert "quarantine_id,timestamp_utc" in resp_q_csv.text
+
+    # 8. Test Authenticated Proxy Identity Extraction (OAuth2-Proxy / Cloudflare Access / Azure EasyAuth)
+    resp_dash_auth = client.get("/", headers={"X-Forwarded-Email": "operator_sso@company.com"})
+    assert resp_dash_auth.status_code == 200
+    assert "operator_sso@company.com" in resp_dash_auth.text
+
+    # Intercept new item to test header-based stage and release
+    resp_inc2 = client.post(
+        "/api/intercept",
+        json={
+            "event_type": "DOCKET_DENIAL",
+            "reason_code": "UNATTESTED_DATA_OBJECT",
+            "payload_digest": "44" * 32,
+            "raw_payload": {"messages": [{"role": "user", "content": "proxy doc"}]},
+            "locator_uri": "file:///proxy_test.pdf",
+            "claimed_tier": "Internal",
+            "extracted_text": "proxy test",
+        },
+    )
+    qid2 = resp_inc2.json()["quarantine_id"]
+    # Stage without explicit requester_id; extracted from X-Forwarded-Email header
+    resp_k1_hdr = client.post(
+        f"/api/quarantine/{qid2}/stage-override",
+        headers={"X-Forwarded-Email": "requester_corp@company.com"},
+        json={"rationale": "SSO staged request"},
+    )
+    assert resp_k1_hdr.status_code == 200
+    assert resp_k1_hdr.json()["first_key"]["operator"] == "requester_corp@company.com"
+
+    # Approve with distinct header
+    resp_k2_hdr = client.post(
+        f"/api/quarantine/{qid2}/approve-override",
+        headers={"X-Forwarded-Email": "approver_ciso@company.com"},
+        json={"notes": "SSO approved signoff"},
+    )
+    assert resp_k2_hdr.status_code == 200
+    assert resp_k2_hdr.json()["status"] == "RELEASED"
+    assert resp_k2_hdr.json()["approver"] == "approver_ciso@company.com"

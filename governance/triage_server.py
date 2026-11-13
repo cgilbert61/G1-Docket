@@ -58,19 +58,41 @@ async def broadcast_event(event_dict: Dict[str, Any]) -> None:
                 _sse_subscribers.remove(q)
 
 
+def extract_authenticated_operator(request: Request) -> Optional[str]:
+    """Extract authenticated corporate operator email from standard enterprise proxy/IdP headers."""
+    candidate_headers = [
+        "x-forwarded-email",
+        "x-auth-request-email",
+        "cf-access-authenticated-user-email",
+        "x-ms-client-principal-name",
+        "x-goog-authenticated-user-email",
+        "x-forwarded-user",
+        "remote-user",
+    ]
+    for h in candidate_headers:
+        val = request.headers.get(h)
+        if val:
+            clean = val.strip()
+            if clean.startswith("accounts.google.com:"):
+                clean = clean.split(":", 1)[1]
+            if clean:
+                return clean
+    return None
+
+
 class StageKey1Request(BaseModel):
-    requester_id: str
+    requester_id: Optional[str] = None
     rationale: str
 
 
 class ApproveKey2Request(BaseModel):
-    approver_id: str
+    approver_id: Optional[str] = None
     notes: Optional[str] = ""
     ttl_seconds: Optional[int] = 7200
 
 
 class RejectRequest(BaseModel):
-    reviewer_id: str
+    reviewer_id: Optional[str] = None
     reason: str
 
 
@@ -200,11 +222,13 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         worm_count = worm_ledger.count_events()
         siem_dests = siem_forwarder.get_destination_status()
 
+        current_user = extract_authenticated_operator(request)
         return templates.TemplateResponse(
             request=request,
             name="dashboard.html",
             context={
                 "demo_mode": os.getenv("DOCKET_DEMO_MODE", "true").lower() in ("true", "1", "yes"),
+                "current_user": current_user,
                 "quarantine_items": q_items,
                 "worm_events": w_events,
                 "stats": {
@@ -306,17 +330,21 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         return item
 
     @app.post("/api/quarantine/{quarantine_id}/stage-override")
-    async def stage_override(quarantine_id: str, req: StageKey1Request):
+    async def stage_override(quarantine_id: str, req: StageKey1Request, request: Request):
         try:
+            auth_operator = extract_authenticated_operator(request)
+            effective_requester = (req.requester_id or auth_operator or "").strip()
+            if not effective_requester:
+                raise HTTPException(status_code=400, detail="Requester identity required.")
             res = dual_key_manager.stage_override(
                 quarantine_id=quarantine_id,
-                requester_id=req.requester_id,
+                requester_id=effective_requester,
                 rationale=req.rationale,
             )
             await broadcast_event({
                 "event_type": "HITL_OVERRIDE_REQUEST",
                 "quarantine_id": quarantine_id,
-                "operator": req.requester_id,
+                "operator": effective_requester,
                 "rationale": req.rationale,
             })
             return res
@@ -324,18 +352,22 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(e))
 
     @app.post("/api/quarantine/{quarantine_id}/approve-override")
-    async def approve_override(quarantine_id: str, req: ApproveKey2Request):
+    async def approve_override(quarantine_id: str, req: ApproveKey2Request, request: Request):
         try:
+            auth_operator = extract_authenticated_operator(request)
+            effective_approver = (req.approver_id or auth_operator or "").strip()
+            if not effective_approver:
+                raise HTTPException(status_code=400, detail="Approver identity required.")
             res = dual_key_manager.approve_and_release(
                 quarantine_id=quarantine_id,
-                approver_id=req.approver_id,
+                approver_id=effective_approver,
                 notes=req.notes or "",
                 ttl_seconds=req.ttl_seconds or 7200,
             )
             await broadcast_event({
                 "event_type": "HITL_DUAL_KEY_RELEASE",
                 "quarantine_id": quarantine_id,
-                "approver": req.approver_id,
+                "approver": effective_approver,
                 "worm_hash": res["worm_hash"],
             })
             return res
@@ -345,13 +377,17 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             raise HTTPException(status_code=400, detail=str(e))
 
     @app.post("/api/quarantine/{quarantine_id}/reject")
-    async def reject_quarantine(quarantine_id: str, req: RejectRequest):
+    async def reject_quarantine(quarantine_id: str, req: RejectRequest, request: Request):
         try:
-            dual_key_manager.reject(quarantine_id, req.reviewer_id, req.reason)
+            auth_operator = extract_authenticated_operator(request)
+            effective_reviewer = (req.reviewer_id or auth_operator or "").strip()
+            if not effective_reviewer:
+                raise HTTPException(status_code=400, detail="Reviewer identity required.")
+            dual_key_manager.reject(quarantine_id, effective_reviewer, req.reason)
             await broadcast_event({
                 "event_type": "HITL_REJECTION",
                 "quarantine_id": quarantine_id,
-                "reviewer": req.reviewer_id,
+                "reviewer": effective_reviewer,
             })
             return {"status": "REJECTED", "quarantine_id": quarantine_id}
         except ValueError as e:
