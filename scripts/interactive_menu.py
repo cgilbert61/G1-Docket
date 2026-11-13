@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """G1 Docket — Interactive Operator & Auditor Verification Launcher.
 
-Provides a unified menu to run any of the 24 enterprise scenarios,
+Provides a unified menu to run any of the 25 enterprise scenarios,
 benchmarks, live walkthroughs, compliance evidence exports, or cluster diagnostics.
 """
 
@@ -176,6 +176,12 @@ MENU_ITEMS = [
         "name": "Turnkey Vector DB Adapters & MCT Payloads Suite (7 Engines)",
         "description": "Validates Pinecone, Qdrant, Chroma, Milvus, Weaviate, PGVector, and OpenSearch",
         "command": [sys.executable, "-m", "pytest", "tests/test_chunk_trees.py", "-k", "test_docket_vector_indexer_turnkey_adapters", "-v"],
+    },
+    {
+        "id": 25,
+        "name": "Environment Mode & Production Readiness Checker",
+        "description": "Inspects active demo/prod mode, upstream gateways, secrets, and WORM storage",
+        "command": [sys.executable, "scripts/check_mode.py"],
     },
 ]
 

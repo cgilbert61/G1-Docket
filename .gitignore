@@ -50,6 +50,7 @@ scripts/*
 !scripts/export_siem_events.py
 !scripts/interactive_menu.py
 !scripts/simulate_audit_runway.py
+!scripts/check_mode.py
 
 # Audit evidence exports
 audit_evidence_bundles/
