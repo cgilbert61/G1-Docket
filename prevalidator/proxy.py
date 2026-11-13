@@ -706,6 +706,22 @@ def create_prevalidator_app(
             from prevalidator.enforcer import create_departmental_isolation_hook
             enforcer.register_policy_hook(create_departmental_isolation_hook())
 
+    env_mode = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
+    if not env_mode:
+        legacy = os.environ.get("DOCKET_DEMO_MODE", "").strip().lower()
+        if legacy in ("false", "0", "no"):
+            env_mode = "production"
+
+    if env_mode in ("production", "prod"):
+        if not upstream_gateway_url and (
+            not os.environ.get("POD_UPSTREAM_GATEWAY_URL")
+            or os.environ.get("POD_UPSTREAM_GATEWAY_URL") in ("mock://local", "")
+        ):
+            raise RuntimeError(
+                "[FATAL] Cannot start Prevalidator in production mode without an authoritative upstream AI gateway. "
+                "Set POD_UPSTREAM_GATEWAY_URL to your corporate gateway endpoint (e.g. LiteLLM, Azure OpenAI, Bedrock)."
+            )
+
     upstream_url = (upstream_gateway_url or os.environ.get("POD_UPSTREAM_GATEWAY_URL", "mock://local")).rstrip("/")
     engine_url = (engine_service_url or os.environ.get("POD_ENGINE_SERVICE_URL", "http://engine:8083")).rstrip("/")
     admin_key = os.environ.get("POD_ADMIN_API_KEY", "pod-dev-admin-key")

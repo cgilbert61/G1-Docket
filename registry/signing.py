@@ -696,13 +696,23 @@ def build_attestation_statement(
     cats = sensitive_categories or []
     redact_cats = redaction_categories if redaction_categories is not None else [c["category"] for c in cats]
 
-    default_stewards = {
-        "Restricted": os.getenv("DOCKET_STEWARD_RESTRICTED", "privacy-compliance-steward@contoso.com"),
-        "Confidential": os.getenv("DOCKET_STEWARD_CONFIDENTIAL", "dlp-security-steward@contoso.com"),
-        "Internal": os.getenv("DOCKET_STEWARD_INTERNAL", "engineering-data-steward@contoso.com"),
-        "Public": os.getenv("DOCKET_STEWARD_PUBLIC", "open-data-steward@contoso.com"),
-    }
-    fallback_steward = os.getenv("DOCKET_DEFAULT_STEWARD", "data-governance-steward@contoso.com")
+    domain = os.getenv("DOCKET_COMPANY_DOMAIN", "").strip()
+    if domain:
+        default_stewards = {
+            "Restricted": os.getenv("DOCKET_STEWARD_RESTRICTED") or os.getenv("DOCKET_STEWARD_TIER_RESTRICTED") or f"privacy-compliance-steward@{domain}",
+            "Confidential": os.getenv("DOCKET_STEWARD_CONFIDENTIAL") or os.getenv("DOCKET_STEWARD_TIER_CONFIDENTIAL") or f"dlp-security-steward@{domain}",
+            "Internal": os.getenv("DOCKET_STEWARD_INTERNAL") or os.getenv("DOCKET_STEWARD_TIER_INTERNAL") or f"engineering-data-steward@{domain}",
+            "Public": os.getenv("DOCKET_STEWARD_PUBLIC") or os.getenv("DOCKET_STEWARD_TIER_PUBLIC") or f"open-data-steward@{domain}",
+        }
+        fallback_steward = os.getenv("DOCKET_DEFAULT_STEWARD", f"data-governance-steward@{domain}")
+    else:
+        default_stewards = {
+            "Restricted": os.getenv("DOCKET_STEWARD_RESTRICTED") or os.getenv("DOCKET_STEWARD_TIER_RESTRICTED") or "privacy-compliance-steward@contoso.com",
+            "Confidential": os.getenv("DOCKET_STEWARD_CONFIDENTIAL") or os.getenv("DOCKET_STEWARD_TIER_CONFIDENTIAL") or "dlp-security-steward@contoso.com",
+            "Internal": os.getenv("DOCKET_STEWARD_INTERNAL") or os.getenv("DOCKET_STEWARD_TIER_INTERNAL") or "engineering-data-steward@contoso.com",
+            "Public": os.getenv("DOCKET_STEWARD_PUBLIC") or os.getenv("DOCKET_STEWARD_TIER_PUBLIC") or "open-data-steward@contoso.com",
+        }
+        fallback_steward = os.getenv("DOCKET_DEFAULT_STEWARD", "data-governance-steward@contoso.com")
     effective_steward = steward if steward is not None else default_stewards.get(tier, fallback_steward)
     effective_owner = owner if owner is not None else os.getenv("DOCKET_DEFAULT_OWNER", "data-owners@example.org")
     if org_unit is not None:

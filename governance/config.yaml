@@ -72,3 +72,20 @@ siem_destinations:
     log_group_name: "/g1/docket/security"
     auth_header: "AWS4-HMAC-SHA256 dev"
     timeout_seconds: 5.0
+
+# Enterprise Data Governance & Steward Routing Table
+data_governance:
+  company_domain: "yourcompany.com"
+  default_org_unit: "Enterprise Data & AI Governance"
+  default_owner: "data-operations@yourcompany.com"
+  default_steward: "data-governance@yourcompany.com"
+  stewards_by_tier:
+    Restricted: "privacy-compliance@yourcompany.com"
+    Confidential: "infosec-stewards@yourcompany.com"
+    Internal: "engineering-stewards@yourcompany.com"
+    Public: "open-data-stewards@yourcompany.com"
+  domain_stewards:
+    finance: "finance-stewards@yourcompany.com"
+    clinical: "clinical-trials-stewards@yourcompany.com"
+    engineering: "platform-stewards@yourcompany.com"
+

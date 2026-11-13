@@ -26,6 +26,7 @@ def load_governance_config(config_path: str | Path | None = None) -> Dict[str, A
 
     server_cfg = cfg.get("server", {})
     storage_cfg = cfg.get("storage", {})
+    data_gov_cfg = cfg.get("data_governance", {})
 
     return {
         "server": {
@@ -60,6 +61,33 @@ def load_governance_config(config_path: str | Path | None = None) -> Dict[str, A
                 "POD_KEY_DIR",
                 storage_cfg.get("keys_dir", ".pod_keys"),
             ),
+        },
+        "data_governance": {
+            "company_domain": os.environ.get("DOCKET_COMPANY_DOMAIN", data_gov_cfg.get("company_domain", "")),
+            "default_org_unit": os.environ.get(
+                "DOCKET_DEFAULT_ORG_UNIT", data_gov_cfg.get("default_org_unit", "Enterprise Data & AI Governance")
+            ),
+            "default_owner": os.environ.get(
+                "DOCKET_DEFAULT_OWNER", data_gov_cfg.get("default_owner", "data-operations@yourcompany.com")
+            ),
+            "default_steward": os.environ.get(
+                "DOCKET_DEFAULT_STEWARD", data_gov_cfg.get("default_steward", "data-governance@yourcompany.com")
+            ),
+            "stewards_by_tier": {
+                "Restricted": os.environ.get("DOCKET_STEWARD_RESTRICTED")
+                or os.environ.get("DOCKET_STEWARD_TIER_RESTRICTED")
+                or data_gov_cfg.get("stewards_by_tier", {}).get("Restricted", ""),
+                "Confidential": os.environ.get("DOCKET_STEWARD_CONFIDENTIAL")
+                or os.environ.get("DOCKET_STEWARD_TIER_CONFIDENTIAL")
+                or data_gov_cfg.get("stewards_by_tier", {}).get("Confidential", ""),
+                "Internal": os.environ.get("DOCKET_STEWARD_INTERNAL")
+                or os.environ.get("DOCKET_STEWARD_TIER_INTERNAL")
+                or data_gov_cfg.get("stewards_by_tier", {}).get("Internal", ""),
+                "Public": os.environ.get("DOCKET_STEWARD_PUBLIC")
+                or os.environ.get("DOCKET_STEWARD_TIER_PUBLIC")
+                or data_gov_cfg.get("stewards_by_tier", {}).get("Public", ""),
+            },
+            "domain_stewards": data_gov_cfg.get("domain_stewards", {}),
         },
         "siem_destinations": [
             SIEMDestinationConfig(**d) for d in cfg.get("siem_destinations", [])
