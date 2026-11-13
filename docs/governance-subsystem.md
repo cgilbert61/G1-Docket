@@ -110,6 +110,18 @@ When `DOCKET_ENVIRONMENT=production` (or legacy `DOCKET_DEMO_MODE=false`) is con
 - The Four-Eyes principle strictly prevents self-approval: requester and approver must possess distinct, verified corporate credentials ($K_1 \neq K_2$).
 - The cluster health indicator displays an institutional production badge.
 
+### 2.7 Built-in Operator Authentication, Session Security & RBAC
+For environments operating standalone, on-premise, or without an external SSO reverse proxy, G1 Docket provides a native, zero-dependency authentication and session security engine (`governance/auth.py`):
+1. **Cryptographic Password Derivation**: Salted `PBKDF2-HMAC-SHA256` hashing with 100,000 iterations and per-user 16-byte random salts.
+2. **Tamper-Resistant Session Engine**: HMAC-SHA256 signed session cookies (`docket_session`) configured with `HttpOnly`, `SameSite=Lax`, and `Secure` attributes with constant-time signature validation.
+3. **Brute-Force & Abuse Mitigation**: Failed login attempts are tracked per IP and username. 5 consecutive failures trigger an automatic 5-minute lockout window.
+4. **Role-Based Privilege Segregation (RBAC)**:
+   - **`auditor`**: Read-only access to WORM audit logs and SIEM telemetry. Actions that alter incident state are blocked with HTTP 403.
+   - **`triage_operator`**: Authorized to review and stage Key 1 overrides (`AWAITING_SECOND_KEY`).
+   - **`security_approver`**: Authorized to grant Key 2 dual-control cryptographic release.
+   - **`admin`**: Full administrative access across forwarders and policies.
+5. **Headless & Client Session Verification**: Supports both form-based login and JSON API authentication via `GET /api/auth/session` and `POST /login`.
+
 
 ---
 
