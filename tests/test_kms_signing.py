@@ -13,6 +13,7 @@ from registry.schema_validator import SNAPSHOT_PREDICATE_TYPE
 from registry.signing import (
     AWSKMSSigner,
     AzureKeyVaultSigner,
+    GCPCloudKMSSigner,
     Keyring,
     MockKMSSigner,
     SignatureVerificationError,
@@ -182,6 +183,46 @@ def test_azure_keyvault_signer_interface_and_mock(tmp_path):
 
     mock_crypto_client.sign.assert_called_once()
     assert envelope["sigstoreBundle"]["verificationMaterial"]["publicKey"]["kmsUri"] == f"azurekms://{vault_url}/keys/docket-master-key/v1"
+
+    res = verify_dsse_envelope(envelope, keyring)
+    assert res.verified is True
+
+
+def test_gcp_cloud_kms_signer_interface_and_mock(tmp_path):
+    hsm_key = ec.generate_private_key(ec.SECP256R1())
+    pub_pem = hsm_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+
+    mock_kms_client = MagicMock()
+    mock_pub_resp = MagicMock()
+    mock_pub_resp.pem = pub_pem
+    mock_kms_client.get_public_key.return_value = mock_pub_resp
+
+    def _gcp_mock_asymmetric_sign(request):
+        digest = request["digest"]["sha256"]
+        der_sig = hsm_key.sign(digest, ec.ECDSA(Prehashed(hashes.SHA256())))
+        resp = MagicMock()
+        resp.signature = der_sig
+        return resp
+
+    mock_kms_client.asymmetric_sign.side_effect = _gcp_mock_asymmetric_sign
+
+    key_resource = "projects/my-governance-proj/locations/global/keyRings/g1-ring/cryptoKeys/docket-attestor/cryptoKeyVersions/1"
+    gcp_signer = GCPCloudKMSSigner(
+        key_name=key_resource,
+        kms_client=mock_kms_client,
+    )
+
+    keyring = Keyring(public_key_dir=tmp_path / "pub", private_key_dir=tmp_path / "priv")
+    keyring.register_kms_signer(gcp_signer, activate=True)
+
+    stmt = _sample_attestation_statement()
+    envelope = sign_statement(stmt, keyring)
+
+    mock_kms_client.asymmetric_sign.assert_called_once()
+    assert envelope["sigstoreBundle"]["verificationMaterial"]["publicKey"]["kmsUri"] == f"gcpkms://{key_resource}"
 
     res = verify_dsse_envelope(envelope, keyring)
     assert res.verified is True

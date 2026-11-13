@@ -477,6 +477,81 @@ class AzureKeyVaultSigner(BaseKMSSigner):
         return sig
 
 
+class GCPCloudKMSSigner(BaseKMSSigner):
+    """Google Cloud KMS / Cloud HSM Signer.
+
+    Supports EC_SIGN_P256_SHA256 (ECDSA P-256 with SHA-256).
+    Works with google-cloud-kms KeyManagementServiceClient or custom client.
+    """
+
+    def __init__(
+        self,
+        key_name: str,
+        kms_client: Any | None = None,
+        algorithm: str = "ECDSA_P256_SHA256",
+        public_key_pem: str | None = None,
+    ) -> None:
+        """Initialize GCP Cloud KMS Signer.
+
+        key_name format:
+        projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}/cryptoKeyVersions/{version}
+        """
+        self.key_name = key_name
+        self._algorithm = algorithm
+        self._kms_client = kms_client
+        self._public_key_pem = public_key_pem
+        self._keyid: str | None = None
+
+    @property
+    def kms_uri(self) -> str:
+        return f"gcpkms://{self.key_name}"
+
+    @property
+    def algorithm(self) -> str:
+        return self._algorithm
+
+    def _get_client(self) -> Any:
+        if self._kms_client is not None:
+            return self._kms_client
+        try:
+            from google.cloud import kms_v1
+
+            self._kms_client = kms_v1.KeyManagementServiceClient()
+            return self._kms_client
+        except ImportError as err:
+            raise RuntimeError(
+                "google-cloud-kms is required for GCP KMS signing. "
+                "Install with `pip install google-cloud-kms`."
+            ) from err
+
+    def get_public_key_pem(self) -> str:
+        if self._public_key_pem:
+            return self._public_key_pem
+        client = self._get_client()
+        pub_response = client.get_public_key(request={"name": self.key_name})
+        self._public_key_pem = pub_response.pem
+        return self._public_key_pem
+
+    @property
+    def keyid(self) -> str:
+        if self._keyid is None:
+            pem = self.get_public_key_pem()
+            pub_key = serialization.load_pem_public_key(pem.encode("utf-8"))
+            self._keyid = compute_spki_keyid(pub_key)
+        return self._keyid
+
+    def sign(self, data: bytes) -> bytes:
+        digest = hashlib.sha256(data).digest()
+        client = self._get_client()
+        response = client.asymmetric_sign(
+            request={
+                "name": self.key_name,
+                "digest": {"sha256": digest},
+            }
+        )
+        return response.signature if hasattr(response, "signature") else response
+
+
 class Keyring:
     """In-boundary operator keyring supporting privilege-separated private signing keys and public verification keys."""
 
