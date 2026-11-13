@@ -13,6 +13,7 @@ import asyncio
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 import threading
 import time
@@ -64,13 +65,23 @@ class ContinuousDeltaCrawler:
         self.throttle_ms_per_file: float = 3.5  # Smooth visual ticker speed while sweeping
 
         # Configurable scan targets (Drives, Directories, Cloud Lakes, Warehouses)
-        self.targets: list[dict[str, Any]] = [
+        prod_crawl = os.getenv("DOCKET_CRAWL_DIRECTORY")
+        self.targets: list[dict[str, Any]] = []
+        if prod_crawl:
+            self.targets.append({
+                "id": "target-production-corpus",
+                "path_or_uri": prod_crawl,
+                "label": f"🏢 {prod_crawl} — Production Enterprise Data Target",
+                "kind": "cloud_store" if is_enterprise_store_uri(prod_crawl) else "pc_dir",
+                "enabled": True,
+            })
+        self.targets.extend([
             {
                 "id": "target-pc-demo",
                 "path_or_uri": "D:\\attestation\\pc_demo_folder",
                 "label": "📁 D:\\attestation\\pc_demo_folder — Sample Demo Documents",
                 "kind": "pc_dir",
-                "enabled": False,
+                "enabled": not bool(prod_crawl),
             },
             {
                 "id": "target-d-drive",
@@ -135,7 +146,7 @@ class ContinuousDeltaCrawler:
                 "kind": "warehouse",
                 "enabled": True,
             },
-        ]
+        ])
 
         # In-Memory Registry Watermark Index: locator -> WatermarkEntry
         self.watermark_index: dict[str, WatermarkEntry] = {}

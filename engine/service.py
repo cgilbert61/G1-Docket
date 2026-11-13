@@ -61,7 +61,7 @@ def _build_selectable_directory_enum() -> Any:
         p = item["path"]
         members[f"OPT_{idx}"] = p
     if not members:
-        members["DEFAULT"] = "C:\\Users\\chuck\\pc_demo_folder"
+        members["DEFAULT"] = os.getenv("DOCKET_CRAWL_DIRECTORY", "C:\\Users\\chuck\\pc_demo_folder")
     return Enum("SelectDirectoryOrDrive", members, type=str)
 
 
@@ -70,7 +70,7 @@ DEFAULT_SELECTABLE_DIR = list(SelectableDirectoryEnum)[0]
 
 
 class AddUnattestedFileRequest(BaseModel):
-    directory_path: str = "D:\\attestation\\pc_demo_folder"
+    directory_path: str = Field(default_factory=lambda: os.getenv("DOCKET_CRAWL_DIRECTORY", "D:\\attestation\\pc_demo_folder"))
     filename: str | None = None
     content: str | None = None
 
