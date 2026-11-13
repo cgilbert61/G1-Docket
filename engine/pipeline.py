@@ -188,6 +188,7 @@ class AttestationEngine:
                 schema_sha256=tbl.schema_sha256,
                 tier=verdict.tier,
                 owner=tbl.owner_hint or resolved_owner,
+                steward=tbl.steward_hint,
                 confidence=verdict.confidence,
                 low_confidence=verdict.low_confidence,
                 sensitive_categories=[f.to_dict() for f in verdict.sensitive_categories],

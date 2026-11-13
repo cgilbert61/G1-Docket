@@ -34,6 +34,7 @@ class TableDiscoveryFinding:
     column_samples: dict[str, list[str]]
     openmetadata_findings: list[dict[str, Any]] = field(default_factory=list)
     owner_hint: str | None = None
+    steward_hint: str | None = None
     derived_from: list[dict[str, Any]] = field(default_factory=list)
     extracted_text_sha256: str | None = None
     chunk_hashes: list[str] = field(default_factory=list)
@@ -82,14 +83,14 @@ class OpenMetadataDatabaseScanner:
         if self.openmetadata_jwt:
             headers["Authorization"] = f"Bearer {self.openmetadata_jwt}"
 
-        result: dict[str, Any] = {"findings": [], "owner": None, "derived_from": []}
+        result: dict[str, Any] = {"findings": [], "owner": None, "steward": None, "derived_from": []}
         if not self.openmetadata_url:
             return result
         try:
             with httpx.Client(timeout=5.0, headers=headers) as client:
                 resp = client.get(
                     f"{self.openmetadata_url}/v1/tables",
-                    params={"database": database_name, "fields": "columns,tags,owners,lineage", "limit": 100},
+                    params={"database": database_name, "fields": "columns,tags,owners,experts,lineage", "limit": 100},
                 )
                 if resp.status_code != 200:
                     return result
@@ -100,7 +101,11 @@ class OpenMetadataDatabaseScanner:
                         continue
                     owners = tbl.get("owners") or []
                     if owners:
-                        result["owner"] = owners[0].get("name") or owners[0].get("fullyQualifiedName")
+                        result["owner"] = owners[0].get("email") or owners[0].get("name") or owners[0].get("fullyQualifiedName")
+
+                    experts = tbl.get("experts") or []
+                    if experts:
+                        result["steward"] = experts[0].get("email") or experts[0].get("name") or experts[0].get("fullyQualifiedName")
 
                     for col in tbl.get("columns", []):
                         col_name = col.get("name")
@@ -217,6 +222,7 @@ class OpenMetadataDatabaseScanner:
                         column_samples=column_samples,
                         openmetadata_findings=om_findings,
                         owner_hint=om_meta.get("owner"),
+                        steward_hint=om_meta.get("steward"),
                         derived_from=om_meta.get("derived_from", []),
                         extracted_text_sha256=extracted_text_sha256,
                         chunk_hashes=chunk_hashes,
