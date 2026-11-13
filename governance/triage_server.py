@@ -17,12 +17,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-from fastapi import Body, FastAPI, HTTPException, Request, Response, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from governance.auth import AuthManager, SESSION_COOKIE_NAME, get_client_ip, verify_password
+from governance.cicd_security import fetch_cicd_status, fetch_secret_audit
 from governance.config import load_governance_config
 from governance.dual_key import DualKeyGovernanceManager, FourEyesViolationError
 from governance.mock_sinks import MockReceiverCluster
@@ -441,6 +442,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         _, tip_hash = worm_ledger.get_tip_hash()
         worm_count = worm_ledger.count_events()
         siem_dests = siem_forwarder.get_destination_status()
+        cicd_status = fetch_cicd_status()
+        secret_audit = fetch_secret_audit()
 
         return templates.TemplateResponse(
             request=request,
@@ -451,6 +454,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
                 "current_role": current_sess.get("role") if current_sess else None,
                 "quarantine_items": q_items,
                 "worm_events": w_events,
+                "cicd_status": cicd_status,
+                "secret_audit": secret_audit,
                 "stats": {
                     "quarantine_counts": q_counts,
                     "worm_count": worm_count,
@@ -805,6 +810,34 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         return {"success": True, "destination": dest}
 
     # ---------------------------------------------------------
+    # REST APIs: CI/CD Telemetry & Secret Security Posture
+    # ---------------------------------------------------------
+    @app.get("/api/governance/cicd-status")
+    @app.get("/api/cicd/status")
+    async def get_governance_cicd_status():
+        """Retrieve real-time GitHub Actions test matrix telemetry and step diagnostics."""
+        return fetch_cicd_status()
+
+    @app.get("/api/governance/secret-audit")
+    @app.get("/api/security/secret-audit")
+    async def get_governance_secret_audit():
+        """Retrieve continuous repository secret hygiene attestation metrics."""
+        return fetch_secret_audit()
+
+    @app.post("/api/governance/secret-audit/run")
+    @app.post("/api/security/secret-audit/run")
+    async def run_governance_secret_audit():
+        """Re-run dynamic repository secret scan and broadcast verification to SSE stream."""
+        audit_res = fetch_secret_audit()
+        await broadcast_event({
+            "event_type": "SECRET_AUDIT_COMPLETED",
+            "verdict": audit_res.get("verdict", "CLEAN_PASS"),
+            "active_keys": audit_res.get("tracked_files", {}).get("active_secrets_detected", 0),
+            "timestamp": audit_res.get("timestamp_utc"),
+        })
+        return {"success": True, "audit": audit_res}
+
+    # ---------------------------------------------------------
     # Boundary Ingress Interceptor (Called by Docket or Combine)
     # ---------------------------------------------------------
     @app.post("/api/intercept")
@@ -868,6 +901,19 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
 
         status_str = "QUARANTINED" if qid else "LOGGED"
         return {"status": status_str, "quarantine_id": qid, "worm_entry_hash": worm_entry["entry_hash"]}
+
+    # ---------------------------------------------------------
+    # CI/CD Telemetry & Secret Hygiene Audit Endpoints
+    # ---------------------------------------------------------
+    @app.get("/api/cicd/status")
+    async def get_cicd_status(request: Request):
+        from governance.cicd_security import fetch_cicd_status
+        return fetch_cicd_status()
+
+    @app.get("/api/security/secret-audit")
+    async def get_secret_audit(request: Request):
+        from governance.cicd_security import fetch_secret_audit
+        return fetch_secret_audit()
 
     # ---------------------------------------------------------
     # Server-Sent Events (SSE) Live Feed

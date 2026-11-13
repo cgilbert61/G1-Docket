@@ -17,6 +17,9 @@
     <button onclick="switchTab('siem')" id="tab-btn-siem" class="pb-2.5 text-[#475569] hover:text-[#0F172A] border-b-2 border-transparent cursor-pointer">
       SIEM Forwarder Hub (7 Targets)
     </button>
+    <button onclick="switchTab('cicd')" id="tab-btn-cicd" class="pb-2.5 text-[#475569] hover:text-[#0F172A] border-b-2 border-transparent cursor-pointer">
+      CI/CD & Security Posture
+    </button>
     <button onclick="switchTab('live')" id="tab-btn-live" class="pb-2.5 text-[#475569] hover:text-[#0F172A] border-b-2 border-transparent cursor-pointer">
       Live Event Stream (SSE)
     </button>
@@ -33,6 +36,9 @@
 
   <!-- Tab 4: Live Event Stream (SSE) -->
   {% include "components/tab_live_stream.html" %}
+
+  <!-- Tab 5: CI/CD & Security Posture -->
+  {% include "components/tab_cicd_posture.html" %}
 
 </div>
 

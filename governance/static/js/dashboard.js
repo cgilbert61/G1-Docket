@@ -8,16 +8,22 @@ let currentQuarantineItem = null;
 let currentConfigDestId = null;
 
 function switchTab(tabId) {
-  const tabs = ['quarantine', 'worm', 'siem', 'live'];
+  const tabs = ['quarantine', 'worm', 'siem', 'cicd', 'live'];
   tabs.forEach(t => {
-    document.getElementById('tab-' + t).classList.add('hidden');
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.add('hidden');
     const btn = document.getElementById('tab-btn-' + t);
-    btn.className = 'pb-2.5 text-[#475569] hover:text-[#0F172A] border-b-2 border-transparent cursor-pointer';
+    if (btn) btn.className = 'pb-2.5 text-[#475569] hover:text-[#0F172A] border-b-2 border-transparent cursor-pointer';
   });
 
-  document.getElementById('tab-' + tabId).classList.remove('hidden');
+  const activeTab = document.getElementById('tab-' + tabId);
+  if (activeTab) activeTab.classList.remove('hidden');
   const activeBtn = document.getElementById('tab-btn-' + tabId);
-  activeBtn.className = 'pb-2.5 text-[#0F172A] border-b-2 border-[#1E293B] cursor-pointer';
+  if (activeBtn) activeBtn.className = 'pb-2.5 text-[#0F172A] border-b-2 border-[#1E293B] cursor-pointer';
+
+  if (tabId === 'cicd') {
+    refreshCICD();
+  }
 }
 
 async function refreshQuarantine() {
@@ -567,6 +573,76 @@ function clearLiveLog() {
   document.getElementById('live-event-container').innerHTML = '<div class="text-[#475569]">// Log cleared. Waiting for events...</div>';
 }
 
+function toggleStepDetails(stepId) {
+  const el = document.getElementById(stepId);
+  if (!el) return;
+  const isHidden = el.classList.contains('hidden');
+  if (isHidden) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
+async function refreshCICD() {
+  try {
+    const res = await fetch('/api/governance/cicd-status');
+    const data = await res.json();
+    if (!data || !data.latest_run) return;
+    const run = data.latest_run;
+
+    const runIdElem = document.getElementById('matrix-run-id');
+    if (runIdElem) runIdElem.textContent = '#' + run.id;
+
+    const headShaElem = document.getElementById('side-head-sha');
+    if (headShaElem) headShaElem.textContent = run.head_sha;
+
+    const ciDurElem = document.getElementById('side-ci-duration');
+    if (ciDurElem) ciDurElem.textContent = run.duration;
+
+    const ciBadgeElem = document.getElementById('side-ci-badge');
+    if (ciBadgeElem) {
+      ciBadgeElem.textContent = (run.conclusion || 'SUCCESS').toUpperCase();
+      ciBadgeElem.className = 'badge ' + (run.badge || 'badge-success');
+    }
+  } catch (err) {
+    console.error('Error refreshing CI/CD status:', err);
+  }
+}
+
+async function triggerSecretScan() {
+  const spinner = document.getElementById('secret-scan-spinner');
+  const btn = document.getElementById('btn-retest-secret');
+  if (spinner) spinner.classList.remove('hidden');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/governance/secret-audit/run', { method: 'POST' });
+    const data = await res.json();
+    if (data && data.audit) {
+      const audit = data.audit;
+      const tsElem = document.getElementById('side-audit-timestamp');
+      if (tsElem && audit.timestamp_utc) {
+        tsElem.textContent = audit.timestamp_utc.substring(0, 19) + 'Z';
+      }
+      const activeElem = document.getElementById('side-active-keys');
+      if (activeElem && audit.tracked_files) {
+        activeElem.textContent = audit.tracked_files.active_secrets_detected + ' detected';
+      }
+      const verdictElem = document.getElementById('side-verdict-badge');
+      if (verdictElem) {
+        verdictElem.textContent = audit.verdict;
+        verdictElem.className = 'badge ' + (audit.badge || 'badge-success');
+      }
+    }
+  } catch (err) {
+    console.error('Error running secret audit:', err);
+  } finally {
+    if (spinner) spinner.classList.add('hidden');
+    if (btn) btn.disabled = false;
+  }
+}
+
 // Live SSE Stream Listener
 const evtSource = new EventSource('/events/stream');
 evtSource.onmessage = function(e) {
@@ -583,10 +659,14 @@ evtSource.onmessage = function(e) {
     badgeClass = 'text-[#D97706] font-bold';
   } else if (data.event_type === 'CONNECTED') {
     badgeClass = 'text-[#2563EB] font-bold';
+  } else if (data.event_type === 'SECRET_AUDIT_COMPLETED') {
+    badgeClass = 'text-[#16A34A] font-bold';
   }
 
   let detail = '';
-  if (data.reason_code) {
+  if (data.event_type === 'SECRET_AUDIT_COMPLETED') {
+    detail = `[SECRET_AUDIT] Verdict: ${data.verdict} | Active Secrets: ${data.active_keys}`;
+  } else if (data.reason_code) {
     detail = `[${data.reason_code}] loc: ${data.locator_uri || 'urn:prompt'} | tier: ${data.claimed_tier || 'n/a'}`;
     if (data.quarantine_id) {
       detail += ` | Quarantine: ${data.quarantine_id}`;

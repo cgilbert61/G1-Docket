@@ -433,4 +433,42 @@ def test_cli_operator_login_whoami_logout(tmp_path, monkeypatch, capsys):
     assert rc_whoami_after == 1
 
 
+def test_governance_cicd_and_secret_audit_endpoints(tmp_path):
+    p_str = str(tmp_path).replace("\\", "/")
+    cfg_file = tmp_path / "test_config.yaml"
+    cfg_file.write_text(f"""
+server:
+  host: "127.0.0.1"
+  port: 18083
+  inference_gateway_url: "http://127.0.0.1:18082"
+storage:
+  worm_sqlite_path: "{p_str}/worm.db"
+  worm_jsonl_path: "{p_str}/worm.jsonl"
+  quarantine_db_path: "{p_str}/quarantine.db"
+  siem_buffer_db_path: "{p_str}/siem.db"
+  keys_dir: "{p_str}/keys"
+siem_destinations: []
+""", encoding="utf-8")
+
+    app = create_governance_app(config_path=cfg_file)
+    client = TestClient(app)
+
+    # 1. Test CI/CD telemetry endpoint
+    resp_cicd = client.get("/api/cicd/status")
+    assert resp_cicd.status_code == 200
+    cicd_data = resp_cicd.json()
+    assert "status" in cicd_data
+    assert "latest_run" in cicd_data
+    assert "jobs" in cicd_data["latest_run"]
+
+    # 2. Test Secret audit endpoint
+    resp_sec = client.get("/api/security/secret-audit")
+    assert resp_sec.status_code == 200
+    sec_data = resp_sec.json()
+    assert sec_data["verdict"] == "CLEAN_PASS"
+    assert sec_data["tracked_files"]["active_secrets_detected"] == 0
+    assert "dotfile_isolation" in sec_data
+
+
+
 

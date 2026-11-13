@@ -313,3 +313,55 @@ siem_destinations: []
     )
     assert resp_demo_k1.status_code == 403
     assert "Demo requester identities are not permitted in production mode" in resp_demo_k1.json()["detail"]
+
+
+def test_cicd_status_and_secret_audit_endpoints(tmp_path):
+    p_str = str(tmp_path).replace("\\", "/")
+    cfg_file = tmp_path / "test_config_cicd.yaml"
+    cfg_file.write_text(f"""
+server:
+  host: "127.0.0.1"
+  port: 18083
+  inference_gateway_url: "http://127.0.0.1:18082"
+storage:
+  worm_sqlite_path: "{p_str}/worm.db"
+  worm_jsonl_path: "{p_str}/worm.jsonl"
+  quarantine_db_path: "{p_str}/quarantine.db"
+  siem_buffer_db_path: "{p_str}/siem.db"
+  keys_dir: "{p_str}/keys"
+siem_destinations: []
+""", encoding="utf-8")
+
+    app = create_governance_app(config_path=cfg_file)
+    client = TestClient(app)
+
+    # 1. CI/CD status endpoint
+    r_ci = client.get("/api/governance/cicd-status")
+    assert r_ci.status_code == 200
+    ci_data = r_ci.json()
+    assert "latest_run" in ci_data
+    assert "jobs" in ci_data["latest_run"]
+    assert len(ci_data["latest_run"]["jobs"]) >= 4
+
+    # 2. Secret audit endpoint
+    r_sec = client.get("/api/governance/secret-audit")
+    assert r_sec.status_code == 200
+    sec_data = r_sec.json()
+    assert sec_data["verdict"] == "CLEAN_PASS"
+    assert sec_data["tracked_files"]["active_secrets_detected"] == 0
+    assert "credential_inventory" in sec_data
+    assert len(sec_data["credential_inventory"]) >= 8
+
+    # 3. Secret audit trigger endpoint
+    r_run = client.post("/api/governance/secret-audit/run")
+    assert r_run.status_code == 200
+    run_data = r_run.json()
+    assert run_data["success"] is True
+    assert run_data["audit"]["verdict"] == "CLEAN_PASS"
+
+    # 4. Verify dashboard view renders tab-cicd
+    r_dash = client.get("/")
+    assert r_dash.status_code == 200
+    assert "tab-cicd" in r_dash.text
+    assert "CI/CD &amp; Security Posture" in r_dash.text or "CI/CD & Security Posture" in r_dash.text
+
