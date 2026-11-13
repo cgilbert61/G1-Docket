@@ -212,7 +212,7 @@ def run_item(choice: int) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="G1 Docket Interactive Operator Menu")
-    parser.add_argument("--choice", type=int, default=None, help="Execute specific action number directly")
+    parser.add_argument("--choice", "-c", "--scenario", "-s", dest="choice", type=int, default=None, help="Execute specific action or scenario number directly")
     parser.add_argument("--list", action="store_true", help="Print available menu actions and exit")
     args = parser.parse_args()
 
