@@ -509,6 +509,7 @@ class Keyring:
         # Maintain `self.key_dir` alias pointing to public_key_dir for backward compatibility
         self.key_dir = self.public_key_dir
         self.keyring_file = self.public_key_dir / "keyring.json"
+        self._kms_signers: dict[str, BaseKMSSigner] = {}
 
         if not self.verification_only:
             self.public_key_dir.mkdir(parents=True, exist_ok=True)
@@ -624,6 +625,107 @@ class Keyring:
         """Rotate the active signing key; previously active key moves to 'rotated' state for historical verification."""
         return self.generate_key(algorithm=algorithm, operator_id=operator_id, activate=True, key_purpose=key_purpose)
 
+    def register_kms_signer(
+        self,
+        signer: BaseKMSSigner,
+        activate: bool = True,
+        key_purpose: list[str] | None = None,
+        operator_id: str = "kms-operator",
+    ) -> dict[str, Any]:
+        """Register an external Cloud KMS / HSM signer in the keyring without exporting private keys."""
+        if self.verification_only:
+            raise SignatureVerificationError("Verification-only Keyring cannot register signing keys.")
+
+        pub_pem = signer.get_public_key_pem()
+        keyid = signer.keyid
+        now_str = format_iso8601(datetime.now(timezone.utc))
+        purposes = list(key_purpose or ["attestation", "snapshot"])
+
+        self.public_key_dir.mkdir(parents=True, exist_ok=True)
+        pub_path = self.public_key_dir / f"{keyid}.pub.pem"
+        pub_path.write_text(pub_pem, encoding="utf-8")
+
+        data = self._load_data()
+        data.setdefault("active_keys_by_purpose", {})
+        if activate and data.get("active_keyid"):
+            old_id = data["active_keyid"]
+            if old_id in data["keys"] and data["keys"][old_id]["status"] == "active":
+                old_purposes = set(data["keys"][old_id].get("key_purpose", ["attestation", "snapshot"]))
+                if old_purposes.issubset(set(purposes)):
+                    data["keys"][old_id]["status"] = "rotated"
+                    data["keys"][old_id]["rotated_at"] = now_str
+
+        entry = {
+            "keyid": keyid,
+            "algorithm": signer.algorithm,
+            "operator_id": operator_id,
+            "key_purpose": purposes,
+            "status": "active" if activate else "standby",
+            "created_at": now_str,
+            "rotated_at": None,
+            "revoked_at": None,
+            "public_key_pem": pub_pem,
+            "private_key_file": None,
+            "is_kms": True,
+            "kms_uri": signer.kms_uri,
+        }
+        data["keys"][keyid] = entry
+        if activate:
+            data["active_keyid"] = keyid
+            for p in purposes:
+                data["active_keys_by_purpose"][p] = keyid
+        self._save_data(data)
+        self._kms_signers[keyid] = signer
+        return entry
+
+    def attach_kms_signer(self, signer: BaseKMSSigner) -> None:
+        """Attach an active in-memory KMS signer client for an existing KMS key entry."""
+        if self.verification_only:
+            raise SignatureVerificationError("Verification-only Keyring cannot attach signing clients.")
+        self._kms_signers[signer.keyid] = signer
+
+    def sign_bytes(
+        self,
+        data: bytes,
+        keyid: str | None = None,
+        purpose: str | None = None,
+    ) -> tuple[str, str, bytes]:
+        """Sign payload bytes using either a hardware KMS signer or a local private key.
+
+        Returns (signing_keyid, algorithm, signature_bytes).
+        """
+        keyring_data = self._load_data()
+        target_id = keyid
+        if not target_id and purpose:
+            target_id = keyring_data.get("active_keys_by_purpose", {}).get(purpose)
+        if not target_id:
+            target_id = keyring_data.get("active_keyid")
+
+        if target_id and target_id in self._kms_signers:
+            meta = keyring_data["keys"].get(target_id, {})
+            if meta.get("status") != "active":
+                raise SignatureVerificationError(
+                    f"Cannot sign with non-active KMS key '{target_id}' (status={meta.get('status')})."
+                )
+            signer = self._kms_signers[target_id]
+            sig_bytes = signer.sign(data)
+            return target_id, signer.algorithm, sig_bytes
+
+        if target_id and keyring_data.get("keys", {}).get(target_id, {}).get("is_kms"):
+            raise SignatureVerificationError(
+                f"Key '{target_id}' is a Cloud KMS/HSM key ({keyring_data['keys'][target_id].get('kms_uri')}), "
+                "but no active KMSSigner client was registered or attached to this Keyring instance."
+            )
+
+        signing_keyid, algorithm, private_key = self.load_private_key(keyid=keyid, purpose=purpose)
+        if algorithm == "Ed25519":
+            sig_bytes = private_key.sign(data)
+        elif algorithm == "ECDSA_P256_SHA256":
+            sig_bytes = private_key.sign(data, ec.ECDSA(hashes.SHA256()))
+        else:
+            raise ValueError(f"Unsupported key algorithm: {algorithm}")
+        return signing_keyid, algorithm, sig_bytes
+
     def revoke_key(self, keyid: str) -> None:
         """Mark a key as compromised/revoked; any signature made by a revoked key fails verification immediately."""
         data = self._load_data()
@@ -652,14 +754,18 @@ class Keyring:
                 return data["keys"][by_purpose]
             for k_meta in data["keys"].values():
                 if k_meta.get("status") == "active" and purpose in k_meta.get("key_purpose", ["attestation", "snapshot"]):
-                    priv_file = (self.private_key_dir / k_meta["private_key_file"]) if self.private_key_dir else None
+                    if k_meta.get("is_kms"):
+                        return k_meta
+                    priv_file = (self.private_key_dir / k_meta["private_key_file"]) if (self.private_key_dir and k_meta.get("private_key_file")) else None
                     if priv_file and priv_file.exists():
                         return k_meta
             return self.generate_key(algorithm="Ed25519", operator_id=operator_id, activate=True, key_purpose=[purpose])
 
         active_id = data.get("active_keyid")
         if active_id and active_id in data["keys"] and data["keys"][active_id]["status"] == "active":
-            priv_file = (self.private_key_dir / data["keys"][active_id]["private_key_file"]) if self.private_key_dir else None
+            if data["keys"][active_id].get("is_kms"):
+                return data["keys"][active_id]
+            priv_file = (self.private_key_dir / data["keys"][active_id]["private_key_file"]) if (self.private_key_dir and data["keys"][active_id].get("private_key_file")) else None
             if priv_file is None or priv_file.exists():
                 return data["keys"][active_id]
         return self.generate_key(algorithm="Ed25519", operator_id=operator_id)
@@ -690,6 +796,11 @@ class Keyring:
             target_id = meta["keyid"]
         else:
             meta = data["keys"][target_id]
+            if meta.get("is_kms"):
+                raise SignatureVerificationError(
+                    f"Key '{target_id}' is a hardware KMS/HSM key ({meta.get('kms_uri')}); "
+                    "private keys cannot be exported from KMS/HSM boundaries. Use `keyring.sign_bytes()`."
+                )
             priv_candidate = self.private_key_dir / meta.get("private_key_file", f"{target_id}.priv.pem")
             if not priv_candidate.exists():
                 meta = self.ensure_active_key(purpose=purpose)
@@ -749,15 +860,16 @@ def sign_statement(
     pae_bytes = dsse_pae(DSSE_PAYLOAD_TYPE, canonical_payload)
 
     inferred_purpose = purpose or ("snapshot" if predicate_type == SNAPSHOT_PREDICATE_TYPE else "attestation")
-    signing_keyid, algorithm, private_key = keyring.load_private_key(keyid, purpose=inferred_purpose)
-    if algorithm == "Ed25519":
-        sig_bytes = private_key.sign(pae_bytes)
-    elif algorithm == "ECDSA_P256_SHA256":
-        sig_bytes = private_key.sign(pae_bytes, ec.ECDSA(hashes.SHA256()))
-    else:
-        raise ValueError(f"Unsupported key algorithm: {algorithm}")
-
+    signing_keyid, algorithm, sig_bytes = keyring.sign_bytes(pae_bytes, keyid=keyid, purpose=inferred_purpose)
     sig_b64 = base64.b64encode(sig_bytes).decode("ascii")
+
+    pub_verification_mat: dict[str, Any] = {
+        "hint": signing_keyid,
+        "algorithm": algorithm,
+    }
+    meta = keyring.get_key_metadata(signing_keyid)
+    if meta.get("kms_uri"):
+        pub_verification_mat["kmsUri"] = meta["kms_uri"]
 
     envelope = {
         "payloadType": DSSE_PAYLOAD_TYPE,
@@ -771,10 +883,7 @@ def sign_statement(
         "sigstoreBundle": {
             "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
             "verificationMaterial": {
-                "publicKey": {
-                    "hint": signing_keyid,
-                    "algorithm": algorithm,
-                }
+                "publicKey": pub_verification_mat,
             },
         },
     }
