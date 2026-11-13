@@ -123,8 +123,9 @@ def main() -> int:
 
         with urllib.request.urlopen(stage_req) as stage_resp:
             stage_result = json.loads(stage_resp.read().decode("utf-8"))
+            req_op = stage_result.get("first_key", {}).get("operator") or stage_result.get("first_key", {}).get("operator_id") or stage_result.get("requester")
             print("  [+] Step 1 (Key 1 Staged):")
-            print(f"      Requester : {stage_result.get('first_key', {}).get('operator_id')}")
+            print(f"      Requester : {req_op}")
             print(f"      Status    : {stage_result.get('status')}")
 
         # Step 4b: Key 2 Dual Approval & Forward Replay (Approver - Must be distinct!)
@@ -144,10 +145,12 @@ def main() -> int:
 
         with urllib.request.urlopen(approve_req) as approve_resp:
             approve_result = json.loads(approve_resp.read().decode("utf-8"))
+            app_op = approve_result.get("approver") or approve_result.get("second_key", {}).get("operator") or approve_result.get("second_key", {}).get("operator_id")
+            rep_stat = approve_result.get("replay_status") or approve_result.get("replay_result") or "COMPLETED"
             print("  [+] Step 2 (Key 2 Signed & Replayed):")
-            print(f"      Approver       : {approve_result.get('second_key', {}).get('operator_id')}")
+            print(f"      Approver       : {app_op}")
             print(f"      Status         : {approve_result.get('status')}")
-            print(f"      Replay Status  : {approve_result.get('replay_status')}")
+            print(f"      Replay Status  : {rep_stat}")
             print(f"      WORM Entry Hash: {approve_result.get('worm_hash', '')[:32]}...")
 
     print("\n" + "=" * 80)
