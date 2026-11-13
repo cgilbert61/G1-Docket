@@ -114,13 +114,23 @@ When `DOCKET_ENVIRONMENT=production` (or legacy `DOCKET_DEMO_MODE=false`) is con
 For environments operating standalone, on-premise, or without an external SSO reverse proxy, G1 Docket provides a native, zero-dependency authentication and session security engine (`governance/auth.py`):
 1. **Cryptographic Password Derivation**: Salted `PBKDF2-HMAC-SHA256` hashing with 100,000 iterations and per-user 16-byte random salts.
 2. **Tamper-Resistant Session Engine**: HMAC-SHA256 signed session cookies (`docket_session`) configured with `HttpOnly`, `SameSite=Lax`, and `Secure` attributes with constant-time signature validation.
-3. **Brute-Force & Abuse Mitigation**: Failed login attempts are tracked per IP and username. 5 consecutive failures trigger an automatic 5-minute lockout window.
-4. **Role-Based Privilege Segregation (RBAC)**:
+3. **Sliding Inactivity Expiration**: Alongside the 8-hour maximum session lifetime, sessions enforce a **30-minute sliding idle timeout** (`DEFAULT_INACTIVITY_TIMEOUT_SECONDS = 1800`), terminating abandoned consoles automatically.
+4. **Multi-Factor Authentication (RFC 6238 TOTP 2FA)**: Native TOTP time-step generation and verification compatible with standard authenticator applications (Google Authenticator, 1Password, YubiKey Authenticator) with $\pm 30\text{s}$ clock-skew window tolerance.
+5. **Brute-Force & Abuse Mitigation**: Failed login attempts are tracked per IP and username. 5 consecutive failures trigger an automatic 5-minute lockout window.
+6. **Role-Based Privilege Segregation (RBAC)**:
    - **`auditor`**: Read-only access to WORM audit logs and SIEM telemetry. Actions that alter incident state are blocked with HTTP 403.
    - **`triage_operator`**: Authorized to review and stage Key 1 overrides (`AWAITING_SECOND_KEY`).
    - **`security_approver`**: Authorized to grant Key 2 dual-control cryptographic release.
    - **`admin`**: Full administrative access across forwarders and policies.
-5. **Headless & Client Session Verification**: Supports both form-based login and JSON API authentication via `GET /api/auth/session` and `POST /login`.
+7. **Cryptographic WORM Audit Integration**: Every authentication success, failure, lockout, MFA challenge, and logout is deterministically SHA-256 hashed and appended as an immutable entry in the linear WORM audit ledger.
+8. **Headless & Client Session Verification**: Supports both form-based login and JSON API authentication via `GET /api/auth/session` and `POST /login`.
+
+### 2.8 Cloud KMS & Hardware Security Module (HSM) Signing Interface
+For high-assurance enterprise deployments where private key material cannot leave cryptographic hardware boundaries, G1 Docket provides non-exportable signing abstractions (`registry/signing.py`):
+- **Zero-Egress Private Keys**: Key material remains permanently enclosed inside the hardware security module / managed KMS (AWS KMS, Azure Key Vault, Google Cloud KMS).
+- **Sub-Millisecond Offline Verification**: Public verification material is exported and verified in-process using local ECDSA P-256 / Ed25519 primitives without per-request KMS latency or egress cost.
+- **Sigstore Local Bundle Metadata**: Every DSSE envelope generated with hardware keys encapsulates canonical `kmsUri` references (e.g. `awskms://arn:aws:kms:...`, `azurekms://https://...`) inside the Sigstore bundle verification material.
+- **Fail-Closed Rotation & Revocation**: Rotating or revoking a KMS key in the operator keyring marks previous keys for historical verification only while blocking any subsequent signing attempts.
 
 
 ---
