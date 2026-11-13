@@ -106,6 +106,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_we.add_argument("--caller-key", default="pod-key-analyst", help="Caller key identity to bind to watermark")
     p_we.add_argument("--output", default=None, help="Output file path (defaults to overwrite input)")
 
+    # login
+    p_log = sub.add_parser("login", help="Authenticate with the Governance triage server and persist session")
+    p_log.add_argument("--url", default=os.getenv("DOCKET_GOVERNANCE_URL", "http://localhost:18084"), help="Governance server URL")
+    p_log.add_argument("--username", "-u", default=None, help="Operator username")
+    p_log.add_argument("--password", "-p", default=None, help="Operator password")
+    p_log.add_argument("--totp", default=None, help="6-digit TOTP 2FA code (if enrolled)")
+    p_log.add_argument("--session-file", default=None, help="Path to write session token JSON")
+
+    # whoami
+    p_who = sub.add_parser("whoami", help="Display the currently authenticated operator session and active RBAC role")
+    p_who.add_argument("--url", default=None, help="Governance server URL override")
+    p_who.add_argument("--session-file", default=None, help="Path to session token JSON")
+
+    # logout
+    p_out = sub.add_parser("logout", help="Log out and terminate the local operator session")
+    p_out.add_argument("--url", default=None, help="Governance server URL override")
+    p_out.add_argument("--session-file", default=None, help="Path to session token JSON")
+
     return parser
 
 
@@ -180,6 +198,158 @@ def run_doctor_diagnostics(preval_url: str, gov_url: str, reg_url: str, snap_url
         return 1
 
 
+def _default_session_path() -> Path:
+    env_path = os.getenv("DOCKET_SESSION_FILE")
+    if env_path:
+        return Path(env_path)
+    home = Path.home()
+    docket_dir = home / ".docket"
+    docket_dir.mkdir(parents=True, exist_ok=True)
+    return docket_dir / "session.json"
+
+
+def handle_auth_command(args) -> int:
+    import urllib.request
+    import urllib.error
+    import time
+
+    if args.command == "login":
+        gov_url = args.url.rstrip("/")
+        username = args.username
+        password = args.password
+        totp = args.totp
+
+        if not username:
+            try:
+                username = input("Operator ID / Username: ").strip()
+            except EOFError:
+                username = ""
+        if not password:
+            try:
+                import getpass
+                password = getpass.getpass("Password: ")
+            except (EOFError, ImportError):
+                password = ""
+
+        payload = {
+            "username": username,
+            "password": password,
+            "totp_code": totp or "",
+        }
+
+        req = urllib.request.Request(
+            f"{gov_url}/login",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "G1-Docket-CLI/1.0"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                raw_resp = json.loads(resp.read().decode("utf-8"))
+                set_cookie = resp.headers.get("Set-Cookie", "")
+                token = None
+                if "docket_session=" in set_cookie:
+                    token = set_cookie.split("docket_session=")[1].split(";")[0]
+
+                session_data = {
+                    "server_url": gov_url,
+                    "operator": raw_resp.get("operator", username),
+                    "role": raw_resp.get("role", "triage_operator"),
+                    "display_name": raw_resp.get("display_name", username),
+                    "token": token,
+                    "saved_at": int(time.time()),
+                }
+
+                sess_file = Path(args.session_file) if args.session_file else _default_session_path()
+                sess_file.parent.mkdir(parents=True, exist_ok=True)
+                sess_file.write_text(json.dumps(session_data, indent=2), encoding="utf-8")
+                try:
+                    os.chmod(sess_file, 0o600)
+                except Exception:
+                    pass
+
+                print(f"[OK] Authenticated as '{session_data['operator']}' (Role: {session_data['role']}) on {gov_url}")
+                return 0
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")
+            try:
+                msg = json.loads(err_body).get("error", err_body)
+            except Exception:
+                msg = err_body or str(e)
+            print(f"[ERROR] Authentication failed ({e.code}): {msg}", file=sys.stderr)
+            return 1
+        except Exception as e:
+            print(f"[ERROR] Could not connect to {gov_url}: {e}", file=sys.stderr)
+            return 1
+
+    if args.command == "whoami":
+        sess_file = Path(args.session_file) if args.session_file else _default_session_path()
+        if not sess_file.exists():
+            print("Not authenticated. Run `docket login` to sign in.", file=sys.stderr)
+            return 1
+        try:
+            sess = json.loads(sess_file.read_text(encoding="utf-8"))
+        except Exception:
+            print("Corrupt session file. Run `docket login` again.", file=sys.stderr)
+            return 1
+
+        gov_url = (args.url or sess.get("server_url", "http://localhost:18084")).rstrip("/")
+        token = sess.get("token")
+
+        server_verified = False
+        if token:
+            req = urllib.request.Request(
+                f"{gov_url}/api/auth/session",
+                headers={"Cookie": f"docket_session={token}", "User-Agent": "G1-Docket-CLI/1.0"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=3.0) as resp:
+                    live_sess = json.loads(resp.read().decode("utf-8"))
+                    if live_sess.get("authenticated"):
+                        sess.update(live_sess)
+                        server_verified = True
+            except Exception:
+                pass
+
+        print("==================================================")
+        print("         G1 DOCKET OPERATOR SESSION               ")
+        print("==================================================")
+        print(f" Operator:     {sess.get('operator')}")
+        print(f" Role:         {sess.get('role')}")
+        print(f" Display Name: {sess.get('display_name', '')}")
+        if sess.get("email"):
+            print(f" Email:        {sess.get('email')}")
+        print(f" Server:       {gov_url}")
+        print(f" Status:       {'Active (Server-Verified)' if server_verified else 'Local Cache'}")
+        print("==================================================")
+        return 0
+
+    if args.command == "logout":
+        sess_file = Path(args.session_file) if args.session_file else _default_session_path()
+        if sess_file.exists():
+            try:
+                sess = json.loads(sess_file.read_text(encoding="utf-8"))
+                gov_url = (args.url or sess.get("server_url", "http://localhost:18084")).rstrip("/")
+                token = sess.get("token")
+                if token:
+                    req = urllib.request.Request(
+                        f"{gov_url}/logout",
+                        headers={"Cookie": f"docket_session={token}", "User-Agent": "G1-Docket-CLI/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as _:
+                        pass
+            except Exception:
+                pass
+            try:
+                sess_file.unlink()
+            except Exception:
+                pass
+        print("[OK] Logged out successfully. Local session cleared.")
+        return 0
+
+    return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -191,6 +361,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             reg_url=args.registry_url,
             snap_url=args.snapshot_url,
         )
+
+    if args.command in ("login", "whoami", "logout"):
+        return handle_auth_command(args)
 
     if args.command == "keygen":
         keyring = Keyring(args.key_dir or "./.pod_keys")
