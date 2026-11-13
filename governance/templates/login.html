@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto my-12">
+  <!-- Institutional Login Card -->
+  <div class="bg-white border border-[#E2E8F0] rounded p-8">
+    <div class="border-b border-[#E2E8F0] pb-5 mb-6">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-[#16A34A] inline-block"></span>
+        <span class="text-xs font-mono-tabular text-[#475569] uppercase tracking-wider">Access Control</span>
+      </div>
+      <h2 class="text-xl font-semibold tracking-tight text-[#0F172A]">Operator Sign In</h2>
+      <p class="text-xs text-[#475569] mt-1 leading-relaxed">
+        Authenticate with institutional credentials to access the Governance, Audit, and Triage Subsystem.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="bg-[#FEF2F2] border border-[#FECACA] rounded p-3 mb-6 text-xs text-[#991B1B]">
+      <strong class="font-semibold">Authentication Refused:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login" class="space-y-4">
+      <div>
+        <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-[#0F172A] mb-1">
+          Operator ID / Username
+        </label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          required
+          autofocus
+          autocomplete="username"
+          class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded px-3 py-2 text-sm text-[#0F172A] font-mono-tabular focus:outline-none focus:border-[#1E293B]"
+          placeholder="e.g. operator1, approver1, admin"
+        />
+      </div>
+
+      <div>
+        <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-[#0F172A] mb-1">
+          Password
+        </label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          class="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded px-3 py-2 text-sm text-[#0F172A] font-mono-tabular focus:outline-none focus:border-[#1E293B]"
+          placeholder="••••••••••••••••"
+        />
+      </div>
+
+      <div class="pt-2">
+        <button
+          type="submit"
+          class="w-full btn btn-primary py-2.5 text-xs font-semibold uppercase tracking-wider"
+        >
+          Verify & Sign In
+        </button>
+      </div>
+    </form>
+
+    <!-- Pre-Configured Role Reference -->
+    <div class="mt-8 pt-5 border-t border-[#E2E8F0]">
+      <h3 class="text-xs font-semibold uppercase tracking-wider text-[#475569] mb-3">Institutional Roles</h3>
+      <div class="space-y-2 text-xs font-mono-tabular">
+        <div class="flex items-center justify-between p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+          <span class="font-semibold text-[#0F172A]">admin</span>
+          <span class="badge badge-neutral">Full Governance Admin</span>
+        </div>
+        <div class="flex items-center justify-between p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+          <span class="font-semibold text-[#0F172A]">operator1</span>
+          <span class="badge badge-warning">Triage Specialist (Key 1)</span>
+        </div>
+        <div class="flex items-center justify-between p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+          <span class="font-semibold text-[#0F172A]">approver1</span>
+          <span class="badge badge-success">Security Officer (Key 2)</span>
+        </div>
+        <div class="flex items-center justify-between p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+          <span class="font-semibold text-[#0F172A]">auditor1</span>
+          <span class="badge badge-neutral">Read-Only Auditor</span>
+        </div>
+      </div>
+      <p class="text-[11px] text-[#64748B] mt-3">
+        * Dual-control rules require independent Key 1 and Key 2 identities.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

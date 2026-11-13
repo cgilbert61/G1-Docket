@@ -16,10 +16,11 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from fastapi import Body, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from governance.auth import AuthManager, SESSION_COOKIE_NAME, get_client_ip
 from governance.config import load_governance_config
 from governance.dual_key import DualKeyGovernanceManager, FourEyesViolationError
 from governance.mock_sinks import MockReceiverCluster
@@ -78,7 +79,17 @@ def is_demo_mode() -> bool:
 
 
 def extract_authenticated_operator(request: Request) -> Optional[str]:
-    """Extract authenticated corporate operator email from standard enterprise proxy/IdP headers."""
+    """Extract authenticated corporate operator email from session cookie or standard enterprise proxy/IdP headers."""
+    # 1. Check verified session cookie
+    auth_mgr = getattr(getattr(request, "app", None), "state", None)
+    if auth_mgr and hasattr(auth_mgr, "auth_manager"):
+        cookie = request.cookies.get(SESSION_COOKIE_NAME)
+        if cookie:
+            sess = auth_mgr.auth_manager.verify_session_token(cookie)
+            if sess and sess.get("sub"):
+                return sess["sub"]
+
+    # 2. Check enterprise reverse proxy/IdP headers
     candidate_headers = [
         "x-forwarded-email",
         "x-auth-request-email",
@@ -96,6 +107,38 @@ def extract_authenticated_operator(request: Request) -> Optional[str]:
                 clean = clean.split(":", 1)[1]
             if clean:
                 return clean
+    return None
+
+
+def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]:
+    """Retrieve full authenticated user session data if present."""
+    auth_mgr = getattr(getattr(request, "app", None), "state", None)
+    if auth_mgr and hasattr(auth_mgr, "auth_manager"):
+        cookie = request.cookies.get(SESSION_COOKIE_NAME)
+        if cookie:
+            sess = auth_mgr.auth_manager.verify_session_token(cookie)
+            if sess:
+                return sess
+
+    idp_user = extract_authenticated_operator(request)
+    if idp_user:
+        u_lower = idp_user.lower()
+        role_hdr = (request.headers.get("x-forwarded-roles") or request.headers.get("x-forwarded-groups") or "").lower()
+        if "admin" in role_hdr or "admin" in u_lower:
+            role = "admin"
+        elif any(k in role_hdr or k in u_lower for k in ("approver", "ciso", "security", "officer", "lead", "manager", "chief", "signer")):
+            role = "security_approver"
+        elif "audit" in role_hdr or "audit" in u_lower:
+            role = "auditor"
+        else:
+            role = "security_approver" if request.url.path.endswith("approve-override") else "triage_operator"
+
+        return {
+            "sub": idp_user,
+            "role": role,
+            "display_name": idp_user,
+            "email": idp_user,
+        }
     return None
 
 
@@ -150,6 +193,8 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         siem_forwarder=siem_forwarder,
         inference_gateway_url=cfg["server"]["inference_gateway_url"],
     )
+
+    auth_manager = AuthManager(keys_dir=cfg["storage"]["keys_dir"])
 
     mock_cluster = MockReceiverCluster()
     _host_tpl = Path("/host_workspace/governance/templates")
@@ -227,13 +272,128 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     app.state.quarantine_store = quarantine_store
     app.state.siem_forwarder = siem_forwarder
     app.state.dual_key_manager = dual_key_manager
+    app.state.auth_manager = auth_manager
     app.state.cfg = cfg
 
     # ---------------------------------------------------------
     # HTML Dashboard & Frontend Views
     # ---------------------------------------------------------
+    @app.get("/login", response_class=HTMLResponse)
+    async def login_view(request: Request, error: Optional[str] = None):
+        current_sess = get_current_user_session(request)
+        if current_sess:
+            return RedirectResponse(url="/", status_code=302)
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={
+                "request": request,
+                "error": error,
+                "current_user": None,
+            },
+        )
+
+    @app.post("/login")
+    async def login_submit(request: Request):
+        content_type = request.headers.get("content-type", "")
+        username = ""
+        password = ""
+        if "application/json" in content_type:
+            try:
+                data = await request.json()
+                username = data.get("username", "")
+                password = data.get("password", "")
+            except Exception:
+                pass
+        else:
+            raw_body = (await request.body()).decode("utf-8", errors="ignore")
+            from urllib.parse import parse_qs
+            parsed = parse_qs(raw_body)
+            username = parsed.get("username", [""])[0]
+            password = parsed.get("password", [""])[0]
+
+        client_ip = get_client_ip(request)
+        try:
+            user = auth_manager.authenticate(username, password, client_ip)
+            if not user:
+                if "application/json" in content_type:
+                    return JSONResponse(status_code=401, content={"error": "Invalid operator ID or password."})
+                return templates.TemplateResponse(
+                    request=request,
+                    name="login.html",
+                    context={
+                        "request": request,
+                        "error": "Invalid operator ID or password.",
+                        "current_user": None,
+                    },
+                    status_code=401,
+                )
+            token = auth_manager.create_session_token(user)
+            if "application/json" in content_type:
+                resp = JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "authenticated",
+                        "operator": user.username,
+                        "role": user.role,
+                        "display_name": user.display_name,
+                    },
+                )
+            else:
+                resp = RedirectResponse(url="/", status_code=302)
+
+            is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+            resp.set_cookie(
+                key=SESSION_COOKIE_NAME,
+                value=token,
+                max_age=8 * 3600,
+                httponly=True,
+                samesite="lax",
+                secure=is_secure,
+            )
+            return resp
+        except ValueError as e:
+            if "application/json" in content_type:
+                return JSONResponse(status_code=429, content={"error": str(e)})
+            return templates.TemplateResponse(
+                request=request,
+                name="login.html",
+                context={
+                    "request": request,
+                    "error": str(e),
+                    "current_user": None,
+                },
+                status_code=429,
+            )
+
+    @app.get("/logout")
+    async def logout_view():
+        resp = RedirectResponse(url="/login", status_code=302)
+        resp.delete_cookie(SESSION_COOKIE_NAME)
+        return resp
+
+    @app.get("/api/auth/session")
+    async def session_api(request: Request):
+        sess = get_current_user_session(request)
+        if not sess:
+            return JSONResponse(status_code=401, content={"authenticated": False})
+        return {
+            "authenticated": True,
+            "operator": sess.get("sub"),
+            "role": sess.get("role"),
+            "display_name": sess.get("display_name"),
+            "email": sess.get("email"),
+        }
+
     @app.get("/", response_class=HTMLResponse)
     async def dashboard_view(request: Request):
+        current_sess = get_current_user_session(request)
+        current_user = current_sess["sub"] if current_sess else None
+
+        require_auth = not is_demo_mode() or os.getenv("DOCKET_REQUIRE_AUTH", "").strip().lower() in ("1", "true", "yes")
+        if require_auth and not current_user:
+            return RedirectResponse(url="/login", status_code=302)
+
         q_items = quarantine_store.list_items(limit=25)
         w_events = worm_ledger.get_events(limit=25)
         q_counts = quarantine_store.count_by_status()
@@ -241,13 +401,13 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         worm_count = worm_ledger.count_events()
         siem_dests = siem_forwarder.get_destination_status()
 
-        current_user = extract_authenticated_operator(request)
         return templates.TemplateResponse(
             request=request,
             name="dashboard.html",
             context={
                 "demo_mode": is_demo_mode(),
                 "current_user": current_user,
+                "current_role": current_sess.get("role") if current_sess else None,
                 "quarantine_items": q_items,
                 "worm_events": w_events,
                 "stats": {
@@ -353,6 +513,10 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     @app.post("/api/quarantine/{quarantine_id}/stage-override")
     async def stage_override(quarantine_id: str, req: StageKey1Request, request: Request):
         try:
+            sess = get_current_user_session(request)
+            if sess and sess.get("role") == "auditor":
+                raise HTTPException(status_code=403, detail="Auditor role has read-only privileges and cannot stage overrides.")
+
             auth_operator = extract_authenticated_operator(request)
             effective_requester = (req.requester_id or auth_operator or "").strip()
             if not effective_requester:
@@ -383,6 +547,10 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     @app.post("/api/quarantine/{quarantine_id}/approve-override")
     async def approve_override(quarantine_id: str, req: ApproveKey2Request, request: Request):
         try:
+            sess = get_current_user_session(request)
+            if sess and sess.get("role") in ("auditor", "triage_operator"):
+                raise HTTPException(status_code=403, detail=f"Role '{sess.get('role')}' is not authorized for second-key approval (requires security_approver or admin).")
+
             auth_operator = extract_authenticated_operator(request)
             effective_approver = (req.approver_id or auth_operator or "").strip()
             if not effective_approver:
@@ -416,6 +584,10 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     @app.post("/api/quarantine/{quarantine_id}/reject")
     async def reject_quarantine(quarantine_id: str, req: RejectRequest, request: Request):
         try:
+            sess = get_current_user_session(request)
+            if sess and sess.get("role") == "auditor":
+                raise HTTPException(status_code=403, detail="Auditor role has read-only privileges and cannot reject incidents.")
+
             auth_operator = extract_authenticated_operator(request)
             effective_reviewer = (req.reviewer_id or auth_operator or "").strip()
             if not effective_reviewer:
