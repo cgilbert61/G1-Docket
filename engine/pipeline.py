@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +42,7 @@ class AttestationEngine:
     def attest_file(
         self,
         file_path: str | Path,
-        owner: str = "data-owners@example.org",
+        owner: str | None = None,
         locator_override: str | None = None,
         environment: str = "production",
         force_rescan: bool = False,
@@ -49,6 +50,7 @@ class AttestationEngine:
         org_unit: str | None = None,
     ) -> dict[str, Any]:
         """Extract, classify, and attest a single file or spreadsheet."""
+        resolved_owner = owner or os.getenv("DOCKET_DEFAULT_OWNER", "data-owners@example.org")
         doc = self.extractor.extract_file(file_path)
         locator = locator_override or doc.locator
 
@@ -92,7 +94,7 @@ class AttestationEngine:
             locator=locator,
             content_sha256=doc.content_sha256,
             tier=verdict.tier,
-            owner=owner,
+            owner=resolved_owner,
             confidence=verdict.confidence,
             low_confidence=verdict.low_confidence,
             sensitive_categories=[f.to_dict() for f in verdict.sensitive_categories],
@@ -116,7 +118,7 @@ class AttestationEngine:
     def crawl_file_share(
         self,
         root_dir: str | Path,
-        owner: str = "fileshare-owners@example.org",
+        owner: str | None = None,
         locator_base: str | None = None,
         environment: str = "production",
         max_files: int = 120,
@@ -124,6 +126,7 @@ class AttestationEngine:
         force_rescan: bool = False,
     ) -> list[dict[str, Any]]:
         """Crawl a directory tree or entire drive, extract with Tika, classify with Presidio, and issue/update records."""
+        resolved_owner = owner or os.getenv("DOCKET_DEFAULT_OWNER", "fileshare-owners@example.org")
         root = Path(root_dir).resolve()
         if not root.is_dir():
             raise NotADirectoryError(f"Directory not found: {root}")
@@ -134,7 +137,7 @@ class AttestationEngine:
                 loc_override = f"{locator_base.rstrip('/')}/{rel}" if locator_base else None
                 res = self.attest_file(
                     file_path=path,
-                    owner=owner,
+                    owner=resolved_owner,
                     locator_override=loc_override,
                     environment=environment,
                     force_rescan=force_rescan,
@@ -149,12 +152,13 @@ class AttestationEngine:
     def crawl_database(
         self,
         db_url: str,
-        owner: str = "db-owners@example.org",
+        owner: str | None = None,
         locator_override_base: str | None = None,
         environment: str = "production",
         injected_om_findings: dict[str, list[dict[str, Any]]] | None = None,
     ) -> list[dict[str, Any]]:
         """Crawl a database via OpenMetadata + deterministic schema/row hashing and issue records."""
+        resolved_owner = owner or os.getenv("DOCKET_DEFAULT_OWNER", "db-owners@example.org")
         tables = self.db_scanner.scan_database(
             db_url=db_url,
             locator_override_base=locator_override_base,
@@ -183,7 +187,7 @@ class AttestationEngine:
                 content_sha256=tbl.content_sha256,
                 schema_sha256=tbl.schema_sha256,
                 tier=verdict.tier,
-                owner=tbl.owner_hint or owner,
+                owner=tbl.owner_hint or resolved_owner,
                 confidence=verdict.confidence,
                 low_confidence=verdict.low_confidence,
                 sensitive_categories=[f.to_dict() for f in verdict.sensitive_categories],

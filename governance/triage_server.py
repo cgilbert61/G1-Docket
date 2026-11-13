@@ -204,6 +204,7 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             request=request,
             name="dashboard.html",
             context={
+                "demo_mode": os.getenv("DOCKET_DEMO_MODE", "true").lower() in ("true", "1", "yes"),
                 "quarantine_items": q_items,
                 "worm_events": w_events,
                 "stats": {

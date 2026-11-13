@@ -697,14 +697,18 @@ def build_attestation_statement(
     redact_cats = redaction_categories if redaction_categories is not None else [c["category"] for c in cats]
 
     default_stewards = {
-        "Restricted": "privacy-compliance-steward@contoso.com",
-        "Confidential": "dlp-security-steward@contoso.com",
-        "Internal": "engineering-data-steward@contoso.com",
-        "Public": "open-data-steward@contoso.com",
+        "Restricted": os.getenv("DOCKET_STEWARD_RESTRICTED", "privacy-compliance-steward@contoso.com"),
+        "Confidential": os.getenv("DOCKET_STEWARD_CONFIDENTIAL", "dlp-security-steward@contoso.com"),
+        "Internal": os.getenv("DOCKET_STEWARD_INTERNAL", "engineering-data-steward@contoso.com"),
+        "Public": os.getenv("DOCKET_STEWARD_PUBLIC", "open-data-steward@contoso.com"),
     }
-    effective_steward = steward if steward is not None else default_stewards.get(tier, "data-governance-steward@contoso.com")
+    fallback_steward = os.getenv("DOCKET_DEFAULT_STEWARD", "data-governance-steward@contoso.com")
+    effective_steward = steward if steward is not None else default_stewards.get(tier, fallback_steward)
+    effective_owner = owner if owner is not None else os.getenv("DOCKET_DEFAULT_OWNER", "data-owners@example.org")
     if org_unit is not None:
         effective_org_unit = org_unit
+    elif os.getenv("DOCKET_DEFAULT_ORG_UNIT"):
+        effective_org_unit = os.environ["DOCKET_DEFAULT_ORG_UNIT"]
     elif object_type in ("database_table", "database_view", "warehouse_table"):
         effective_org_unit = "Enterprise Data Platform & Warehouse"
     elif locator.startswith(("s3://", "azblob://", "abfss://", "gs://")):
@@ -722,7 +726,7 @@ def build_attestation_statement(
             "environment": environment,
         },
         "ownership": {
-            "owner": owner,
+            "owner": effective_owner,
             "steward": effective_steward,
             "org_unit": effective_org_unit,
             "jurisdiction": jurisdiction or "GLOBAL",

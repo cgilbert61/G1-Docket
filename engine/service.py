@@ -17,7 +17,7 @@ from typing import Any, AsyncIterator
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from engine.continuous_crawler import ContinuousDeltaCrawler
 from engine.directory_bridge import (
@@ -49,7 +49,7 @@ class UploadedFileItem(BaseModel):
 class AttestDirectoryRequest(BaseModel):
     directory_path: str | None = None
     files: list[UploadedFileItem] | None = None
-    owner: str = "pc-folder-owner@example.org"
+    owner: str = Field(default_factory=lambda: os.getenv("DOCKET_DEFAULT_OWNER", "pc-folder-owner@example.org"))
     max_files: int = 120
     include_code_dirs: bool = False
 
@@ -592,7 +592,7 @@ def create_engine_app() -> FastAPI:
                             "classifier_engine": classif.get("classifier_engine", "presidio"),
                             "sensitive_categories": classif.get("sensitive_categories", []),
                             "owner": rec.get("owner") or own.get("owner") or req.owner,
-                            "steward": own.get("steward") or "data-governance-steward@contoso.com",
+                            "steward": own.get("steward") or os.getenv("DOCKET_DEFAULT_STEWARD", "data-governance-steward@contoso.com"),
                             "org_unit": own.get("org_unit") or "Enterprise Data & AI Governance",
                             "jurisdiction": own.get("jurisdiction") or "GLOBAL",
                             "attested_by": prov.get("attested_by", "pod-engine-v0.1"),
@@ -637,7 +637,7 @@ def create_engine_app() -> FastAPI:
                             "classifier_engine": meta.get("classifier_engine", "presidio"),
                             "sensitive_categories": meta.get("sensitive_categories", []),
                             "owner": meta.get("owner") or req.owner,
-                            "steward": "privacy-compliance-steward@contoso.com",
+                            "steward": os.getenv("DOCKET_STEWARD_RESTRICTED") or os.getenv("DOCKET_DEFAULT_STEWARD", "privacy-compliance-steward@contoso.com"),
                             "org_unit": "Enterprise Data & AI Governance",
                             "jurisdiction": "GLOBAL",
                             "attested_by": "pod-engine-v0.1",

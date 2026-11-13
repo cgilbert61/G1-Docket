@@ -33,9 +33,11 @@
             <h4 class="font-semibold text-[#0F172A] text-xs uppercase tracking-wide">Four-Eyes Dual-Key Signoff Workflow</h4>
             <span class="text-[11px] text-[#475569]">Cryptographic Ed25519 DSSE Attestation Replay</span>
           </div>
+          {% if demo_mode %}
           <button type="button" onclick="fastTrackDualApproval()" id="btn-fast-track" class="btn btn-secondary text-xs px-2.5 py-1 text-[#2563EB] border-[#93C5FD] bg-[#EFF6FF] hover:bg-[#DBEAFE] font-semibold" title="One-click demo bypass: automatically stages Key 1 and releases Key 2">
             ⚡ 1-Click Dual Signoff &amp; Replay (Demo)
           </button>
+          {% endif %}
         </div>
 
         <!-- Step 1: Requester Stage -->
@@ -46,7 +48,9 @@
               <span class="font-semibold text-[#0F172A]">Key 1: Override Request &amp; Business Justification</span>
             </div>
             <div class="flex items-center gap-2">
+              {% if demo_mode %}
               <button type="button" onclick="quickFillDemoK1()" class="text-[11px] text-[#2563EB] hover:underline" id="btn-quick-k1">Autofill Demo Requester</button>
+              {% endif %}
               <span id="key1-badge" class="badge badge-warning">Awaiting Key 1</span>
             </div>
           </div>
@@ -67,7 +71,9 @@
               <span class="font-semibold text-[#0F172A]">Key 2: Distinct Approver Signoff &amp; Emergency Release</span>
             </div>
             <div class="flex items-center gap-2">
+              {% if demo_mode %}
               <button type="button" onclick="quickFillDemoK2()" class="text-[11px] text-[#2563EB] hover:underline hidden" id="btn-quick-k2">Autofill Demo Approver</button>
+              {% endif %}
               <span id="key2-badge" class="badge badge-neutral">Locked</span>
             </div>
           </div>
