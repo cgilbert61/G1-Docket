@@ -9,7 +9,15 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from governance.auth import AuthManager, hash_password, verify_password, SESSION_COOKIE_NAME
+from governance.auth import (
+    AuthManager,
+    SESSION_COOKIE_NAME,
+    compute_totp_code,
+    generate_totp_secret,
+    hash_password,
+    verify_password,
+    verify_totp_code,
+)
 from governance.triage_server import create_governance_app
 
 
@@ -239,4 +247,114 @@ siem_destinations: []
     events_logout = worm_ledger.get_events(event_type="OPERATOR_LOGOUT")
     assert len(events_logout) >= 1
     assert events_logout[-1]["actor_identity"] == "operator:operator1"
+
+
+def test_totp_generation_and_verification():
+    secret = generate_totp_secret()
+    assert len(secret) >= 16
+
+    # Current time valid code
+    code = compute_totp_code(secret)
+    assert len(code) == 6
+    assert code.isdigit()
+    assert verify_totp_code(secret, code) is True
+
+    # Bad codes rejected
+    assert verify_totp_code(secret, "000000" if code != "000000" else "111111") is False
+    assert verify_totp_code(secret, "abc") is False
+    assert verify_totp_code(secret, "") is False
+
+    # Clock drift (+/- 30 seconds) tolerance test
+    import time
+    past_code = compute_totp_code(secret, for_time=int(time.time()) - 30)
+    future_code = compute_totp_code(secret, for_time=int(time.time()) + 30)
+    far_past_code = compute_totp_code(secret, for_time=int(time.time()) - 120)
+
+    assert verify_totp_code(secret, past_code, window=1) is True
+    assert verify_totp_code(secret, future_code, window=1) is True
+    assert verify_totp_code(secret, far_past_code, window=1) is False
+
+
+def test_sliding_inactivity_timeout(tmp_path):
+    mgr = AuthManager(keys_dir=tmp_path)
+    user = mgr.users["operator1"]
+
+    token = mgr.create_session_token(user, ttl_seconds=3600)
+    # Token valid right now
+    assert mgr.verify_session_token(token) is not None
+
+    # Simulate token where last_active was 2000 seconds ago (> 1800s inactivity limit)
+    import json
+    import base64
+    import hmac
+    import hashlib
+    b64_p, _ = token.split(".", 1)
+    payload_pad = b64_p + "=" * (-len(b64_p) % 4)
+    payload = json.loads(base64.urlsafe_b64decode(payload_pad).decode("utf-8"))
+
+    # Set last active to 2000 seconds ago
+    payload["last_active"] = payload["iat"] - 2000
+    raw_json = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    new_b64_p = base64.urlsafe_b64encode(raw_json).decode("ascii").rstrip("=")
+    new_sig = hmac.new(mgr.session_key, new_b64_p.encode("ascii"), hashlib.sha256).digest()
+    new_b64_sig = base64.urlsafe_b64encode(new_sig).decode("ascii").rstrip("=")
+    inactive_token = f"{new_b64_p}.{new_b64_sig}"
+
+    # Inactivity expired -> None
+    assert mgr.verify_session_token(inactive_token) is None
+
+
+def test_mfa_login_challenge_and_worm_audit(tmp_path):
+    p_str = str(tmp_path).replace("\\", "/")
+    cfg_file = tmp_path / "test_config.yaml"
+    cfg_file.write_text(f"""
+server:
+  host: "127.0.0.1"
+  port: 18083
+  inference_gateway_url: "http://127.0.0.1:18082"
+storage:
+  worm_sqlite_path: "{p_str}/worm.db"
+  worm_jsonl_path: "{p_str}/worm.jsonl"
+  quarantine_db_path: "{p_str}/quarantine.db"
+  siem_buffer_db_path: "{p_str}/siem.db"
+  keys_dir: "{p_str}/keys"
+siem_destinations: []
+""", encoding="utf-8")
+
+    app = create_governance_app(config_path=cfg_file)
+    client = TestClient(app)
+    worm_ledger = app.state.worm_ledger
+    auth_mgr = app.state.auth_manager
+
+    # mfa_operator has a configured totp_secret
+    mfa_user = auth_mgr.users["mfa_operator"]
+    assert mfa_user.totp_secret is not None
+
+    # 1. Login with correct password but missing/wrong TOTP code -> 401
+    resp_no_totp = client.post(
+        "/login",
+        json={"username": "mfa_operator", "password": "MfaOperator2026!", "totp_code": "000000"},
+    )
+    assert resp_no_totp.status_code == 401
+    assert "Invalid or missing authenticator code" in resp_no_totp.json()["error"]
+    mfa_failures = worm_ledger.get_events(event_type="OPERATOR_MFA_FAILURE")
+    assert len(mfa_failures) >= 1
+    assert mfa_failures[-1]["actor_identity"] == "operator:mfa_operator"
+
+    # 2. Login with correct password AND correct TOTP code -> 200 / authenticated
+    valid_totp = compute_totp_code(mfa_user.totp_secret)
+    resp_success = client.post(
+        "/login",
+        json={"username": "mfa_operator", "password": "MfaOperator2026!", "totp_code": valid_totp},
+    )
+    assert resp_success.status_code == 200
+    assert resp_success.json()["status"] == "authenticated"
+    assert SESSION_COOKIE_NAME in resp_success.cookies
+
+    # Check WORM ledger has OPERATOR_MFA_SUCCESS
+    mfa_successes = worm_ledger.get_events(event_type="OPERATOR_MFA_SUCCESS")
+    assert len(mfa_successes) >= 1
+    assert mfa_successes[-1]["actor_identity"] == "operator:mfa_operator"
+    assert mfa_successes[-1]["metadata"]["mfa_enforced"] is True
+
 

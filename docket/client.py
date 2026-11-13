@@ -61,7 +61,22 @@ class DocketClient:
         transport: httpx.BaseTransport | None = None,
         app: Any = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        if base_url.startswith("mock://"):
+            self.base_url = "http://mock-local"
+            if app is None and transport is None:
+                try:
+                    from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
+                    from prevalidator.proxy import create_prevalidator_app
+                    from registry.signing import Keyring
+
+                    keyring = Keyring()
+                    store = InMemorySnapshotStore(keyring)
+                    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce")
+                    app = create_prevalidator_app(enforcer=enforcer, upstream_gateway_url="mock://local")
+                except Exception:
+                    pass
+        else:
+            self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
         self.governance_url = governance_url.rstrip("/")
@@ -533,7 +548,22 @@ class AsyncDocketClient:
         transport: httpx.AsyncBaseTransport | None = None,
         app: Any = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        if base_url.startswith("mock://"):
+            self.base_url = "http://mock-local"
+            if app is None and transport is None:
+                try:
+                    from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
+                    from prevalidator.proxy import create_prevalidator_app
+                    from registry.signing import Keyring
+
+                    keyring = Keyring()
+                    store = InMemorySnapshotStore(keyring)
+                    enforcer = PrevalidatorEnforcer(snapshot_store=store, mode="enforce")
+                    app = create_prevalidator_app(enforcer=enforcer, upstream_gateway_url="mock://local")
+                except Exception:
+                    pass
+        else:
+            self.base_url = base_url.rstrip("/")
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
         self.governance_url = governance_url.rstrip("/")

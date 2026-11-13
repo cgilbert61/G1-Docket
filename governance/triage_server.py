@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, Red
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from governance.auth import AuthManager, SESSION_COOKIE_NAME, get_client_ip
+from governance.auth import AuthManager, SESSION_COOKIE_NAME, get_client_ip, verify_password
 from governance.config import load_governance_config
 from governance.dual_key import DualKeyGovernanceManager, FourEyesViolationError
 from governance.mock_sinks import MockReceiverCluster
@@ -300,11 +300,13 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         content_type = request.headers.get("content-type", "")
         username = ""
         password = ""
+        totp_code = ""
         if "application/json" in content_type:
             try:
                 data = await request.json()
                 username = data.get("username", "")
                 password = data.get("password", "")
+                totp_code = data.get("totp_code", "")
             except Exception:
                 pass
         else:
@@ -313,35 +315,43 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
             parsed = parse_qs(raw_body)
             username = parsed.get("username", [""])[0]
             password = parsed.get("password", [""])[0]
+            totp_code = parsed.get("totp_code", [""])[0]
 
         client_ip = get_client_ip(request)
         auth_digest = hashlib.sha256(f"{username}:{client_ip}:{int(time.time())}".encode("utf-8")).hexdigest()
         try:
-            user = auth_manager.authenticate(username, password, client_ip)
+            target_user = auth_manager.users.get(username.strip().lower())
+            is_mfa_candidate = bool(target_user and target_user.totp_secret)
+
+            user = auth_manager.authenticate(username, password, client_ip, totp_code=totp_code)
             if not user:
+                event_type = "OPERATOR_MFA_FAILURE" if (is_mfa_candidate and target_user and verify_password(password, target_user.password_hash)) else "OPERATOR_AUTH_FAILURE"
+                reason_msg = "Invalid or missing authenticator code (2FA)." if event_type == "OPERATOR_MFA_FAILURE" else "Invalid operator ID or password."
                 worm_ledger.append_event(
-                    event_type="OPERATOR_AUTH_FAILURE",
+                    event_type=event_type,
                     actor_identity=f"operator:{username or 'unknown'}",
                     payload_digest=auth_digest,
-                    metadata={"client_ip": client_ip, "reason": "invalid_credentials"},
+                    metadata={"client_ip": client_ip, "reason": reason_msg},
                 )
                 if "application/json" in content_type:
-                    return JSONResponse(status_code=401, content={"error": "Invalid operator ID or password."})
+                    return JSONResponse(status_code=401, content={"error": reason_msg})
                 return templates.TemplateResponse(
                     request=request,
                     name="login.html",
                     context={
                         "request": request,
-                        "error": "Invalid operator ID or password.",
+                        "error": reason_msg,
                         "current_user": None,
                     },
                     status_code=401,
                 )
+
+            success_event = "OPERATOR_MFA_SUCCESS" if user.totp_secret else "OPERATOR_AUTH_SUCCESS"
             worm_ledger.append_event(
-                event_type="OPERATOR_AUTH_SUCCESS",
+                event_type=success_event,
                 actor_identity=f"operator:{user.username}",
                 payload_digest=auth_digest,
-                metadata={"client_ip": client_ip, "role": user.role, "display_name": user.display_name},
+                metadata={"client_ip": client_ip, "role": user.role, "display_name": user.display_name, "mfa_enforced": bool(user.totp_secret)},
             )
             token = auth_manager.create_session_token(user)
             if "application/json" in content_type:
