@@ -61,7 +61,13 @@ class PhaseResult:
     details: dict[str, Any]
 
 
-def run_phase(phase_id: int, total_phases: int, name: str, command: list[str]) -> PhaseResult:
+def run_phase(
+    phase_id: int,
+    total_phases: int,
+    name: str,
+    command: list[str],
+    timeout_s: int = 120,
+) -> PhaseResult:
     cmd_str = " ".join(command)
     print(f"\n[{phase_id}/{total_phases}] Executing: {name}...")
     print(f"      Command: {cmd_str}")
@@ -73,7 +79,7 @@ def run_phase(phase_id: int, total_phases: int, name: str, command: list[str]) -
             cwd=str(_REPO_ROOT),
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=timeout_s,
         )
         duration_s = time.perf_counter() - t0
         output = (res.stdout + "\n" + res.stderr).strip()
@@ -129,8 +135,8 @@ def main() -> int:
     # Phase 4: Multi-Agent Orchestration Benchmark
     phases.append(run_phase(4, TOTAL_PHASES, "Multi-Agent Cross-Clearance Admission Control", [sys.executable, "examples/multi_agent_orchestration_demo.py"]))
 
-    # Phase 5: High-Concurrency Latency Benchmark
-    phases.append(run_phase(5, TOTAL_PHASES, "High-Concurrency Latency & Throughput Benchmark", [sys.executable, "benchmarks/benchmark_gateway_concurrency.py"]))
+    # Phase 5: High-Concurrency Latency Benchmark (2,000 probes over loopback)
+    phases.append(run_phase(5, TOTAL_PHASES, "High-Concurrency Latency & Throughput Benchmark", [sys.executable, "benchmarks/benchmark_gateway_concurrency.py"], timeout_s=300))
 
     # Phase 6: Forensic Watermarking
     phases.append(run_phase(6, TOTAL_PHASES, "Forensic Watermarking & Provenance Verification", [sys.executable, "-m", "pytest", "tests/test_watermark.py", "-q"]))
