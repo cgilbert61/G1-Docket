@@ -88,6 +88,26 @@ For automated SOC 2 Type II, ISO 27001, and HIPAA audit reviews, the governance 
 - **`GET /api/quarantine/export?format=json|csv`**: Exports quarantined security incidents, including violation codes (`UNATTESTED`, `HASH_DRIFT`, `EGRESS_DENIED`), staged key justifications, and approver signatures.
 - **UI Download Buttons**: Dedicated `Export CSV` and `Export JSON` buttons are integrated directly into the WORM Audit and Quarantine tables on the Governance Console (`:18084`).
 
+### 2.5 Dynamic Enterprise Data Steward & Owner Resolution
+To eliminate placeholder identities and route attestation requests to accountable business stewards, G1 Docket dynamically resolves accountable parties via:
+1. **Live Data Catalog Synchronization**: Extracts dataset owners and subject-matter expert stewards in real time from OpenMetadata (`owners`, `experts`), Databricks Unity Catalog, Apache Iceberg, Snowflake, and Google BigQuery.
+2. **Tier-Specific Routing Rules**:
+   - `DOCKET_STEWARD_TIER_RESTRICTED`: Enterprise Security / Legal Data Stewards.
+   - `DOCKET_STEWARD_TIER_CONFIDENTIAL`: Compliance & Risk Stewards.
+   - `DOCKET_STEWARD_TIER_INTERNAL`: Business Domain Stewards.
+   - `DOCKET_STEWARD_TIER_PUBLIC`: Open Data & Communications.
+3. **Departmental & Domain Fallbacks**: `DOCKET_STEWARD_DOMAIN_<NAME>`, `DOCKET_DEFAULT_STEWARD`, and `DOCKET_DEFAULT_OWNER`.
+
+### 2.6 Enterprise SSO / IdP Proxy Authentication & Production Mode
+In enterprise deployments fronted by an API Gateway or Reverse Proxy (e.g., Cloudflare Access, AWS ALB, Azure App Gateway, NGINX / Envoy), the Governance Console automatically extracts authenticated operator identities from verified upstream headers:
+- `X-Forwarded-Email`, `X-Auth-Request-Email`, `CF-Access-Authenticated-User-Email`
+- `X-MS-Client-Principal-Name`, `X-Goog-Authenticated-User-Email`, `X-Forwarded-User`, `Remote-User`
+
+When `DOCKET_DEMO_MODE=false` is configured:
+- Quick-fill demo analyst buttons are hidden in the Four-Eyes Dual-Key triage modal.
+- Form inputs require verified enterprise operator emails matching your organization's domain.
+- The Four-Eyes principle strictly prevents self-approval: requester and approver must possess distinct, verified corporate credentials.
+
 
 ---
 
