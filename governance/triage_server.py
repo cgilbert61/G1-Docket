@@ -58,6 +58,25 @@ async def broadcast_event(event_dict: Dict[str, Any]) -> None:
                 _sse_subscribers.remove(q)
 
 
+def is_demo_mode() -> bool:
+    """
+    Determine if Docket Governance is running in demo mode or production mode.
+    Prioritizes DOCKET_ENVIRONMENT ('demo' | 'production'), with backward
+    compatibility for DOCKET_DEMO_MODE ('true' | 'false').
+    """
+    env_val = os.getenv("DOCKET_ENVIRONMENT", "").strip().lower()
+    if env_val in ("production", "prod"):
+        return False
+    if env_val in ("demo", "dev", "test"):
+        return True
+    legacy = os.getenv("DOCKET_DEMO_MODE", "").strip().lower()
+    if legacy in ("false", "0", "no"):
+        return False
+    if legacy in ("true", "1", "yes"):
+        return True
+    return True
+
+
 def extract_authenticated_operator(request: Request) -> Optional[str]:
     """Extract authenticated corporate operator email from standard enterprise proxy/IdP headers."""
     candidate_headers = [

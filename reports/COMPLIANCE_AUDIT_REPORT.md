@@ -1,6 +1,6 @@
 # G1 Docket — Cryptographic Compliance & Zero-Trust Audit Dossier
 
-**Audit Timestamp:** `2026-11-05 17:54:04 UTC`  
+**Audit Timestamp:** `2026-11-13 17:56:46 UTC`  
 **Framework Version:** `G1 Docket v0.1 (Institutional Security Labs)`  
 **Audit Standard Reference:** `SOC 2 Type II (CC6.1, CC6.6, CC6.7) | ISO/IEC 27001:2022 (A.8.12, A.8.24) | NIST SP 800-207`  
 
@@ -14,21 +14,21 @@
 | **Prevalidator Gateway (:18082)** | `HEALTHY` | [PASS] Online & Healthy |
 | **Governance Subsystem (:18084)** | `HEALTHY` | [PASS] Online & Healthy |
 | **Cryptographic Hash-Chain** | `VALID (SHA-256 Non-Repudiation Verified)` | [PASS] Invariant Verified |
-| **Attested Data Estate Scale** | `624 discrete objects` | [PASS] Authoritative Snapshot Active |
+| **Attested Data Estate Scale** | `1,061 discrete objects` | [PASS] Authoritative Snapshot Active |
 
 ---
 
 ## 2. Attestation Estate & Sensitivity Classification Breakdown
 
-The in-memory snapshot contract actively governs access to **624 verified objects** across enterprise data repositories:
+The in-memory snapshot contract actively governs access to **1,061 verified objects** across enterprise data repositories:
 
 ### Sensitivity Tier Distribution
 | Sensitivity Tier | Object Count | Percentage | Mandatory Minimum Clearance | Maximum Egress Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Public** | `565` | `90.5%` | `pod-key-public` | Public API / Internet Frontier |
-| **Internal** | `8` | `1.3%` | `pod-key-internal` | Private Cloud / VPC Model |
-| **Confidential** | `36` | `5.8%` | `pod-key-confidential` | Private Cloud / Redacted Strip |
-| **Restricted** | `15` | `2.4%` | `pod-key-restricted` | Local Enclave Only |
+| **Public** | `937` | `88.3%` | `pod-key-public` | Public API / Internet Frontier |
+| **Internal** | `16` | `1.5%` | `pod-key-internal` | Private Cloud / VPC Model |
+| **Confidential** | `61` | `5.7%` | `pod-key-confidential` | Private Cloud / Redacted Strip |
+| **Restricted** | `47` | `4.4%` | `pod-key-restricted` | Local Enclave Only |
 | **Other / Custom** | `0` | `0.0%` | N/A | Refused / Quarantined |
 
 ### Enterprise Data Source Distribution
@@ -40,7 +40,7 @@ The in-memory snapshot contract actively governs access to **624 verified object
 | **Snowflake Warehouse** | `3` | Warehouse Connector | Table / View Schema Scanner |
 | **Google BigQuery** | `4` | BigQuery Connector | Table Metadata & Row Sampler |
 | **PostgreSQL Database** | `3` | Live SQL Scanner | Table Introspection |
-| **Local Filesystems** | `593` | Direct OS Bridge | Microsecond Watermark Filter |
+| **Local Filesystems** | `1,030` | Direct OS Bridge | Microsecond Watermark Filter |
 
 ---
 
@@ -51,7 +51,7 @@ All policy refusals, quarantine events, and emergency overrides are appended to 
 * **Audit Verification Algorithm:** Linear SHA-256 hash chaining over serialized DSSE envelopes.
 * **Total Ledger Records:** `0`
 * **Chain Validation Verdict:** **`PASS - Cryptographically Intact`**
-* **Active Tip Hash:** `851a6cc24a591367784fa8c664304394e670260035a1cdd12a8963a40fe80057`
+* **Active Tip Hash:** `3c5b9df233a4eff8648d15ccc7271600de20050c107ad5781a36a7972ee23c7b`
 
 ---
 

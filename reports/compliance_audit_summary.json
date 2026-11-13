@@ -1,17 +1,17 @@
 {
-  "timestamp_utc": "2026-11-05 17:54:04 UTC",
+  "timestamp_utc": "2026-11-13 17:56:46 UTC",
   "mode": "ENFORCE",
   "chain_valid": true,
-  "total_objects": 624,
+  "total_objects": 1061,
   "tier_distribution": {
-    "Public": 565,
-    "Internal": 8,
-    "Confidential": 36,
-    "Restricted": 15,
+    "Public": 937,
+    "Internal": 16,
+    "Confidential": 61,
+    "Restricted": 47,
     "Other": 0
   },
   "provider_distribution": {
-    "Local/Filesystem": 593,
+    "Local/Filesystem": 1030,
     "AWS S3": 8,
     "Azure ADLS": 1,
     "GCP GCS": 2,
@@ -22,5 +22,5 @@
   },
   "worm_records": 0,
   "active_quarantined": 50,
-  "tip_hash": "851a6cc24a591367784fa8c664304394e670260035a1cdd12a8963a40fe80057"
+  "tip_hash": "3c5b9df233a4eff8648d15ccc7271600de20050c107ad5781a36a7972ee23c7b"
 }
