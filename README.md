@@ -23,6 +23,44 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 
 ---
 
+## Visual Demonstration & Console Walkthrough
+
+### 1. Data Attestation & Zero-DB AI Gateway Prevalidator (`:18082`)
+> Point the Attestation Engine at any cloud bucket, database, or local folder to automatically classify files, mint in-toto v1 DSSE envelopes, and enforce zero-DB-call sub-millisecond AI prevalidation.
+
+<p align="center">
+  <img src="docs/assets/G1-Docket-Demo-LIGHT.gif" alt="G1 Docket - Attestation Engine & Prevalidator Gateway" width="100%" />
+</p>
+
+---
+
+### 2. Four-Eyes Dual-Key Quarantine & Triage Queue (`:18084`)
+> Intercepts unattested data, forged DSSE envelopes, and DLP policy denials at the inference boundary. Two distinct authorized operators (Key 1 Requester & Key 2 Approver) must review diffs and co-sign emergency admission tickets.
+
+<p align="center">
+  <img src="docs/assets/G1-Docket-Governance-Triage-Demo.gif" alt="G1 Docket - Quarantine & Triage Queue" width="100%" />
+</p>
+
+---
+
+### 3. Cryptographic WORM Audit Ledger & Chain Integrity Verification (`:18084`)
+> Write-Once Read-Many Merkle chain with SQLite WAL write triggers, SHA-256 hash chaining, and real-time chain walk verification from genesis to tip.
+
+<p align="center">
+  <img src="docs/assets/G1-Docket-WORM-Ledger-Demo.gif" alt="G1 Docket - Cryptographic WORM Audit Ledger" width="100%" />
+</p>
+
+---
+
+### 4. Enterprise SIEM Forwarders Hub (`:18084`)
+> Real-time downstream security telemetry stream across 7 pre-configured SIEM destinations (Splunk HEC, Elasticsearch, Syslog CEF, OpenTelemetry, Datadog, Microsoft Sentinel, and AWS CloudWatch) with persistent SQLite buffering and retry backoff.
+
+<p align="center">
+  <img src="docs/assets/G1-Docket-SIEM-Hub-Demo.gif" alt="G1 Docket - Enterprise SIEM Forwarders Hub" width="100%" />
+</p>
+
+---
+
 ## Repository Layout
 
 - `schemas/` — JSON Schemas (`attestation-predicate.schema.json`, `snapshot-predicate.schema.json`, `dsse-envelope.schema.json`) and `CHANGELOG.md`

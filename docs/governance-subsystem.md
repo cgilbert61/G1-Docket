@@ -62,6 +62,10 @@ The G1 Governance Subsystem provides the downstream compliance, tamper-evident a
   - Genesis block links to: `0000000000000000000000000000000000000000000000000000000000000000` (64 zeroes).
 - **Tamper Detection Utility**: `verify_ledger_integrity(path)` re-computes every cryptographic link from the genesis block to the tip, flagging deleted records, out-of-order sequences, or byte modifications.
 
+<p align="center">
+  <img src="assets/G1-Docket-WORM-Ledger-Demo.gif" alt="Cryptographic WORM Audit Ledger" width="100%" />
+</p>
+
 ### 2.2 Human-in-the-Loop (HITL) Dual-Key Governance (`governance/dual_key.py`)
 - **Quarantine Interception**: Un-papered files, forged DSSE envelopes, or Presidio/Combine PII violations arriving at the inference boundary are quarantined rather than silently discarded.
 - **Four-Eyes Principle**:
@@ -69,6 +73,10 @@ The G1 Governance Subsystem provides the downstream compliance, tamper-evident a
   - **Key 2 (Approver)**: Must be a **distinct, non-identical** authorized identity (`ciso-officer-2`). The system enforces $K_1 \neq K_2$.
 - **Emergency DSSE Ticket Minting**: Approver signs a cryptographic DSSE envelope carrying an emergency classification ticket with short TTL.
 - **Automated Replay**: Upon successful signature verification, the unquarantined clean payload is automatically re-submitted to the inference pipeline (`http://localhost:18082`).
+
+<p align="center">
+  <img src="assets/G1-Docket-Governance-Triage-Demo.gif" alt="Four-Eyes Dual-Key Quarantine Triage" width="100%" />
+</p>
 
 ### 2.3 Multi-Target Enterprise SIEM Integration Engine (`governance/siem_forwarder.py`)
 - **Zero Sensitive Data Leakage**: Document contents, sensitive tokens, or unredacted PII never touch downstream log sinks. The sanitizer extracts solely SHA-256 digests, file locators, classification tiers, Presidio rule IDs, and ticket identifiers.
@@ -81,6 +89,10 @@ The G1 Governance Subsystem provides the downstream compliance, tamper-evident a
   6. **Microsoft Sentinel / Azure Log Analytics**: Formatted for custom table ingestion (`G1SecurityEvents_CL`).
   7. **AWS CloudWatch Logs**: Formatted for direct CloudWatch Logs PutLogEvents ingestion.
 - **Resilience & Local Buffering**: If a downstream SIEM endpoint drops offline, events are buffered in a local SQLite queue (`siem_buffer.db`) and automatically drained upon reconnection.
+
+<p align="center">
+  <img src="assets/G1-Docket-SIEM-Hub-Demo.gif" alt="Enterprise SIEM Forwarders Hub" width="100%" />
+</p>
 
 ### 2.4 Compliance Evidence Exports (`/api/worm/export` & `/api/quarantine/export`)
 For automated SOC 2 Type II, ISO 27001, and HIPAA audit reviews, the governance server provides turnkey JSON and CSV audit evidence exports:
