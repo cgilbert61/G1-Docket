@@ -389,6 +389,13 @@
       </div>
     </div>
     <div class="links" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <span id="operatorPill" class="badge badge-Internal" style="font-size: 11.5px; text-transform: none; padding: 5px 10px; display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #CBD5E1; color: #0F172A;">
+        <span style="opacity: 0.9;">👤</span>
+        <span id="operatorInfo" style="font-weight: 600;">operator1 (triage_operator)</span>
+        <span style="color: #94A3B8; margin: 0 2px;">|</span>
+        <a href="/logout" id="logoutLink" style="color: #B91C1C; text-decoration: none; font-weight: 600;" title="End Operator Session">Sign Out</a>
+      </span>
+      <a href="/login" id="signInLink" class="btn btn-config" style="display: none; margin-left: 0; color: var(--link); font-weight: 600;">Sign In &rarr;</a>
       <span id="activeLlmBadge" class="badge badge-Internal" style="font-size: 11.5px; text-transform: none; padding: 5px 10px;">
         LLM: Built-in Gateway (:4000)
       </span>
@@ -3395,6 +3402,38 @@
       }
     }
 
+    async function loadSessionInfo() {
+      try {
+        const res = await fetch('/api/whoami');
+        const pill = document.getElementById('operatorPill');
+        const info = document.getElementById('operatorInfo');
+        const signin = document.getElementById('signInLink');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.authenticated) {
+            if (pill) pill.style.display = 'inline-flex';
+            if (signin) signin.style.display = 'none';
+            if (info) {
+              const roleDisplay = data.role === 'auditor' ? 'auditor (Read-Only)' : data.role;
+              info.textContent = `${data.operator} (${roleDisplay})`;
+            }
+            if (data.role === 'auditor') {
+              const runAttestBtn = document.querySelector('button[onclick*="runAttestationEngine"]');
+              if (runAttestBtn) {
+                runAttestBtn.title = "Read-Only Auditor: Directory attestation execution is disabled.";
+              }
+            }
+            return;
+          }
+        }
+        if (pill) pill.style.display = 'none';
+        if (signin) signin.style.display = 'inline-flex';
+      } catch (e) {
+        console.debug('Session check error:', e);
+      }
+    }
+
+    loadSessionInfo();
     loadPreset('allow');
     loadLlmConfig();
     loadPcFoldersDropdown();

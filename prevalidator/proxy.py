@@ -17,7 +17,15 @@ from typing import Any, AsyncIterator
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
+from jinja2 import Template
+
+from governance.auth import (
+    AuthManager,
+    SESSION_COOKIE_NAME,
+    get_client_ip,
+    verify_password,
+)
 
 from engine.directory_bridge import (
     compute_bytes_sha256_hex,
@@ -706,6 +714,8 @@ def create_prevalidator_app(
     upstream_gateway_url: str | None = None,
     snapshot_file: str | Path | None = None,
     engine_service_url: str | None = None,
+    auth_manager: AuthManager | None = None,
+    keys_dir: str | Path | None = None,
 ) -> FastAPI:
     """Create the Prevalidator proxy application."""
     app = FastAPI(title="G1 Docket by G1163RT Security Labs - AI Gateway Prevalidator", version="0.1.0")
@@ -724,6 +734,67 @@ def create_prevalidator_app(
         return response
 
     logo_path = Path(__file__).resolve().parent / "g1_logo.png"
+
+    if auth_manager is None:
+        key_dir_path = Path(keys_dir or os.environ.get("POD_KEY_DIR") or os.environ.get("POD_PUBLIC_KEY_DIR", "./.pod_keys"))
+        auth_manager = AuthManager(keys_dir=key_dir_path)
+    app.state.auth_manager = auth_manager
+
+    def is_auth_enforced() -> bool:
+        env = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
+        req_auth = os.environ.get("DOCKET_REQUIRE_AUTH", "").strip().lower() in ("1", "true", "yes")
+        demo_mode = os.environ.get("DOCKET_DEMO_MODE", "").strip().lower()
+        if req_auth or env in ("production", "prod") or demo_mode in ("false", "0", "no"):
+            return True
+        return False
+
+    def get_current_operator_session(request: Request) -> dict[str, Any] | None:
+        """Extract authenticated operator session from cookie, bearer token, or proxy headers."""
+        mgr = getattr(getattr(request, "app", None), "state", None)
+        if mgr and hasattr(mgr, "auth_manager"):
+            auth_hdr = request.headers.get("authorization", "")
+            if auth_hdr.lower().startswith("bearer "):
+                sess = mgr.auth_manager.verify_bearer_token(auth_hdr[7:].strip())
+                if sess and sess.get("sub"):
+                    return sess
+            cookie = request.cookies.get(SESSION_COOKIE_NAME)
+            if cookie:
+                sess = mgr.auth_manager.verify_session_token(cookie)
+                if sess and sess.get("sub"):
+                    return sess
+        # Enterprise reverse-proxy / IdP headers fallback
+        for h in [
+            "x-forwarded-email",
+            "x-auth-request-email",
+            "cf-access-authenticated-user-email",
+            "x-ms-client-principal-name",
+            "x-goog-authenticated-user-email",
+            "x-forwarded-user",
+            "remote-user",
+        ]:
+            val = request.headers.get(h)
+            if val:
+                clean = val.strip()
+                if clean.startswith("accounts.google.com:"):
+                    clean = clean.split(":", 1)[1]
+                if clean:
+                    role_hdr = (request.headers.get("x-forwarded-roles") or request.headers.get("x-forwarded-groups") or "").lower()
+                    u_lower = clean.lower()
+                    if "admin" in role_hdr or "admin" in u_lower:
+                        role = "admin"
+                    elif any(k in role_hdr or k in u_lower for k in ("approver", "ciso", "security", "officer", "lead")):
+                        role = "security_approver"
+                    elif "audit" in role_hdr or "audit" in u_lower:
+                        role = "auditor"
+                    else:
+                        role = "triage_operator"
+                    return {
+                        "sub": clean,
+                        "role": role,
+                        "display_name": clean,
+                        "email": clean,
+                    }
+        return None
 
     if enforcer is None:
         pub_key_dir = Path(os.environ.get("POD_PUBLIC_KEY_DIR") or os.environ.get("POD_KEY_DIR", "./.pod_keys"))
@@ -800,8 +871,135 @@ def create_prevalidator_app(
             "route_egress_map": enforcer.route_egress_map,
         }
 
+    @app.get("/login", response_class=HTMLResponse)
+    async def login_view(request: Request, error: str | None = None, next: str = "/"):
+        current_sess = get_current_operator_session(request)
+        if current_sess:
+            target_url = next if (next and next.startswith("/")) else "/"
+            return RedirectResponse(url=target_url, status_code=302)
+        login_tpl = _load_template("login.html")
+        rendered = Template(login_tpl).render(
+            request=request,
+            error=error,
+            next=next,
+            current_user=None,
+        )
+        return HTMLResponse(
+            content=rendered,
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
+        )
+
+    @app.post("/login")
+    async def login_submit(request: Request):
+        content_type = request.headers.get("content-type", "")
+        username = ""
+        password = ""
+        totp_code = ""
+        next_url = "/"
+        if "application/json" in content_type:
+            try:
+                data = await request.json()
+                username = data.get("username", "")
+                password = data.get("password", "")
+                totp_code = data.get("totp_code", "")
+                next_url = data.get("next", "/")
+            except Exception:
+                pass
+        else:
+            raw_body = (await request.body()).decode("utf-8", errors="ignore")
+            from urllib.parse import parse_qs
+            parsed = parse_qs(raw_body)
+            username = parsed.get("username", [""])[0]
+            password = parsed.get("password", [""])[0]
+            totp_code = parsed.get("totp_code", [""])[0]
+            next_url = parsed.get("next", ["/"])[0]
+
+        if not next_url or not next_url.startswith("/"):
+            next_url = "/"
+
+        client_ip = get_client_ip(request)
+        try:
+            target_user = auth_manager.users.get(username.strip().lower())
+            is_mfa_candidate = bool(target_user and target_user.totp_secret)
+            user = auth_manager.authenticate(username, password, client_ip, totp_code=totp_code)
+            if not user:
+                reason_msg = "Invalid or missing authenticator code (2FA)." if (is_mfa_candidate and target_user and verify_password(password, target_user.password_hash)) else "Invalid operator ID or password."
+                if "application/json" in content_type:
+                    return JSONResponse(status_code=401, content={"error": reason_msg})
+                login_tpl = _load_template("login.html")
+                rendered = Template(login_tpl).render(
+                    request=request,
+                    error=reason_msg,
+                    next=next_url,
+                    current_user=None,
+                )
+                return HTMLResponse(content=rendered, status_code=401)
+
+            token = auth_manager.create_session_token(user)
+            if "application/json" in content_type:
+                resp = JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "authenticated",
+                        "operator": user.username,
+                        "role": user.role,
+                        "display_name": user.display_name,
+                        "redirect_url": next_url,
+                    },
+                )
+            else:
+                resp = RedirectResponse(url=next_url, status_code=302)
+
+            is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+            resp.set_cookie(
+                key=SESSION_COOKIE_NAME,
+                value=token,
+                max_age=8 * 3600,
+                httponly=True,
+                samesite="lax",
+                secure=is_secure,
+            )
+            return resp
+        except ValueError as e:
+            if "application/json" in content_type:
+                return JSONResponse(status_code=429, content={"error": str(e)})
+            login_tpl = _load_template("login.html")
+            rendered = Template(login_tpl).render(
+                request=request,
+                error=str(e),
+                next=next_url,
+                current_user=None,
+            )
+            return HTMLResponse(content=rendered, status_code=429)
+
+    @app.get("/logout")
+    async def logout_view(request: Request):
+        resp = RedirectResponse(url="/login", status_code=302)
+        resp.delete_cookie(SESSION_COOKIE_NAME)
+        return resp
+
+    @app.get("/api/auth/session")
+    @app.get("/api/auth/whoami")
+    @app.get("/api/whoami")
+    async def session_api(request: Request):
+        sess = get_current_operator_session(request)
+        if not sess:
+            return JSONResponse(status_code=401, content={"authenticated": False, "logged_in": False})
+        return {
+            "authenticated": True,
+            "logged_in": True,
+            "operator": sess.get("sub"),
+            "role": sess.get("role"),
+            "display_name": sess.get("display_name"),
+            "email": sess.get("email"),
+        }
+
     @app.get("/", response_class=HTMLResponse)
-    def root_console() -> HTMLResponse:
+    def root_console(request: Request) -> Any:
+        current_sess = get_current_operator_session(request)
+        if is_auth_enforced() and not current_sess:
+            return RedirectResponse(url="/login?next=/", status_code=302)
         return HTMLResponse(
             content=_load_template("dashboard.html"),
             media_type="text/html; charset=utf-8",
@@ -813,7 +1011,10 @@ def create_prevalidator_app(
         )
 
     @app.get("/dlp", response_class=HTMLResponse)
-    def dlp_connector_console() -> HTMLResponse:
+    def dlp_connector_console(request: Request) -> Any:
+        current_sess = get_current_operator_session(request)
+        if is_auth_enforced() and not current_sess:
+            return RedirectResponse(url="/login?next=/dlp", status_code=302)
         return HTMLResponse(
             content=_load_template("dlp_connector.html"),
             media_type="text/html; charset=utf-8",
@@ -983,8 +1184,15 @@ def create_prevalidator_app(
 
     @app.post("/v1/admin/attest-directory")
     async def proxy_attest_directory(request: Request, x_pod_admin_key: str | None = Header(default=None)) -> Any:
+        sess = get_current_operator_session(request)
+        if sess and sess.get("role") == "auditor":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Read-only auditor role is not permitted to trigger live directory attestation or signing operations."
+            )
         if x_pod_admin_key != admin_key:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
+            if not sess or sess.get("role") not in ("admin", "security_approver", "triage_operator"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key or insufficient session privileges")
         body = await request.json()
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
@@ -999,8 +1207,12 @@ def create_prevalidator_app(
 
     @app.post("/v1/admin/add-unattested-file")
     async def proxy_add_unattested(request: Request, x_pod_admin_key: str | None = Header(default=None)) -> Any:
+        sess = get_current_operator_session(request)
+        if sess and sess.get("role") == "auditor":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Read-only auditor role cannot mutate files.")
         if x_pod_admin_key != admin_key:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
+            if not sess or sess.get("role") not in ("admin", "security_approver", "triage_operator"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
         body = await request.json()
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.post(f"{engine_url}/v1/demo-folder/add-unattested", json=body)
@@ -1009,6 +1221,21 @@ def create_prevalidator_app(
     @app.post("/v1/prevalidate-directory")
     async def prevalidate_directory(request: Request) -> dict[str, Any]:
         """Scan every file in a directory (by PC path or browser folder picker upload) against the in-memory signed snapshot."""
+        sess = get_current_operator_session(request)
+        if is_auth_enforced() and not sess:
+            auth_header = request.headers.get("authorization", "")
+            has_api_key = (
+                request.headers.get("x-pod-caller-key")
+                or request.headers.get("x-pod-admin-key") == admin_key
+                or auth_header.startswith("Bearer ")
+            )
+            if not has_api_key:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Operator authentication required to run prevalidation scan.")
+        if sess and sess.get("role") == "auditor":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Read-only auditor role is not permitted to trigger live directory prevalidation scans or file attestations."
+            )
         t_wall_start_ns = time.perf_counter_ns()
         body = await request.json()
         caller_key = body.get("caller_key", "pod-key-confidential")
@@ -1925,8 +2152,12 @@ def create_prevalidator_app(
 
     @app.post("/v1/admin/mode")
     async def set_mode(request: Request, x_pod_admin_key: str | None = Header(default=None)) -> dict[str, str]:
+        sess = get_current_operator_session(request)
+        if sess and sess.get("role") == "auditor":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Read-only auditor role cannot change gateway operating mode.")
         if x_pod_admin_key != admin_key:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key")
+            if not sess or sess.get("role") not in ("admin", "security_approver"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid X-POD-Admin-Key or insufficient session privileges")
         body = await request.json()
         new_mode = body.get("mode")
         if new_mode not in ("enforce", "observe"):

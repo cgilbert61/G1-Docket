@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="icon" type="image/png" href="/assets/g1-logo.png" />
+  <title>G1 Docket &mdash; Operator Authentication</title>
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --muted: #475569;
+      --border: #E2E8F0;
+      --primary: #1E293B;
+      --link: #2563EB;
+      --danger: #DC2626;
+      --danger-bg: #FEF2F2;
+      --danger-border: #FECACA;
+      --success: #16A34A;
+      --success-bg: #F0FDF4;
+      --success-border: #BBF7D0;
+      --warn: #B45309;
+      --warn-bg: #FFFBEB;
+      --warn-border: #FDE68A;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 32px 20px;
+    }
+    .header-bar {
+      max-width: 440px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 4px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+      background: #FFFFFF;
+    }
+    .brand-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .brand-subtitle {
+      font-size: 11.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .card {
+      max-width: 440px;
+      width: 100%;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 28px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .card-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .access-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .access-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .access-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: ui-monospace, monospace;
+    }
+    h2 {
+      margin: 0 0 4px 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      color: var(--text);
+    }
+    .header-desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.5;
+    }
+    .alert-error {
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 18px;
+      font-size: 12px;
+      color: var(--danger);
+      line-height: 1.4;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .label-hint {
+      font-size: 10.5px;
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 9px 12px;
+      font-size: 13.5px;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-variant-numeric: tabular-nums;
+      transition: border-color 0.15s ease;
+    }
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #FFFFFF;
+    }
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: #FFFFFF;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background 0.15s ease;
+    }
+    .btn-submit:hover {
+      background: #0F172A;
+    }
+    .roles-section {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+    .roles-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0 0 10px 0;
+    }
+    .role-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 7px 10px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .role-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .role-badge {
+      font-size: 10.5px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .badge-admin { background: #F1F5F9; color: #1E293B; border: 1px solid #CBD5E1; }
+    .badge-op { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+    .badge-app { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+    .badge-aud { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+    .footer-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-bar">
+    <img src="/assets/g1-logo.png" alt="G1 Logo" class="brand-logo" />
+    <div>
+      <div class="brand-title">G1 Docket</div>
+      <div class="brand-subtitle">AI Gateway Prevalidator &amp; Governance</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="access-tag">
+        <span class="access-dot"></span>
+        <span class="access-text">Unified Access Control</span>
+      </div>
+      <h2>Operator Sign In</h2>
+      <p class="header-desc">
+        Authenticate with institutional credentials to access Prevalidator Gateway and Governance telemetry.
+      </p>
+    </div>
+
+    {% if error %}
+    <div class="alert-error">
+      <strong>Authentication Refused:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <input type="hidden" name="next" value="{{ next or '/' }}" />
+
+      <div class="form-group">
+        <label for="username">Operator ID / Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          required
+          autofocus
+          autocomplete="username"
+          placeholder="e.g. admin, operator1, approver1, auditor1"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          placeholder="••••••••••••••••"
+        />
+      </div>
+
+      <div class="form-group">
+        <div class="label-row">
+          <label for="totp_code" style="margin-bottom: 0;">Authenticator Code (TOTP / 2FA)</label>
+          <span class="label-hint">Optional if unenrolled</span>
+        </div>
+        <input
+          type="text"
+          id="totp_code"
+          name="totp_code"
+          autocomplete="one-time-code"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="6"
+          placeholder="000000"
+          style="letter-spacing: 0.15em;"
+        />
+      </div>
+
+      <button type="submit" class="btn-submit">
+        Verify &amp; Sign In
+      </button>
+    </form>
+
+    <div class="roles-section">
+      <div class="roles-title">Institutional Roles</div>
+      <div class="role-row">
+        <span class="role-name">admin</span>
+        <span class="role-badge badge-admin">Full Admin</span>
+      </div>
+      <div class="role-row">
+        <span class="role-name">operator1</span>
+        <span class="role-badge badge-op">Triage Specialist (Key 1)</span>
+      </div>
+      <div class="role-row">
+        <span class="role-name">approver1</span>
+        <span class="role-badge badge-app">Security Officer (Key 2)</span>
+      </div>
+      <div class="role-row">
+        <span class="role-name">mfa_operator</span>
+        <span class="role-badge badge-app">2FA Officer (RFC 6238)</span>
+      </div>
+      <div class="role-row">
+        <span class="role-name">auditor1</span>
+        <span class="role-badge badge-aud">Read-Only Auditor</span>
+      </div>
+      <div class="footer-note">
+        * Read-only auditors can inspect snapshots and scorecards but cannot trigger mutating attestations.
+      </div>
+    </div>
+  </div>
+</body>
+</html>
