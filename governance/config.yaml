@@ -73,6 +73,15 @@ siem_destinations:
     auth_header: "AWS4-HMAC-SHA256 dev"
     timeout_seconds: 5.0
 
+  - id: "google_cloud_logging"
+    name: "Google Cloud Logging (Cloud Audit Logs)"
+    type: "google_cloud_logging"
+    enabled: true
+    endpoint_url: "http://127.0.0.1:18093/v2/entries:write"
+    log_group_name: "projects/g1-docket/logs/security-events"
+    auth_header: "Bearer gcp-dev-token"
+    timeout_seconds: 5.0
+
 # Enterprise Data Governance & Steward Routing Table
 data_governance:
   company_domain: "yourcompany.com"
