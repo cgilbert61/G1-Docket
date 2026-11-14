@@ -54,11 +54,11 @@ def test_session_token_minting_and_tamper_rejection(tmp_path):
 
     # Tampered payload rejected
     b64_p, b64_s = token.split(".", 1)
-    tampered_p = b64_p[:-2] + "AA"
+    tampered_p = ("A" if b64_p[0] != "A" else "B") + b64_p[1:]
     assert mgr.verify_session_token(f"{tampered_p}.{b64_s}") is None
 
     # Tampered signature rejected
-    tampered_s = b64_s[:-2] + "00"
+    tampered_s = ("0" if b64_s[0] != "0" else "1") + b64_s[1:]
     assert mgr.verify_session_token(f"{b64_p}.{tampered_s}") is None
 
     # Expired token rejected
