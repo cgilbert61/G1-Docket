@@ -530,15 +530,14 @@ storage:
   keys_dir: "{p_str}/keys"
 """, encoding="utf-8")
     app = create_governance_app(config_path=cfg_file)
-    client = TestClient(app)
-
-    # Calling /api/whoami with Bearer token
-    resp = client.get("/api/whoami", headers={"Authorization": f"Bearer {fake_jwt}"})
-    assert resp.status_code == 200
-    who = resp.json()
-    assert who["logged_in"] is True
-    assert who["operator"] == "ciso-officer@enterprise.corp"
-    assert who["role"] == "security_approver"
+    with TestClient(app) as client:
+        # Calling /api/whoami with Bearer token
+        resp = client.get("/api/whoami", headers={"Authorization": f"Bearer {fake_jwt}"})
+        assert resp.status_code == 200
+        who = resp.json()
+        assert who["logged_in"] is True
+        assert who["operator"] == "ciso-officer@enterprise.corp"
+        assert who["role"] == "security_approver"
 
 
 
