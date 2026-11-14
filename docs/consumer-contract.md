@@ -46,6 +46,12 @@ Callers bind LLM context segments to attested objects in two ways:
 2. **Request-Level Header (`X-POD-Locators`)**:
    - Comma-separated canonical locators referenced by the request. Because header-level references lack inline boundaries, both `strip` and `deny` policies result in request refusal.
 
+3. **Multi-Model Gateway Protocol Compatibility**:
+   - The Prevalidator enforcer natively evaluates and rewrites payloads across all three major frontier LLM API formats:
+     - **OpenAI**: `/v1/chat/completions` (`messages[].content`)
+     - **Anthropic**: `/v1/messages` (`messages[].content`, `system`)
+     - **Google Gemini**: `/v1beta/models/{model}:generateContent` & `:streamGenerateContent` (`contents[].parts[].text`, `systemInstruction.parts[].text`)
+
 ---
 
 ## 3. Enforcement Rules & Reason Codes
