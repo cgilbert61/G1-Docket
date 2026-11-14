@@ -114,6 +114,41 @@ enterprise:
     tierInternal: "data-stewards@yourcompany.com"
     tierPublic: "open-data@yourcompany.com"
 
+# Upstream Multi-Model AI Gateway & Provider Routing
+gateway:
+  defaultUpstream: "http://litellm:4000"
+  timeoutSeconds: 30
+  retryCount: 2
+
+# Hardware Security Module (HSM) & Cloud KMS Key Signers
+kms:
+  provider: "local" # "local" | "aws_kms" | "azure_keyvault" | "gcp_kms"
+  awsKeyArn: ""
+  awsRegion: "us-east-1"
+  azureVaultUrl: ""
+  azureKeyName: ""
+  gcpKeyResourceName: ""
+
+# Operator Authentication & RBAC Policy
+auth:
+  cookieSecure: true
+  sessionTtlSeconds: 28800
+  lockoutAttempts: 5
+  lockoutDurationSeconds: 900
+  oidc:
+    enabled: false
+    issuerUrl: ""
+    clientId: ""
+
+# Enterprise SIEM & Immutable Audit Sinks
+siem:
+  googleCloudLogging:
+    enabled: false
+    logName: "g1-docket-worm-audit"
+  splunk:
+    enabled: false
+    hecUrl: ""
+
 # Ingress configuration
 ingress:
   enabled: true

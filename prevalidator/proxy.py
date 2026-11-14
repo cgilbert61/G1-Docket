@@ -1712,7 +1712,11 @@ def create_prevalidator_app(
     async def gemini_generate_content(model_name: str, request: Request) -> Any:
         payload = await request.json()
         headers = dict(request.headers)
-        outcome = enforcer.evaluate_request(payload=payload, headers=headers)
+        clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
+        eval_payload = dict(payload)
+        if "model" not in eval_payload:
+            eval_payload["model"] = clean_model
+        outcome = enforcer.evaluate_request(payload=eval_payload, headers=headers)
 
         user_text = _extract_last_user_text(payload)
         p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))
@@ -1847,7 +1851,11 @@ def create_prevalidator_app(
     async def gemini_stream_generate_content(model_name: str, request: Request) -> Any:
         payload = await request.json()
         headers = dict(request.headers)
-        outcome = enforcer.evaluate_request(payload=payload, headers=headers)
+        clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
+        eval_payload = dict(payload)
+        if "model" not in eval_payload:
+            eval_payload["model"] = clean_model
+        outcome = enforcer.evaluate_request(payload=eval_payload, headers=headers)
 
         user_text = _extract_last_user_text(payload)
         p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))

@@ -283,5 +283,36 @@ Terminates the active session both locally (removing `~/.docket/session.json`) a
 docket logout
 ```
 
+---
+
+## 13. Cryptographic Key Re-Signing (`resign-records`)
+
+When rotating an authoritative signing key or migrating to a dedicated Hardware Security Module (HSM) / Cloud KMS key, the `resign-records` command re-signs active attestation statements without altering record metadata:
+
+```bash
+docket resign-records --keyid "key-2026-q4-hsm"
+# or re-sign only records created under an older key ID:
+docket resign-records --keyid "key-2026-q4-hsm" --only-older-than-key "key-2026-q3-legacy"
+```
+
+Each re-signed record receives a newly countersigned In-Toto v1 DSSE envelope, preserving full provenance history in the WORM audit trail.
+
+---
+
+## 14. Compliance Evidence Packaging (`export-evidence`)
+
+Generates a cryptographically sealed SOC 2 Type II audit evidence bundle containing immutable WORM Merkle chains, verification certificates, and Audit Runway exit criteria telemetry:
+
+```bash
+docket export-evidence --output-dir ./audit_evidence_bundles
+```
+
+The resulting `.zip` bundle includes a top-level `MANIFEST_SHA256.json` and can be verified offline and in air-gapped environments using:
+
+```bash
+python scripts/docket_verify_standalone.py audit_evidence_bundles/G1_DOCKET_SOC2_EVIDENCE_YYYYMMDD_HHMMSS.zip
+```
+
+
 
 

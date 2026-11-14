@@ -22,3 +22,11 @@ data:
   DOCKET_STEWARD_TIER_CONFIDENTIAL: {{ .Values.enterprise.stewards.tierConfidential | default "" | quote }}
   DOCKET_STEWARD_TIER_INTERNAL: {{ .Values.enterprise.stewards.tierInternal | default "" | quote }}
   DOCKET_STEWARD_TIER_PUBLIC: {{ .Values.enterprise.stewards.tierPublic | default "" | quote }}
+  POD_UPSTREAM_URL: {{ .Values.gateway.defaultUpstream | default "http://litellm:4000" | quote }}
+  DOCKET_KMS_PROVIDER: {{ .Values.kms.provider | default "local" | quote }}
+  DOCKET_KMS_AWS_KEY_ARN: {{ .Values.kms.awsKeyArn | default "" | quote }}
+  DOCKET_KMS_AZURE_VAULT_URL: {{ .Values.kms.azureVaultUrl | default "" | quote }}
+  DOCKET_KMS_AZURE_KEY_NAME: {{ .Values.kms.azureKeyName | default "" | quote }}
+  DOCKET_SIEM_GCP_LOG_NAME: {{ .Values.siem.googleCloudLogging.logName | default "g1-docket-worm-audit" | quote }}
+  DOCKET_AUTH_SESSION_TTL: {{ .Values.auth.sessionTtlSeconds | default 28800 | quote }}
+  DOCKET_AUTH_LOCKOUT_ATTEMPTS: {{ .Values.auth.lockoutAttempts | default 5 | quote }}

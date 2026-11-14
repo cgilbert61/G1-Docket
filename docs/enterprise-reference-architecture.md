@@ -405,3 +405,57 @@ The G1 Docket repository includes operational verification tools for enterprise 
 2. **[scripts/docket_verify_standalone.py](file:///d:/attestation/scripts/docket_verify_standalone.py)**: Standalone air-gapped auditor verification CLI. Verifies Merkle chain hash pointers, manifest integrity, and exit criteria without network or database access.
 3. **[scripts/forensic_extractor.py](file:///d:/attestation/scripts/forensic_extractor.py)**: Forensic zero-width watermark & structural provenance token inspector for analyzing leaked documents and transcripts.
 4. **[scripts/export_siem_events.py](file:///d:/attestation/scripts/export_siem_events.py)**: Enterprise SIEM & SOC exporter converting Prevalidator admission decisions and cryptographic WORM ledger records into standard OCSF v1.1.0, ArcSight/Splunk CEF, and Datadog JSON event formats.
+
+---
+
+## 12. Hardware Security Module (HSM) & Cloud KMS Key Signers
+
+In zero-trust and defense-grade environments, private keys never touch filesystem disks or container host memory. G1 Docket integrates directly with managed cryptographic hardware signers via `registry/signing.py`:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ G1 Docket Authoritative Registry Service                         │
+│                                                                  │
+│  ┌───────────────────────┐         ┌───────────────────────────┐ │
+│  │ Local Ed25519 Keyring │ (or)    │ Cloud KMS / HSM Signer    │ │
+│  └───────────────────────┘         └─────────────┬─────────────┘ │
+└──────────────────────────────────────────────────┼───────────────┘
+                                                   │ Signed Envelope
+                     ┌─────────────────────────────┼─────────────────────────────┐
+                     ▼                             ▼                             ▼
+       ┌───────────────────────────┐ ┌───────────────────────────┐ ┌───────────────────────────┐
+       │ AWS KMS Asymmetric CMK    │ │ Azure Key Vault HSM       │ │ GCP Cloud KMS HSM         │
+       │ (KMS:Sign with Ed25519)   │ │ (Sign / Verify via REST)  │ │ (Cloud KMS AsymmetricSign)│
+       └───────────────────────────┘ └───────────────────────────┘ └───────────────────────────┘
+```
+
+### Configuration Parameters:
+- **AWS KMS**: Set `DOCKET_KMS_PROVIDER=aws_kms`, `DOCKET_KMS_AWS_KEY_ARN=arn:aws:kms:...`, and `AWS_DEFAULT_REGION=us-east-1`.
+- **Azure Key Vault HSM**: Set `DOCKET_KMS_PROVIDER=azure_keyvault`, `DOCKET_KMS_AZURE_VAULT_URL=https://...vault.azure.net`, and `DOCKET_KMS_AZURE_KEY_NAME=docket-hsm-signer`.
+- **GCP Cloud KMS**: Set `DOCKET_KMS_PROVIDER=gcp_kms` and `DOCKET_KMS_GCP_KEY_NAME=projects/.../cryptoKeyVersions/1`.
+
+---
+
+## 13. Operator RBAC & Dual-Control (HITL) Authentication
+
+Administrative triage and quarantine approvals require cryptographically audited operator sessions governed by `governance/auth.py`:
+
+1. **Password Verification**: PBKDF2 with SHA-256 and 100,000 hashing iterations.
+2. **Two-Factor Authentication (2FA)**: RFC 6238 Time-Based One-Time Password (TOTP) algorithm supporting Google Authenticator, 1Password, and YubiKey.
+3. **Session Integrity**: Ephemeral HMAC-SHA256 authenticated cookies with strict flags (`HttpOnly`, `SameSite=Strict`, `Secure`).
+4. **Brute-Force Protection**: 5-attempt failed login threshold triggers an exponential 15-minute lockout counter.
+5. **Four-Eyes Non-Collusion Enforcement**: A human-in-the-loop quarantine release or policy downgrade requires two distinct operator principals (`Key 1` + `Key 2`). A single operator cannot approve their own quarantine request.
+
+---
+
+## 14. Multi-Model AI Gateway Protocol Ingress
+
+The G1 Docket Prevalidator acts as an inline admission control proxy across major commercial and open-source model providers:
+
+| Provider / Standard | Ingress Endpoint Path | Admission Prevalidation Strategy | Upstream Routing Target |
+| :--- | :--- | :--- | :--- |
+| **OpenAI / vLLM / LiteLLM** | `/v1/chat/completions` | Extracts RAG prompt context, parses citations/locators, evaluates bitmask & content hashes | `http://litellm-gateway:4000/v1/chat/completions` |
+| **Anthropic Claude** | `/v1/messages` | Validates structured user message arrays and system prompts against quarantine records | `http://litellm-gateway:4000/v1/messages` |
+| **Google Gemini** | `/v1beta/models/{model}:generateContent` | Inspects `contents[].parts[]` text payloads and inline citations prior to token dispatch | `https://generativelanguage.googleapis.com` or local gateway |
+| **Google Gemini Streaming**| `/v1beta/models/{model}:streamGenerateContent` | Real-time SSE pre-admission checks with zero-GPU deterministic blocking | `https://generativelanguage.googleapis.com` or local gateway |
+

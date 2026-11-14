@@ -34,8 +34,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Large scanner raw dumps
+# Large scanner raw dumps & evidence archives
 reports/*.xml
+reports/*.zip
 
 # Local scripts whitelist
 scripts/*

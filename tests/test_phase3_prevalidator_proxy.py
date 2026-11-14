@@ -30,6 +30,7 @@ def test_end_to_end_demo_runner(tmp_path: Path):
     assert summary["phase0"]["verified"] is True
     assert summary["phase3"]["openai_allow_status"] == 200
     assert summary["phase3"]["anthropic_strip_status"] == 200
+    assert summary["phase3"]["gemini_allow_status"] == 200
     assert summary["phase3"]["restricted_refusal_status"] == 403
     assert summary["phase3"]["unattested_refusal_status"] == 403
 

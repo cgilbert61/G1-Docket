@@ -191,6 +191,34 @@ def run_end_to_end_demo(work_dir: Path | None = None) -> dict[str, Any]:
     # Verify uniform denial response across different refusal reasons
     assert resp_refuse_restricted.json() == resp_refuse_unattested.json()
 
+    # Case E: Allowed public document on Google Gemini `/v1beta/models/local-model:generateContent`
+    resp_gemini_allow = client.post(
+        "/v1beta/models/local-model:generateContent",
+        headers={"X-POD-Caller-Key": "pod-key-public"},
+        json={
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "text": (
+                                "Summarize public release document: "
+                                '<pod:object locator="file://estate/fileshare/product_overview_public.md">'
+                                "Open Source AI Architecture Overview"
+                                "</pod:object>"
+                            ),
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    if resp_gemini_allow.status_code != 200:
+        print("GEMINI AUDIT ENTRY:", enforcer.audit_log[-1].to_dict())
+        print("GEMINI ERROR:", resp_gemini_allow.status_code, resp_gemini_allow.text)
+    assert resp_gemini_allow.status_code == 200
+    assert "candidates" in resp_gemini_allow.json()
+
     registry.close()
 
     return {
@@ -208,6 +236,7 @@ def run_end_to_end_demo(work_dir: Path | None = None) -> dict[str, Any]:
         "phase3": {
             "openai_allow_status": resp_allow.status_code,
             "anthropic_strip_status": resp_strip.status_code,
+            "gemini_allow_status": resp_gemini_allow.status_code,
             "restricted_refusal_status": resp_refuse_restricted.status_code,
             "unattested_refusal_status": resp_refuse_unattested.status_code,
             "uniform_denial_body": resp_refuse_restricted.json(),
