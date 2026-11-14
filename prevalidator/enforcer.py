@@ -831,6 +831,20 @@ class PrevalidatorEnforcer:
                     if isinstance(part, dict) and isinstance(part.get("text"), str):
                         part["text"] = process_text(part["text"])
 
+        # Transform Google Gemini `contents` format
+        for content_item in new_payload.get("contents", []):
+            if isinstance(content_item, dict):
+                for part in content_item.get("parts", []):
+                    if isinstance(part, dict) and isinstance(part.get("text"), str):
+                        part["text"] = process_text(part["text"])
+
+        # Transform Google Gemini `systemInstruction` format
+        sys_inst = new_payload.get("systemInstruction")
+        if isinstance(sys_inst, dict):
+            for part in sys_inst.get("parts", []):
+                if isinstance(part, dict) and isinstance(part.get("text"), str):
+                    part["text"] = process_text(part["text"])
+
         # 2. Enforce Untagged Context Quota when <pod:object> tags or X-POD-Require-Attested-Context: true are present
         require_attested_ctx = norm_hdrs.get("x-pod-require-attested-context", "").lower() in ("1", "true", "yes")
         if require_attested_ctx and not has_inline_pod_tags:

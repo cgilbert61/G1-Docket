@@ -88,6 +88,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_snap.add_argument("--output", default="./pod_snapshot.dsse.json", help="Output path for the signed snapshot")
     p_snap.add_argument("--ttl-seconds", type=int, default=300, help="Snapshot TTL in seconds")
 
+    # resign-records
+    p_rs = sub.add_parser("resign-records", help="Re-sign active attestation records using the active keyring signing key")
+    p_rs.add_argument("--keyid", default=None, help="Target signing key ID (defaults to active key)")
+    p_rs.add_argument("--only-older-than-key", default=None, help="Only re-sign records currently signed by this specific key ID")
+
     # doctor
     p_doc = sub.add_parser("doctor", help="Run cluster health diagnostics and audit WORM chain integrity")
     p_doc.add_argument("--prevalidator-url", default="http://localhost:18082", help="Prevalidator gateway URL")
@@ -508,6 +513,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             env = pub.publish_snapshot()
             print(json.dumps({"published": True, "path": str(args.output), "signatures": env["signatures"]}, indent=2))
+            return 0
+
+        if args.command == "resign-records":
+            res = registry.re_sign_active_records(signing_keyid=args.keyid, only_older_than_key=args.only_older_than_key)
+            print(json.dumps({
+                "re_signed_count": len(res),
+                "signing_keyid": args.keyid or registry.keyring.ensure_active_key()["keyid"],
+                "records": [r["locator"] for r in res],
+            }, indent=2))
             return 0
 
         if args.command == "watermark-inspect":

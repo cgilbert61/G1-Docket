@@ -407,3 +407,43 @@ def test_hashicorp_vault_transit_signer_ed25519(tmp_path):
     assert res.verified is True
     assert res.algorithm == "Ed25519"
 
+
+def test_re_sign_active_records_after_key_rotation(tmp_path):
+    db_url = f"sqlite:///{(tmp_path / 'resign.db').as_posix()}"
+    key_dir = tmp_path / "keys"
+    key_dir.mkdir(parents=True, exist_ok=True)
+
+    reg = RegistryService(db_url=db_url, key_dir=key_dir)
+
+    # Issue initial record under key1
+    key1_id = reg.keyring.ensure_active_key()["keyid"]
+    res = reg.issue_or_queue_finding(
+        locator="file:///data/confidential_report.pdf",
+        content_sha256="a" * 64,
+        tier="Confidential",
+        steward="infosec@yourcompany.com",
+        owner="finance@yourcompany.com",
+    )
+    rec = res["record"]
+    sig1 = rec["dsse_envelope"]["signatures"][0]
+    assert sig1["keyid"] == key1_id
+
+    # Rotate to a new key
+    new_meta = reg.keyring.rotate_key(algorithm="ECDSA_P256_SHA256")
+    key2_id = new_meta["keyid"]
+    assert reg.keyring.ensure_active_key()["keyid"] == key2_id
+
+    # Re-sign active records
+    re_signed = reg.re_sign_active_records()
+    assert len(re_signed) == 1
+    sig2 = re_signed[0]["dsse_envelope"]["signatures"][0]
+    assert sig2["keyid"] == key2_id
+
+    # Verify signature verifies with keyring
+    env2 = re_signed[0]["dsse_envelope"]
+    v = verify_dsse_envelope(env2, reg.keyring)
+    assert v.verified is True
+    assert v.keyid == key2_id
+
+    reg.close()
+

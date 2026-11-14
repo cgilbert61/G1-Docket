@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -231,4 +232,53 @@ def test_engine_etl_webhook(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     assert data["status"] == "success"
     assert data["assets_registered"] == 2
     assert "timestamp" in data
+
+
+def test_re_sign_active_records_after_key_rotation(tmp_path):
+    """Verify active records can be re-signed under a new operator key without altering classification or fingerprints."""
+    import json
+    from registry.store import RegistryService
+
+    db_path = tmp_path / "registry.db"
+    key_dir = tmp_path / "keys"
+    svc = RegistryService(db_url=f"sqlite:///{db_path}", key_dir=key_dir)
+
+    # Issue an initial record
+    res = svc.issue_or_queue_finding(
+        locator="s3://corp-lake/financial_audit.parquet",
+        content_sha256="11" * 32,
+        tier="Confidential",
+        sensitive_categories=[],
+        confidence=0.95,
+        owner="audit@company.org",
+        object_type="file",
+    )
+    rec1 = res["record"]
+    env1 = rec1["dsse_envelope"]
+    initial_keyid = env1["signatures"][0]["keyid"]
+
+    # Rotate the signing key in the Keyring
+    new_key = svc.keyring.generate_key(algorithm="Ed25519", operator_id="key-rotation-op", activate=True)
+    new_keyid = new_key["keyid"]
+    assert new_keyid != initial_keyid
+
+    # Re-sign active records under the new active key
+    re_signed = svc.re_sign_active_records()
+    assert len(re_signed) == 1
+    rec_updated = re_signed[0]
+    env_updated = rec_updated["dsse_envelope"]
+    assert env_updated["signatures"][0]["keyid"] == new_keyid
+
+    # The statement content, hashes, and validity remain unchanged
+    stmt_updated = rec_updated["statement"]
+    assert stmt_updated["subject"][0]["digest"]["sha256"] == "11" * 32
+    assert rec_updated["tier"] == rec1["tier"]
+
+    # Validates cleanly under new key
+    verified = svc.verify_record(rec_updated["dsse_envelope"])
+    assert verified["verified"] is True
+    assert verified["keyid"] == new_keyid
+
+    svc.close()
+
 

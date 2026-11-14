@@ -127,6 +127,16 @@ def _extract_last_user_text(payload: dict[str, Any]) -> str:
             return content
         if isinstance(content, list):
             return " ".join(p.get("text", "") for p in content if isinstance(p, dict))
+    contents = payload.get("contents", [])
+    for c in reversed(contents):
+        if isinstance(c, dict):
+            parts = c.get("parts", [])
+            txts = [p.get("text", "") for p in parts if isinstance(p, dict) and "text" in p]
+            if txts:
+                return " ".join(txts)
+    prompt = payload.get("prompt")
+    if isinstance(prompt, str):
+        return prompt
     return ""
 
 
@@ -166,6 +176,36 @@ async def _mock_anthropic_sse_stream(model: str, text: str) -> AsyncIterator[byt
     yield f"event: content_block_delta\ndata: {json.dumps(delta_evt)}\n\n".encode("utf-8")
     stop_evt = {"type": "message_stop"}
     yield f"event: message_stop\ndata: {json.dumps(stop_evt)}\n\n".encode("utf-8")
+
+
+async def _mock_gemini_sse_stream(model: str, text: str) -> AsyncIterator[bytes]:
+    words = [f"[Google Gemini Gateway Ack ({model})]:", *text.split()[:25]]
+    for word in words:
+        data = {
+            "candidates": [
+                {
+                    "content": {
+                        "parts": [{"text": word + " "}],
+                        "role": "model",
+                    },
+                    "finishReason": None,
+                    "index": 0,
+                }
+            ],
+            "modelVersion": model,
+        }
+        yield f"data: {json.dumps(data)}\n\n".encode("utf-8")
+    done_data = {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": ""}], "role": "model"},
+                "finishReason": "STOP",
+                "index": 0,
+            }
+        ],
+        "modelVersion": model,
+    }
+    yield f"data: {json.dumps(done_data)}\n\n".encode("utf-8")
 
 
 # Load modular HTML templates from prevalidator/templates/
@@ -1663,6 +1703,201 @@ def create_prevalidator_app(
                 "stop_reason": "end_turn",
             }
             return JSONResponse(status_code=200, content=mock_anthropic_body, headers=response_headers)
+
+    # ---------------------------------------------------------
+    # Google Gemini Native Gateway Prevalidator
+    # ---------------------------------------------------------
+    @app.post("/v1beta/models/{model_name:path}:generateContent")
+    @app.post("/v1/models/{model_name:path}:generateContent")
+    async def gemini_generate_content(model_name: str, request: Request) -> Any:
+        payload = await request.json()
+        headers = dict(request.headers)
+        outcome = enforcer.evaluate_request(payload=payload, headers=headers)
+
+        user_text = _extract_last_user_text(payload)
+        p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))
+        loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:gemini"
+        cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
+        reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+
+        if not outcome.allowed_to_forward:
+            emit_governance_event_background(
+                event_type="DOCKET_DENIAL",
+                reason_code=reasons[0] if reasons else "POLICY_DENIED",
+                payload_digest=p_digest,
+                raw_payload=payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+            denial_headers = {
+                "X-Blocked-By": "G1-Docket-Prevalidator",
+                "X-POD-Attestation-Verdict": "BLOCKED",
+                "X-POD-Reason-Codes": ",".join(reasons) if reasons else "policy_denied",
+            }
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
+
+        if outcome.audit_entry and (
+            outcome.audit_entry.decision in ("strip", "mask")
+            or outcome.audit_entry.stripped_locators
+            or getattr(outcome.audit_entry, "masked_locators", [])
+        ):
+            is_masked = bool(getattr(outcome.audit_entry, "masked_locators", []))
+            emit_governance_event_background(
+                event_type="COMBINE_PII_REDACTED",
+                reason_code="CONFIDENTIAL_BLOCK_MASKED" if is_masked else "CONFIDENTIAL_BLOCK_STRIPPED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+        else:
+            emit_governance_event_background(
+                event_type="DOCKET_ADMISSION",
+                reason_code="POLICY_ALLOWED",
+                payload_digest=p_digest,
+                raw_payload=outcome.transformed_payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+
+        clean_payload = outcome.transformed_payload
+        clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
+        model = clean_model or clean_payload.get("model", llm_config.get("default_model", "gemini-1.5-pro"))
+        active_base_url = llm_config["base_url"]
+
+        verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
+        lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
+        active_snap = enforcer.snapshot_store.get_active_snapshot()
+        seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
+        locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
+        ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
+
+        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
+        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        response_headers = {
+            "X-POD-Attestation-Verdict": verdict,
+            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
+            "X-POD-Snapshot-Sequence": str(seq_num),
+            "X-POD-Attestation-Signature": verdict_sig,
+        }
+
+        if active_base_url.startswith("mock://"):
+            user_text = _extract_last_user_text(clean_payload)
+            mock_gemini_body = {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [{"text": f"[Google Gemini Gateway Ack ({model})]: {user_text}"}],
+                            "role": "model",
+                        },
+                        "finishReason": "STOP",
+                        "index": 0,
+                    }
+                ],
+                "modelVersion": model,
+            }
+            return JSONResponse(status_code=200, content=mock_gemini_body, headers=response_headers)
+
+        forward_headers = {
+            k: v
+            for k, v in request.headers.items()
+            if k.lower() not in ("host", "content-length", "x-pod-locators", "x-pod-caller-key", "x-pod-caller-token")
+        }
+        if llm_config.get("api_key"):
+            lower_keys = {k.lower() for k in forward_headers}
+            if "x-goog-api-key" not in lower_keys:
+                forward_headers["x-goog-api-key"] = llm_config["api_key"]
+
+        target_endpoint = f"{active_base_url.rstrip('/')}/v1beta/models/{model}:generateContent"
+        client = get_shared_upstream_client()
+        try:
+            resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
+            merged_resp_headers = dict(resp.headers)
+            merged_resp_headers.update(response_headers)
+            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            user_text = _extract_last_user_text(clean_payload)
+            mock_gemini_body = {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [{"text": f"[Google Gemini Fallback Gateway Ack ({model})]: {user_text}"}],
+                            "role": "model",
+                        },
+                        "finishReason": "STOP",
+                        "index": 0,
+                    }
+                ],
+                "modelVersion": model,
+            }
+            return JSONResponse(status_code=200, content=mock_gemini_body, headers=response_headers)
+
+    @app.post("/v1beta/models/{model_name:path}:streamGenerateContent")
+    @app.post("/v1/models/{model_name:path}:streamGenerateContent")
+    async def gemini_stream_generate_content(model_name: str, request: Request) -> Any:
+        payload = await request.json()
+        headers = dict(request.headers)
+        outcome = enforcer.evaluate_request(payload=payload, headers=headers)
+
+        user_text = _extract_last_user_text(payload)
+        p_digest = compute_bytes_sha256_hex(user_text.encode("utf-8")) if user_text else compute_bytes_sha256_hex(json.dumps(payload, sort_keys=True).encode("utf-8"))
+        loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:gemini"
+        cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
+        reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+
+        if not outcome.allowed_to_forward:
+            emit_governance_event_background(
+                event_type="DOCKET_DENIAL",
+                reason_code=reasons[0] if reasons else "POLICY_DENIED",
+                payload_digest=p_digest,
+                raw_payload=payload,
+                locator_uri=loc_uri,
+                claimed_tier=cl_tier,
+                triggered_rules=reasons,
+                extracted_text=user_text,
+                caller_clearance=cl_tier,
+            )
+            denial_headers = {
+                "X-Blocked-By": "G1-Docket-Prevalidator",
+                "X-POD-Attestation-Verdict": "BLOCKED",
+                "X-POD-Reason-Codes": ",".join(reasons) if reasons else "policy_denied",
+            }
+            return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content=outcome.client_denial_body, headers=denial_headers)
+
+        clean_payload = outcome.transformed_payload
+        clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
+        model = clean_model or clean_payload.get("model", llm_config.get("default_model", "gemini-1.5-pro"))
+        active_base_url = llm_config["base_url"]
+
+        verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
+        lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
+        active_snap = enforcer.snapshot_store.get_active_snapshot()
+        seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
+        locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
+        ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
+
+        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
+        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        response_headers = {
+            "X-POD-Attestation-Verdict": verdict,
+            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
+            "X-POD-Snapshot-Sequence": str(seq_num),
+            "X-POD-Attestation-Signature": verdict_sig,
+        }
+
+        user_text = _extract_last_user_text(clean_payload)
+        return StreamingResponse(_mock_gemini_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
 
     @app.get("/v1/admin/audit-log")
     def get_audit_log(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:

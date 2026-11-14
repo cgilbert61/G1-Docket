@@ -617,6 +617,43 @@ class RegistryService:
             session.commit()
             return self._row_to_dict(new_row)
 
+    def re_sign_active_records(
+        self,
+        signing_keyid: str | None = None,
+        only_older_than_key: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Re-sign active records using the current or specified signing key (e.g., following key rotation).
+
+        Preserves existing classifications, content fingerprints, and expiration schedules,
+        updating only the cryptographic DSSE signature envelope and signature_key_id.
+        """
+        re_signed: list[dict[str, Any]] = []
+        with self.SessionLocal() as session:
+            rows = (
+                session.execute(
+                    select(AttestationRecordModel).where(
+                        AttestationRecordModel.is_current.is_(True),
+                        AttestationRecordModel.status.in_(["issued", "renewed"]),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for r in rows:
+                env = json.loads(r.dsse_envelope_json)
+                current_sig_keyid = env.get("signatures", [{}])[0].get("keyid")
+                if only_older_than_key and current_sig_keyid != only_older_than_key:
+                    continue
+
+                stmt = json.loads(r.statement_json)
+                new_envelope = sign_statement(stmt, self.keyring, keyid=signing_keyid)
+                r.dsse_envelope_json = json.dumps(new_envelope, sort_keys=True)
+                re_signed.append(self._row_to_dict(r))
+
+            if re_signed:
+                session.commit()
+        return re_signed
+
     def raise_tier(
         self,
         locator: str,
