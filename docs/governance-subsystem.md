@@ -108,6 +108,8 @@ When `DOCKET_ENVIRONMENT=production` (or legacy `DOCKET_DEMO_MODE=false`) is con
 - Form inputs require verified enterprise operator emails matching your organization's domain.
 - Mock identities (`demo-*`) are blocked with HTTP 403.
 - The Four-Eyes principle strictly prevents self-approval: requester and approver must possess distinct, verified corporate credentials ($K_1 \neq K_2$).
+
+For full documentation on institutional credentials, password overrides, role matrices, and SSO/OIDC integration, see **[Authentication & Access Control (RBAC) Guide](authentication-and-access-control.md)**.
 - The cluster health indicator displays an institutional production badge.
 
 ### 2.7 Built-in Operator Authentication, Session Security & RBAC

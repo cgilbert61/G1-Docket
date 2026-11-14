@@ -35,7 +35,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`), CLI aliases (`docket` / `pod doctor`), cryptographic prompt watermarking & forensic steganography (`docket.watermark`), prompt-audit callback handlers (`DocketLangChainCallbackHandler`), ingestion components (`DocketTransformComponent`), turnkey vector database adapters (`DocketVectorIndexer` & `DocketVectorRetriever` for Pinecone, Qdrant, Chroma, Milvus, Weaviate, PGVector, OpenSearch), and RAG framework adapters (`wrap_rag_documents`, `DocketDocumentTransformer`, `DocketLlamaIndexPostprocessor`, `@attested_tool`, `DocketCrewAITool`, `@docket_langgraph_node`, `DocketAutoGenHook`, and dynamic ABAC policy hooks)
 - `examples/` — Interactive Quickstart Notebook (`quickstart_interactive.ipynb`), Phase 0 worked example, Golden Synthetic Sample Estate generator, LiteLLM gateway config, reproducible end-to-end demo (`run_demo.py`), Docker stack verification (`verify_docker_stack.py`), live Enterprise Governance & Dual-Key simulation (`simulate_enterprise_governance.py`), RAG agent retrieval pipeline walkthrough (`rag_agent_walkthrough.py`), Vector Database & Semantic Chunk Zero-Trust Admission Demo (`vector_rag_agent_demo.py`), Multi-Agent Orchestration Benchmark (`multi_agent_orchestration_demo.py`), CrewAI Multi-Agent Team demo (`crewai_agent_demo.py`), LangGraph State Workflow demo (`langgraph_agent_demo.py`), Microsoft AutoGen Multi-Agent demo (`autogen_agent_demo.py`), Snowflake Zero-Trust Admission demo (`snowflake_rag_agent_demo.py`), Databricks Unity Catalog AI Agent walkthrough (`databricks_agent_demo.py`), Apache Iceberg Lakehouse walkthrough (`iceberg_agent_demo.py`), Google BigQuery walkthrough (`bigquery_agent_demo.py`), Dynamic In-Flight Field Masking walkthrough (`dynamic_masking_agent_demo.py`), and Federated Multi-Cloud Warehouse Agent walkthrough (`multicloud_warehouse_agent.py`)
 - `benchmarks/` — High-Concurrency Latency & Throughput Benchmark (`benchmark_gateway_concurrency.py`) measuring sub-millisecond p50/p99 admission latencies under multi-threaded concurrency, and Cryptographic Merkle Chunk Trees & Octopus Benchmark (`benchmark_chunk_trees.py`) evaluating tree construction throughput, sub-50 µs verification, and multi-chunk retrieval compression
-- `docs/` — [Core Architectural Principles](docs/core-architecture.md), [Data Sizing & Throughput Benchmarks](docs/benchmarks-sizing.md), [How Long Should the Audit Run?](docs/audit-period-determination.md), [Doesn't Microsoft Purview Do the Same Thing?](docs/purview-comparison.md), [Fortune 500 Enterprise Reference Architecture](docs/enterprise-reference-architecture.md), [Hyperscale Architecture (100M+ Objects)](docs/hyperscale-architecture.md), [RFC-009: Merkle Chunk Trees (MCT)](docs/rfc-009-merkle-chunk-trees.md), [Observability & Telemetry Guide](docs/observability.md), [Governance Subsystem](docs/governance-subsystem.md), [Operator CLI Reference](docs/cli.md), [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
+- `docs/` — [Core Architectural Principles](docs/core-architecture.md), [Authentication & Access Control (RBAC)](docs/authentication-and-access-control.md), [Data Sizing & Throughput Benchmarks](docs/benchmarks-sizing.md), [How Long Should the Audit Run?](docs/audit-period-determination.md), [Doesn't Microsoft Purview Do the Same Thing?](docs/purview-comparison.md), [Fortune 500 Enterprise Reference Architecture](docs/enterprise-reference-architecture.md), [Hyperscale Architecture (100M+ Objects)](docs/hyperscale-architecture.md), [RFC-009: Merkle Chunk Trees (MCT)](docs/rfc-009-merkle-chunk-trees.md), [Observability & Telemetry Guide](docs/observability.md), [Governance Subsystem](docs/governance-subsystem.md), [Operator CLI Reference](docs/cli.md), [Python SDK Guide](docs/sdk.md), [Record Format Spec](docs/record-format.md), [Consumer Contract Spec](docs/consumer-contract.md), and [Security Review](docs/security-review.md)
   - `docs/whitepapers/` — Downloadable PDF Whitepapers: [Core Architecture](docs/whitepapers/G1-Docket-Core-Architecture.pdf), [Data Sizing Benchmarks](docs/whitepapers/G1-Docket-Benchmarks.pdf), [Audit Period Determination](docs/whitepapers/G1-Docket-Audit-Period.pdf), and [Docket vs. Purview](docs/whitepapers/G1-Docket-vs-Purview.pdf)
 - `deploy/` — [Production Helm Chart](deploy/helm/g1-docket/README.md) and [Kubernetes Manifests & Edge Sidecar Patterns](deploy/k8s/README.md) for production deployment across AWS EKS, Google GKE, Azure AKS, and on-premise clusters with built-in Horizontal Pod Autoscaling (HPA) and Prometheus `/metrics` scraping
 - `k8s/` — Production-grade Kubernetes manifests (Namespace, Deployment, HPA, ConfigMap, Secrets, and Zero-Trust NetworkPolicy)
@@ -235,6 +235,30 @@ G1 Docket deploys a modular, microservice-based attestation, prevalidation, and 
 | **`18083`** | **Attestation Engine Service** | `http://localhost:18083/docs` | Enterprise crawler, Purview/Presidio classifier, and cloud/warehouse connector API. |
 | **`18084`** | **HITL Governance & SIEM Hub** | `http://localhost:18084/` & `/docs` | Cryptographic WORM audit ledger, dual-key quarantine triage GUI, and multi-target SIEM dispatcher. |
 | **`14000`** | LiteLLM Mock Gateway | `http://localhost:14000/healthz` | Upstream OpenAI/Anthropic model router and mock gateway for testing. |
+
+---
+
+## Operator Authentication & Default Credentials
+
+G1 Docket features a **Unified Session Authentication Engine** with bidirectional Single Sign-On (SSO) across the Prevalidator Gateway (`:18082`) and the Governance Console (`:18084`). Authenticating on either port automatically unlocks both consoles.
+
+Unauthenticated browser traffic is strictly redirected to `/login` when `DOCKET_REQUIRE_AUTH=true` (or in production). Inference and AI agent SDK requests (`/v1/chat/completions`, `/healthz`, `/metrics`) are machine-to-machine exempt and continue authenticating via standard API keys.
+
+### Built-in Institutional Accounts
+
+| Operator ID | Default Password | Role | Description & Scope |
+| :--- | :--- | :--- | :--- |
+| **`admin`** | `DocketAdmin2026!Secure` | `admin` | Full system administrator. Configures mode, DLP, LLM providers, and estate crawlers. |
+| **`operator1`** | `TriageOperator2026!` | `triage_operator` | Triage specialist (Key 1). Runs directory/file attestations and submits quarantine exemption requests. |
+| **`approver1`** | `SecurityLead2026!` | `security_approver` | Security officer (Key 2). Approves high-risk tier changes and co-signs emergency admission tickets. |
+| **`auditor1`** | `AuditInspector2026!` | `auditor` | Read-only compliance auditor. Inspects scorecards, snapshots, and WORM ledgers. Mutating actions blocked (`403`). |
+| **`mfa_operator`** | `MfaOperator2026!` | `security_approver` | 2FA Enforced Officer (Key 2). Requires RFC 6238 6-digit TOTP (seed: `JBSWY3DPEHPK3PXP`). |
+
+### Making the System Your Own
+- **Change Passwords**: Override any password by setting `DOCKET_ADMIN_PASSWORD`, `DOCKET_OPERATOR_PASSWORD`, `DOCKET_APPROVER_PASSWORD`, etc. in your `.env` file.
+- **Custom Corporate Accounts**: Supply your company's directory accounts via the `DOCKET_AUTH_USERS_JSON` environment variable.
+- **Enterprise SSO / OIDC**: Connect Microsoft Entra ID (Azure AD), Okta, Google Workspace, or Ping Identity via reverse-proxy headers (`X-Forwarded-Email`, `X-Forwarded-Roles`) or OIDC Bearer tokens (`DOCKET_OIDC_ISSUER`, `DOCKET_OIDC_AUDIENCE`).
+- **Full Guide**: See **[docs/authentication-and-access-control.md](docs/authentication-and-access-control.md)** for complete step-by-step instructions.
 
 ---
 
