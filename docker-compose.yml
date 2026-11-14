@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     profiles: ["core", "demo", "catalog"]
     environment:
-      POSTGRES_USER: pod
-      POSTGRES_PASSWORD: pod_password
-      POSTGRES_DB: pod_registry
+      POSTGRES_USER: ${POD_POSTGRES_USER:-pod}
+      POSTGRES_PASSWORD: ${POD_POSTGRES_PASSWORD:-pod_password}
+      POSTGRES_DB: ${POD_POSTGRES_DB:-pod_registry}
     ports:
       - "${POD_POSTGRES_PORT:-15432}:5432"
     volumes:
@@ -40,11 +40,11 @@ services:
       DB_DRIVER_CLASS: org.postgresql.Driver
       DB_SCHEME: postgresql
       DB_USE_SSL: "false"
-      DB_USER: pod
-      DB_USER_PASSWORD: pod_password
+      DB_USER: ${POD_POSTGRES_USER:-pod}
+      DB_USER_PASSWORD: ${POD_POSTGRES_PASSWORD:-pod_password}
       DB_HOST: postgres
       DB_PORT: 5432
-      OM_DATABASE: pod_registry
+      OM_DATABASE: ${POD_POSTGRES_DB:-pod_registry}
       ELASTICSEARCH_HOST: opensearch
       ELASTICSEARCH_PORT: 9200
     ports:
@@ -65,7 +65,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      POD_REGISTRY_DB_URL: postgresql+psycopg2://pod:pod_password@postgres:5432/pod_registry
+      POD_REGISTRY_DB_URL: postgresql+psycopg2://${POD_POSTGRES_USER:-pod}:${POD_POSTGRES_PASSWORD:-pod_password}@postgres:5432/${POD_POSTGRES_DB:-pod_registry}
       POD_PRIVATE_KEY_DIR: /var/lib/pod/private_keys
       POD_PUBLIC_KEY_DIR: /var/lib/pod/public_keys
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
@@ -85,7 +85,7 @@ services:
     depends_on:
       - registry
     environment:
-      POD_REGISTRY_DB_URL: postgresql+psycopg2://pod:pod_password@postgres:5432/pod_registry
+      POD_REGISTRY_DB_URL: postgresql+psycopg2://${POD_POSTGRES_USER:-pod}:${POD_POSTGRES_PASSWORD:-pod_password}@postgres:5432/${POD_POSTGRES_DB:-pod_registry}
       POD_PRIVATE_KEY_DIR: /var/lib/pod/private_keys
       POD_PUBLIC_KEY_DIR: /var/lib/pod/public_keys
       POD_SNAPSHOT_FILE: /var/lib/pod/state/snapshots/pod_snapshot.dsse.json
@@ -149,7 +149,7 @@ services:
       snapshot-publisher:
         condition: service_started
     environment:
-      POD_REGISTRY_DB_URL: postgresql+psycopg2://pod:pod_password@postgres:5432/pod_registry
+      POD_REGISTRY_DB_URL: postgresql+psycopg2://${POD_POSTGRES_USER:-pod}:${POD_POSTGRES_PASSWORD:-pod_password}@postgres:5432/${POD_POSTGRES_DB:-pod_registry}
       POD_REGISTRY_SERVICE_URL: http://registry:8080
       POD_SNAPSHOT_PUBLISHER_URL: http://snapshot-publisher:8081
       POD_PUBLIC_KEY_DIR: /var/lib/pod/public_keys
