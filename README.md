@@ -29,7 +29,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 - `engine/` — Discovery and classification pipelines (OpenMetadata connector, Apache Tika extractor, Microsoft Presidio classifier, OpenLineage intake)
 - `registry/` — Registry service, lifecycle state machine, human-review queue, hardened FastAPI server, local DSSE/Sigstore signing toolkit, and `pod` CLI
 - `snapshot/` — Signed Snapshot Publisher service and API
-- `prevalidator/` — OpenAI & Anthropic Prevalidator proxy (Enforce & Observe modes)
+- `prevalidator/` — OpenAI, Anthropic, and Google Gemini Prevalidator proxy (Enforce & Observe modes)
 - `governance/` — Cryptographic WORM audit ledger, multi-target SIEM forwarders, and HITL Dual-Key triage GUI & server
 - `conformance/` — Reference consumer simulator and Consumer Conformance Test Suite
 - `docket/` — Typed synchronous & asynchronous Python Remote Client SDK (`DocketClient`, `AsyncDocketClient`), CLI aliases (`docket` / `pod doctor`), cryptographic prompt watermarking & forensic steganography (`docket.watermark`), prompt-audit callback handlers (`DocketLangChainCallbackHandler`), ingestion components (`DocketTransformComponent`), turnkey vector database adapters (`DocketVectorIndexer` & `DocketVectorRetriever` for Pinecone, Qdrant, Chroma, Milvus, Weaviate, PGVector, OpenSearch), and RAG framework adapters (`wrap_rag_documents`, `DocketDocumentTransformer`, `DocketLlamaIndexPostprocessor`, `@attested_tool`, `DocketCrewAITool`, `@docket_langgraph_node`, `DocketAutoGenHook`, and dynamic ABAC policy hooks)
