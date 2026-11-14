@@ -831,9 +831,10 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
     # ---------------------------------------------------------
     @app.get("/api/governance/cicd-status")
     @app.get("/api/cicd/status")
-    async def get_governance_cicd_status():
+    @app.post("/api/governance/cicd-status/refresh")
+    async def get_governance_cicd_status(force: bool = False):
         """Retrieve real-time GitHub Actions test matrix telemetry and step diagnostics."""
-        return fetch_cicd_status()
+        return fetch_cicd_status(force_refresh=True)
 
     @app.get("/api/governance/secret-audit")
     @app.get("/api/security/secret-audit")
