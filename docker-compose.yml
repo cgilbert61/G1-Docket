@@ -125,8 +125,11 @@ services:
       POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION: ${POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION:-true}
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
+      POD_KEY_DIR: /var/lib/pod/public_keys
       DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
-      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_REQUIRE_AUTH: ${DOCKET_REQUIRE_AUTH:-true}
+      DOCKET_SESSION_SECRET: ${DOCKET_SESSION_SECRET:-docket-shared-cluster-session-secret-2026}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -159,7 +162,9 @@ services:
       POD_ADMIN_API_KEY: ${POD_ADMIN_API_KEY:-pod-dev-admin-key}
       POD_CONTROL_PLANE_TOKEN: ${POD_CONTROL_PLANE_TOKEN:-pod-dev-control-plane-token}
       DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
-      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_REQUIRE_AUTH: ${DOCKET_REQUIRE_AUTH:-true}
+      DOCKET_SESSION_SECRET: ${DOCKET_SESSION_SECRET:-docket-shared-cluster-session-secret-2026}
       DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
       DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
       DOCKET_CRAWL_DIRECTORY: ${DOCKET_CRAWL_DIRECTORY:-/var/lib/pod/state/estate}
@@ -190,7 +195,9 @@ services:
       QUARANTINE_DB_PATH: /var/lib/pod/state/quarantine.db
       SIEM_BUFFER_DB_PATH: /var/lib/pod/state/siem_buffer.db
       DOCKET_ENVIRONMENT: ${DOCKET_ENVIRONMENT:-demo}
-      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-true}
+      DOCKET_DEMO_MODE: ${DOCKET_DEMO_MODE:-false}
+      DOCKET_REQUIRE_AUTH: ${DOCKET_REQUIRE_AUTH:-true}
+      DOCKET_SESSION_SECRET: ${DOCKET_SESSION_SECRET:-docket-shared-cluster-session-secret-2026}
       DOCKET_DEFAULT_OWNER: ${DOCKET_DEFAULT_OWNER:-data-governance@yourcompany.com}
       DOCKET_DEFAULT_STEWARD: ${DOCKET_DEFAULT_STEWARD:-data-stewards@yourcompany.com}
       DOCKET_STEWARD_TIER_RESTRICTED: ${DOCKET_STEWARD_TIER_RESTRICTED:-}
