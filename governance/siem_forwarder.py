@@ -192,6 +192,23 @@ def format_aws_cloudwatch(sanitized: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def format_google_cloud_logging(sanitized: Dict[str, Any], log_name: str = "projects/g1-docket/logs/security-events") -> Dict[str, Any]:
+    """Format Google Cloud Logging v2 entries.write JSON payload."""
+    event_type = sanitized["event_type"]
+    severity = "ERROR" if ("DENIAL" in event_type or "BLOCKED" in event_type) else "NOTICE"
+    return {
+        "logName": log_name,
+        "resource": {
+            "type": "global",
+            "labels": {"project_id": "g1-docket"},
+        },
+        "severity": severity,
+        "timestamp": sanitized["timestamp_utc_iso8601"],
+        "jsonPayload": sanitized,
+        "insertId": sanitized["event_id"],
+    }
+
+
 class SIEMForwarder:
     """
     Persistent buffered SIEM Forwarder with multi-destination dispatch,
@@ -381,6 +398,15 @@ class SIEMForwarder:
             }
             if dest.auth_header:
                 headers["Authorization"] = dest.auth_header
+        elif dest_type in ("google_cloud_logging", "gcp", "cloud_logging"):
+            log_name = dest.log_group_name or "projects/g1-docket/logs/security-events"
+            payload = {
+                "entries": [format_google_cloud_logging(sanitized_event, log_name)]
+            }
+            if dest.auth_header:
+                headers["Authorization"] = dest.auth_header
+            elif dest.api_key:
+                headers["X-Goog-Api-Key"] = dest.api_key
         elif dest_type == "webhook":
             payload = sanitized_event
             if dest.auth_header:

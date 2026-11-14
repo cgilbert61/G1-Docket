@@ -138,3 +138,29 @@ def test_cli_exporter_runs(tmp_path: Path):
     assert "ocsf" in first_line
     assert "cef" in first_line
     assert "datadog" in first_line
+
+
+def test_google_cloud_logging_format():
+    """Verify Google Cloud Logging entries.write JSON payload structure."""
+    from governance.siem_forwarder import format_google_cloud_logging, sanitize_for_siem
+
+    sanitized = sanitize_for_siem({
+        "event_id": "evt_test_gcp_001",
+        "event_type": "DOCKET_DENIAL",
+        "actor_identity": "svc-copilot-agent",
+        "payload_digest": "abc123hash",
+        "metadata": {
+            "rule_ids": ["RESTRICTED_DATA_LEAK"],
+            "clearance_tier": "RESTRICTED",
+            "locator_uri": "gs://finance-bucket/q3_earnings.xlsx",
+        },
+    })
+    entry = format_google_cloud_logging(sanitized, "projects/g1-docket/logs/security-events")
+
+    assert entry["logName"] == "projects/g1-docket/logs/security-events"
+    assert entry["severity"] == "ERROR"
+    assert entry["resource"]["type"] == "global"
+    assert entry["resource"]["labels"]["project_id"] == "g1-docket"
+    assert entry["insertId"] == "evt_test_gcp_001"
+    assert entry["jsonPayload"]["actor_identity"] == "svc-copilot-agent"
+

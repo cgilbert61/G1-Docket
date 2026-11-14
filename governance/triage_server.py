@@ -82,10 +82,17 @@ def is_demo_mode() -> bool:
 
 
 def extract_authenticated_operator(request: Request) -> Optional[str]:
-    """Extract authenticated corporate operator email from session cookie or standard enterprise proxy/IdP headers."""
-    # 1. Check verified session cookie
+    """Extract authenticated corporate operator email from bearer token, session cookie, or standard enterprise proxy/IdP headers."""
+    # 1. Check verified bearer token or session cookie
     auth_mgr = getattr(getattr(request, "app", None), "state", None)
     if auth_mgr and hasattr(auth_mgr, "auth_manager"):
+        auth_hdr = request.headers.get("authorization", "")
+        if auth_hdr.lower().startswith("bearer "):
+            token = auth_hdr[7:].strip()
+            sess = auth_mgr.auth_manager.verify_bearer_token(token)
+            if sess and sess.get("sub"):
+                return sess["sub"]
+
         cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if cookie:
             sess = auth_mgr.auth_manager.verify_session_token(cookie)
@@ -117,6 +124,13 @@ def get_current_user_session(request: Request) -> Optional[Dict[str, Any]]:
     """Retrieve full authenticated user session data if present."""
     auth_mgr = getattr(getattr(request, "app", None), "state", None)
     if auth_mgr and hasattr(auth_mgr, "auth_manager"):
+        auth_hdr = request.headers.get("authorization", "")
+        if auth_hdr.lower().startswith("bearer "):
+            token = auth_hdr[7:].strip()
+            sess = auth_mgr.auth_manager.verify_bearer_token(token)
+            if sess:
+                return sess
+
         cookie = request.cookies.get(SESSION_COOKIE_NAME)
         if cookie:
             sess = auth_mgr.auth_manager.verify_session_token(cookie)
@@ -415,12 +429,15 @@ def create_governance_app(config_path: Optional[str | Path] = None) -> FastAPI:
         return resp
 
     @app.get("/api/auth/session")
+    @app.get("/api/auth/whoami")
+    @app.get("/api/whoami")
     async def session_api(request: Request):
         sess = get_current_user_session(request)
         if not sess:
             return JSONResponse(status_code=401, content={"authenticated": False})
         return {
             "authenticated": True,
+            "logged_in": True,
             "operator": sess.get("sub"),
             "role": sess.get("role"),
             "display_name": sess.get("display_name"),

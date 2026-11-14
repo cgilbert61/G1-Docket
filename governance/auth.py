@@ -299,6 +299,86 @@ class AuthManager:
         except Exception:
             return None
 
+    def verify_bearer_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Validate either an internal HMAC session token or an OIDC / OAuth2 JWT bearer token."""
+        clean_token = token.strip()
+        # 1. Check if it's a native 2-part HMAC session token
+        sess = self.verify_session_token(clean_token)
+        if sess:
+            return sess
+
+        # 2. Check if it's a 3-part JWT token (header.payload.signature)
+        parts = clean_token.split(".")
+        if len(parts) != 3:
+            return None
+
+        try:
+            b64_header, b64_payload, b64_sig = parts
+            payload_pad = b64_payload + "=" * (-len(b64_payload) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(payload_pad).decode("utf-8"))
+
+            now = int(time.time())
+            # Verify expiry if present
+            if "exp" in claims and claims["exp"] < now:
+                logger.info("OIDC Bearer token expired (exp=%s, now=%s)", claims["exp"], now)
+                return None
+
+            # Verify nbf (not before) if present
+            if "nbf" in claims and claims["nbf"] > now:
+                return None
+
+            # Verify audience if configured
+            expected_aud = os.getenv("DOCKET_OIDC_AUDIENCE")
+            if expected_aud:
+                aud = claims.get("aud")
+                if isinstance(aud, list) and expected_aud not in aud:
+                    return None
+                elif isinstance(aud, str) and aud != expected_aud:
+                    return None
+
+            # Verify issuer if configured
+            expected_iss = os.getenv("DOCKET_OIDC_ISSUER")
+            if expected_iss and claims.get("iss") != expected_iss:
+                return None
+
+            # Extract subject / identity claim
+            user_id = (
+                claims.get("email")
+                or claims.get("preferred_username")
+                or claims.get("upn")
+                or claims.get("sub")
+            )
+            if not user_id:
+                return None
+
+            # Map roles / scopes / groups to G1-Docket RBAC roles
+            roles_claim = claims.get("roles") or claims.get("groups") or []
+            if isinstance(roles_claim, str):
+                roles_claim = [roles_claim]
+            roles_str = " ".join(str(r).lower() for r in roles_claim)
+            u_lower = str(user_id).lower()
+
+            if "admin" in roles_str or "admin" in u_lower:
+                role = "admin"
+            elif any(k in roles_str or k in u_lower for k in ("approver", "ciso", "security", "officer", "lead", "manager")):
+                role = "security_approver"
+            elif "audit" in roles_str or "audit" in u_lower:
+                role = "auditor"
+            else:
+                role = "triage_operator"
+
+            return {
+                "sub": str(user_id),
+                "role": role,
+                "display_name": claims.get("name") or str(user_id),
+                "email": claims.get("email") or str(user_id),
+                "claims": claims,
+                "auth_type": "oidc_jwt",
+            }
+        except Exception as e:
+            logger.debug("Failed parsing OIDC Bearer token: %s", e)
+            return None
+
 
 def get_client_ip(request: Request) -> str:
     """Determine client IP address taking into account standard reverse-proxy headers."""

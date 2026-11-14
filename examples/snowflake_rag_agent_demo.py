@@ -70,14 +70,88 @@ def query_shadow_table(acct_id: str) -> str:
     return f"{acct_id} | SECRET_BALANCE: $84,200,000 | OFF_BOOKS"
 
 
+def _initialize_client() -> DocketClient:
+    """Connect to live Gateway on localhost:18082 if available, or build self-contained in-memory Prevalidator."""
+    import os
+
+    gw_url = os.getenv("DOCKET_PREVALIDATOR_URL", "http://localhost:18082")
+    if os.getenv("DOCKET_STANDALONE") != "1":
+        try:
+            client = DocketClient(base_url=gw_url, timeout=5.0)
+            health = client.get_health()
+            print(f"\n[+] Live Gateway Online ({gw_url}): mode={health.get('mode')} | snapshot_seq={health.get('snapshot_sequence')}")
+            return client
+        except Exception:
+            pass
+
+    import hashlib
+    from datetime import datetime, timezone, timedelta
+    from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
+    from prevalidator.proxy import create_prevalidator_app
+    from registry.signing import Keyring
+
+    keyring = Keyring()
+    store = InMemorySnapshotStore(keyring)
+    exp = (datetime.now(timezone.utc) + timedelta(days=90)).isoformat()
+
+    pub_loc = f"{SNOWFLAKE_BASE}/PUBLIC_PRODUCT_SKU_CATALOG"
+    conf_loc = f"{SNOWFLAKE_BASE}/DIM_CUSTOMER_CONTACTS"
+    pub_text = "SKU-100 | Quantum Router | $1,299.00 | Available"
+    crm_text = "CUST-901 | elena.fisher@example.com | phone: 312-555-0199 | segment: Enterprise"
+
+    store._snapshot_predicate = {
+        "sequence_number": 4421,
+        "expires_at": exp,
+        "entries": {
+            pub_loc: {
+                "record_id": "pod-rec-pub-001",
+                "locator": pub_loc,
+                "content_sha256": hashlib.sha256(pub_text.encode("utf-8")).hexdigest(),
+                "status": "active",
+                "minimum_clearance": "Public",
+                "egress_class": "public_api",
+                "ai_eligibility": "allow",
+                "record_expires_at": exp,
+            },
+            conf_loc: {
+                "record_id": "pod-rec-conf-042",
+                "locator": conf_loc,
+                "content_sha256": hashlib.sha256(crm_text.encode("utf-8")).hexdigest(),
+                "status": "active",
+                "minimum_clearance": "Confidential",
+                "egress_class": "private_cloud",
+                "ai_eligibility": "allow",
+                "record_expires_at": exp,
+            },
+        },
+    }
+    enforcer = PrevalidatorEnforcer(
+        snapshot_store=store,
+        mode="enforce",
+        route_egress_map={
+            "gpt-4o": "public_api",
+            "local-model": "local_only",
+            "vpc-model": "private_cloud",
+        },
+        caller_key_clearance_map={
+            "pod-key-public": "Public",
+            "pod-key-confidential": "Confidential",
+        },
+    )
+    app = create_prevalidator_app(enforcer=enforcer, upstream_gateway_url="mock://upstream")
+    client = DocketClient(app=app, base_url="http://localhost:18082")
+    health = client.get_health()
+    print(f"\n[+] Standalone In-Memory Prevalidator Online: mode={health.get('mode')} | snapshot_seq={health.get('snapshot_sequence')}")
+    return client
+
+
 def main() -> int:
     print("=" * 80)
     print("      G1 DOCKET: SNOWFLAKE ZERO-TRUST AGENT ADMISSION CONTROL DEMO      ")
     print("=" * 80)
 
-    with DocketClient(base_url="http://localhost:18082") as client:
-        health = client.get_health()
-        print(f"\n[+] Gateway Online: mode={health.get('mode')} | snapshot_seq={health.get('snapshot_sequence')}")
+    client = _initialize_client()
+    try:
 
         # ---------------------------------------------------------------------
         # Case 1: Public Table Query -> Public Cloud LLM
@@ -215,6 +289,9 @@ def main() -> int:
         print("\n" + "=" * 80)
         print("          ALL 6 SNOWFLAKE ZERO-TRUST VERIFICATIONS PASSED           ")
         print("=" * 80)
+
+    finally:
+        client.close()
 
     return 0
 

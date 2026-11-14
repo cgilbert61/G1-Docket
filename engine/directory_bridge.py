@@ -299,12 +299,17 @@ def resolve_pc_directory_path(raw_path: str) -> tuple[Path, str]:
     lower_norm = norm_slashes.lower().rstrip("/")
 
     # Alias pc_demo_folder on either C:\Users\chuck\pc_demo_folder or D:\attestation\pc_demo_folder
-    # to the live-mounted /host_user/pc_demo_folder inside Docker so Windows Explorer and Docker share the exact same files
-    if lower_norm in ("d:/attestation/pc_demo_folder", "c:/users/chuck/pc_demo_folder"):
+    # to the live-mounted /host_user/pc_demo_folder, /host_workspace/pc_demo_folder, or /app/pc_demo_folder
+    if lower_norm in ("d:/attestation/pc_demo_folder", "c:/users/chuck/pc_demo_folder", "pc_demo_folder") or lower_norm.endswith("/pc_demo_folder"):
         locator_base = "file://pc-dir/pc_demo_folder"
-        live_user_demo = Path("/host_user/pc_demo_folder")
-        if live_user_demo.exists():
-            return live_user_demo, locator_base
+        for candidate in (
+            Path("/host_user/pc_demo_folder"),
+            Path("/host_workspace/pc_demo_folder"),
+            Path("/app/pc_demo_folder"),
+            Path("pc_demo_folder"),
+        ):
+            if candidate.exists():
+                return candidate, locator_base
 
     # 1. Direct path exists
     direct = Path(cleaned)
