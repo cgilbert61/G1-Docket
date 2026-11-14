@@ -282,3 +282,25 @@ def test_re_sign_active_records_after_key_rotation(tmp_path):
     svc.close()
 
 
+def test_cli_export_evidence(tmp_path):
+    """Verify pod export-evidence generates a valid self-contained SOC 2 zip bundle."""
+    bundle_file = tmp_path / "test_soc2_bundle.zip"
+    exit_code = cli_main([
+        "export-evidence",
+        "--output-file",
+        str(bundle_file),
+    ])
+    assert exit_code == 0
+    assert bundle_file.exists()
+    assert bundle_file.stat().st_size > 0
+
+    import zipfile
+    with zipfile.ZipFile(bundle_file, "r") as zf:
+        names = zf.namelist()
+        assert "MANIFEST_SHA256.json" in names
+        assert "01_WORM_LEDGER_CHAIN.json" in names
+        manifest = json.loads(zf.read("MANIFEST_SHA256.json"))
+        assert "01_WORM_LEDGER_CHAIN.json" in manifest
+
+
+

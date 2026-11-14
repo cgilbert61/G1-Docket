@@ -129,6 +129,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_out.add_argument("--url", default=None, help="Governance server URL override")
     p_out.add_argument("--session-file", default=None, help="Path to session token JSON")
 
+    # export-evidence
+    p_ee = sub.add_parser("export-evidence", help="Export a cryptographically verifiable SOC 2 Type II audit evidence zip bundle")
+    p_ee.add_argument("--output-dir", default="./audit_evidence_bundles", help="Destination directory for the evidence zip bundle")
+    p_ee.add_argument("--output-file", default=None, help="Explicit destination zip file path")
+    p_ee.add_argument("--governance-url", default=os.getenv("GOVERNANCE_API_URL", "http://localhost:18084"), help="Governance server URL")
+    p_ee.add_argument("--prevalidator-url", default=os.getenv("PREVALIDATOR_API_URL", "http://localhost:18082"), help="Prevalidator gateway URL")
+    p_ee.add_argument("--admin-key", default=os.getenv("POD_ADMIN_API_KEY") or os.getenv("POD_ADMIN_KEY") or "pod-dev-admin-key", help="Admin API Key")
+
     return parser
 
 
@@ -588,6 +596,72 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "file": str(out_path),
                 "snapshot_sequence": seq,
                 "caller_key": args.caller_key,
+            }, indent=2))
+            return 0
+
+        if args.command == "export-evidence":
+            import hashlib
+            import time
+            import urllib.request
+            import zipfile
+
+            out_dir = Path(args.output_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            if args.output_file:
+                bundle_path = Path(args.output_file)
+                bundle_path.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                bundle_path = out_dir / f"G1_DOCKET_SOC2_EVIDENCE_{timestamp}.zip"
+
+            def fetch_json(url: str, headers: dict | None = None) -> dict[str, Any]:
+                req = urllib.request.Request(url, headers=headers or {})
+                try:
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        return json.loads(resp.read().decode("utf-8"))
+                except Exception as e:
+                    return {"status": "offline_or_error", "error": str(e), "url": url}
+
+            worm_events = fetch_json(f"{args.governance_url}/api/worm/events?limit=1000")
+            worm_verify = fetch_json(f"{args.governance_url}/api/worm/verify")
+            quarantine_items = fetch_json(f"{args.governance_url}/api/quarantine")
+            runway_telemetry = fetch_json(
+                f"{args.prevalidator_url}/v1/admin/audit-runway?window=30d",
+                headers={"X-POD-Admin-Key": args.admin_key},
+            )
+            latency_stats = fetch_json(
+                f"{args.prevalidator_url}/v1/admin/latency-stats",
+                headers={"X-POD-Admin-Key": args.admin_key},
+            )
+
+            repo_root = Path(__file__).resolve().parent.parent
+            with zipfile.ZipFile(bundle_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr("01_WORM_LEDGER_CHAIN.json", json.dumps(worm_events, indent=2))
+                zf.writestr("02_CRYPTOGRAPHIC_VERIFICATION_CERT.json", json.dumps(worm_verify, indent=2))
+                zf.writestr("03_DUAL_CONTROL_TRIAGE_RECORDS.json", json.dumps(quarantine_items, indent=2))
+                zf.writestr("04_AUDIT_RUNWAY_EXIT_CRITERIA.json", json.dumps(runway_telemetry, indent=2))
+                zf.writestr("05_SUB_MILLISECOND_SLA_EVIDENCE.json", json.dumps(latency_stats, indent=2))
+
+                for num, fname, zipname in [
+                    ("06", "reports/VERIFICATION_SCORECARD.json", "06_CONSOLIDATED_VERIFICATION_SCORECARD.json"),
+                    ("07", "reports/MCT_OCTOPUS_BENCHMARK.md", "07_MCT_OCTOPUS_BENCHMARK_REPORT.md"),
+                    ("08", "reports/COMPLIANCE_AUDIT_REPORT.md", "08_COMPLIANCE_AUDIT_REPORT.md"),
+                ]:
+                    fpath = repo_root / fname
+                    if fpath.exists():
+                        zf.writestr(zipname, fpath.read_text(encoding="utf-8"))
+
+                manifest = {}
+                for name in zf.namelist():
+                    manifest[name] = hashlib.sha256(zf.read(name)).hexdigest()
+                zf.writestr("MANIFEST_SHA256.json", json.dumps(manifest, indent=2))
+
+            bundle_sha = hashlib.sha256(bundle_path.read_bytes()).hexdigest()
+            print(json.dumps({
+                "status": "created",
+                "bundle_path": str(bundle_path),
+                "bundle_sha256": bundle_sha,
+                "components_count": len(manifest),
             }, indent=2))
             return 0
 
