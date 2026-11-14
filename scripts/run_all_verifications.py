@@ -24,6 +24,7 @@ Executes end-to-end multi-phase validation across the entire G1 Docket estate:
   Phase 20: Multi-Region Active-Active Federation & Split-Brain Resiliency
   Phase 21: Merkle Chunk Trees (RFC-009) & Octopus Proofs Suite
   Phase 22: Audit Runway & 30-Day Go-Live Simulation
+  Phase 23: Model Context Protocol (MCP) Zero-Trust Demo
 
 Exports:
   - `reports/VERIFICATION_SCORECARD.json`
@@ -120,7 +121,7 @@ def main() -> int:
     print("=" * 85)
     print(f"Timestamp: {datetime.now(timezone.utc).isoformat()} | Root: {_REPO_ROOT}")
 
-    TOTAL_PHASES = 22
+    TOTAL_PHASES = 23
     phases: list[PhaseResult] = []
 
     # Phase 1: Doctor Diagnostics & WORM Chain
@@ -188,6 +189,9 @@ def main() -> int:
 
     # Phase 22: Audit Runway & 30-Day Go-Live Simulation
     phases.append(run_phase(22, TOTAL_PHASES, "Audit Runway & 30-Day Go-Live Simulation", [sys.executable, "scripts/simulate_audit_runway.py", "--speed", "0.001"]))
+
+    # Phase 23: Model Context Protocol (MCP) Zero-Trust Demo
+    phases.append(run_phase(23, TOTAL_PHASES, "Model Context Protocol (MCP) Zero-Trust Demo", [sys.executable, "examples/mcp_zero_trust_agent_demo.py"]))
 
     # Summary Scorecard
     total_phases = len(phases)
