@@ -149,6 +149,11 @@ Every data asset evaluated and attested by G1 Docket produces a DSSE-signed in-t
 
 ## Quickstart (Local Evaluation & Demo)
 
+### 0. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
 ### 1. Run the Reproducible End-to-End Demo (Phases 0–3)
 ```bash
 python -m examples.run_demo

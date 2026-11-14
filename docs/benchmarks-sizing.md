@@ -47,7 +47,7 @@ Each attested record entry in the monotonic snapshot predicate requires approxim
 | **Inline `<pod:object>` block** | 50 MB per request | Returns HTTP 413 Payload Too Large | Chunk documents prior to RAG context injection |
 | **Single file hash stream** | 64 KB chunk stream | Streaming SHA-256; no file size ceiling | Can hash files > 100 GB without memory spikes |
 | **PC directory scan depth** | Recursive (unbounded) | Files processed via generator iterators | Exclude `.git`, `node_modules`, and binary caches |
-| **PostgreSQL catalog (1M records)** | ~450 MB disk | Tables partitioned by status / expiration | SSD storage recommended for sub-10 ms lookup |
+| **PostgreSQL catalog (1M records)** | ~4.5 GB disk (≈4.5 KB per stored record before indexes; Postgres compression may narrow this on disk) | Indexed by status / expiration | SSD storage recommended for sub-10 ms lookup |
 | **Audit log rolling buffer** | 10,000 entries (in-memory) | Oldest entries rotate out automatically | Forward to ClickHouse / SIEM for permanent retention |
 
 ---
