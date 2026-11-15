@@ -76,7 +76,7 @@ class TikaDocumentExtractor:
         posix_path = path.as_posix()
         if not posix_path.startswith("/"):
             posix_path = "/" + posix_path
-        locator = f"{locator_prefix.rstrip('/')}{posix_path}" if locator_prefix == "file://" else locator_prefix
+        locator = f"file://{posix_path}" if locator_prefix == "file://" else locator_prefix
 
         # 1. Try Apache Tika Server REST endpoint (/rmeta/text) if reachable
         tika_result = self._try_tika_server(path)

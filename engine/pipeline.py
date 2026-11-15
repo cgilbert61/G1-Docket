@@ -12,6 +12,7 @@ from engine.dlp_connectors import extract_purview_label_from_file
 from engine.extractor import TikaDocumentExtractor
 from engine.openlineage_intake import OpenLineageIntake
 from engine.openmetadata_connector import OpenMetadataDatabaseScanner
+from registry.schema_validator import SchemaValidationError
 from registry.store import RegistryService
 
 
@@ -132,9 +133,19 @@ class AttestationEngine:
             raise NotADirectoryError(f"Directory not found: {root}")
 
         results: list[dict[str, Any]] = []
+        skipped_count = 0
+        validation_error_count = 0
+
         for path, rel in iter_scannable_files_unbounded(root, include_code_dirs=include_code_dirs):
             try:
-                loc_override = f"{locator_base.rstrip('/')}/{rel}" if locator_base else None
+                if locator_base:
+                    loc_override = f"{locator_base.rstrip('/')}/{rel}"
+                else:
+                    posix_path = path.resolve().as_posix()
+                    if not posix_path.startswith("/"):
+                        posix_path = "/" + posix_path
+                    loc_override = f"file://{posix_path}"
+
                 res = self.attest_file(
                     file_path=path,
                     owner=resolved_owner,
@@ -145,8 +156,25 @@ class AttestationEngine:
                 results.append(res)
                 if max_files > 0 and len(results) >= max_files:
                     break
-            except Exception:
-                continue
+            except SchemaValidationError as exc:
+                skipped_count += 1
+                validation_error_count += 1
+                print(f"Skipped {path}: {exc}")
+            except Exception as exc:
+                if "validation" in exc.__class__.__name__.lower():
+                    skipped_count += 1
+                    validation_error_count += 1
+                    print(f"Skipped {path}: {exc}")
+                else:
+                    # Genuinely unsupported file types may still be skipped quietly, but count them in the summary.
+                    skipped_count += 1
+                    continue
+
+        self.last_crawl_stats = {
+            "attested": len(results),
+            "skipped": skipped_count,
+            "validation_errors": validation_error_count,
+        }
         return results
 
     def crawl_database(

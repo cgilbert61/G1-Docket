@@ -398,10 +398,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(json.dumps(res, indent=2))
                 return 0
 
-            path = Path(target.replace("file://", ""))
+            raw_target = target
+            if raw_target.startswith("file://"):
+                raw_target = raw_target[7:]
+                if os.name == "nt" and raw_target.startswith("/") and len(raw_target) > 2 and raw_target[2] == ":":
+                    raw_target = raw_target.lstrip("/")
+            path = Path(raw_target)
             if path.is_dir():
                 res = engine.crawl_file_share(root_dir=path, owner=args.owner, locator_base=args.locator)
                 print(json.dumps(res, indent=2))
+                stats = getattr(engine, "last_crawl_stats", {"attested": len(res), "skipped": 0, "validation_errors": 0})
+                print(f"attested: {stats['attested']}, skipped: {stats['skipped']}")
+                if stats.get("validation_errors", 0) > 0:
+                    return 1
                 return 0
 
             res = engine.attest_file(file_path=path, owner=args.owner, locator_override=args.locator)
