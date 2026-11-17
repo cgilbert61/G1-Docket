@@ -437,7 +437,7 @@ This project relies on and incorporates open-source libraries and standards. We 
 
 | Package / Project | Version | Upstream License | Project URL / Source | Primary Role in G1 Docket |
 | :--- | :--- | :--- | :--- | :--- |
-| **FastAPI** | `>=0.109.0` | **MIT** | [tiangolo/fastapi](https://github.com/fastapi/fastapi) | Async REST API framework for Registry, Engine, Prevalidator, and Governance servers |
+| **FastAPI** | `>=0.109.0` | **MIT** | [tiangolo/fastapi](https://github/fastapi/fastapi) | Async REST API framework for Registry, Engine, Prevalidator, and Governance servers |
 | **Starlette** | `~=1.10.0` | **BSD 3-Clause** | [encode/starlette](https://github.com/encode/starlette) | ASGI web core, routing, Server-Sent Events (SSE), and request processing |
 | **Uvicorn** | `>=0.27.0` | **BSD 3-Clause** | [encode/uvicorn](https://github.com/encode/uvicorn) | High-performance lightning-fast ASGI server |
 | **Pydantic** | `>=2.5.0` | **MIT** | [pydantic/pydantic](https://github.com/pydantic/pydantic) | Strict data validation, schema enforcement, and JSON serialization |
@@ -492,7 +492,7 @@ G1 Docket follows enterprise open-source and institutional security standards:
 
 * **[Contributing Guidelines](CONTRIBUTING.md)**: Development environment setup, architectural invariants, latency budgets, and PR submission guidelines.
 * **[Code of Conduct](CODE_OF_CONDUCT.md)**: Contributor Covenant v2.1 community engagement pledge and enforcement standards.
-* **[Security Policy](SECURITY.md)**: Vulnerability disclosure program, supported versions, coordinated triage process, and reporting via `security@g1163rt.com`.
+* **[Security Policy](SECURITY.md)**: Vulnerability disclosure program, supported versions, coordinated triage process, and reporting via `security@g1163rt.ai
 * **[Issue Templates](.github/ISSUE_TEMPLATE/)**: Structured issue templates for [Bug Reports](.github/ISSUE_TEMPLATE/bug_report.md) and [Feature Proposals](.github/ISSUE_TEMPLATE/feature_request.md).
 * **[Pull Request Template](.github/pull_request_template.md)**: Standardized checklist verifying zero-database hot-paths, sub-millisecond evaluation latency, and cryptographic compliance.
 
