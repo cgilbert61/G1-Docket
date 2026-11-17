@@ -34,7 +34,16 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 
 ---
 
-### 2. Four-Eyes Dual-Key Quarantine & Triage Queue (`:18084`)
+### 2. Audit Runway & Go-Live Readiness Monitor (Observe Mode)
+> Real-time observation of periodic estate traffic without blocking requests. Tracks empirical exit criteria (traffic coverage, denial stability, and triage disposition) to determine when an organization is ready to flip from OBSERVE to ENFORCE mode.
+
+<p align="center">
+  <img src="docs/assets/G1-Docket-Audit-Monitor-Demo.jpg" alt="G1 Docket - Audit Runway & Go-Live Readiness Monitor" width="100%" />
+</p>
+
+---
+
+### 3. Four-Eyes Dual-Key Quarantine & Triage Queue (`:18084`)
 > Intercepts unattested data, forged DSSE envelopes, and DLP policy denials at the inference boundary. Two distinct authorized operators (Key 1 Requester & Key 2 Approver) must review diffs and co-sign emergency admission tickets.
 
 <p align="center">
@@ -43,7 +52,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 
 ---
 
-### 3. Cryptographic WORM Audit Ledger & Chain Integrity Verification (`:18084`)
+### 4. Cryptographic WORM Audit Ledger & Chain Integrity Verification (`:18084`)
 > Write-Once Read-Many Merkle chain with SQLite WAL write triggers, SHA-256 hash chaining, and real-time chain walk verification from genesis to tip.
 
 <p align="center">
@@ -52,7 +61,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 
 ---
 
-### 4. Enterprise SIEM Forwarders Hub (`:18084`)
+### 5. Enterprise SIEM Forwarders Hub (`:18084`)
 > Real-time downstream security telemetry stream across 7 pre-configured SIEM destinations (Splunk HEC, Elasticsearch, Syslog CEF, OpenTelemetry, Datadog, Microsoft Sentinel, and AWS CloudWatch) with persistent SQLite buffering and retry backoff.
 
 <p align="center">
