@@ -154,6 +154,31 @@ Every data asset evaluated and attested by G1 Docket produces a DSSE-signed in-t
 pip install -r requirements.txt
 ```
 
+### Standalone Developer Client SDK (`G1-Docket-SDK`)
+
+> [!IMPORTANT]
+> **Client-Side Only**: `G1-Docket-SDK` is a lightweight Python client library for application and AI agent developers. It does **NOT** run the G1 Docket server infrastructure (the reverse proxy gateway, continuous crawler, Presidio DLP detectors, PostgreSQL registry, or SIEM forwarders).
+> 
+> - **What it does**: Provides `DocketClient` and `AsyncDocketClient` to query attestation records, wrap RAG chunks in canonical `<pod:object>` tags, format prompts with Merkle chunk proofs (RFC-009), embed/inspect invisible cryptographic watermarks, and integrate with AI agent frameworks (LangChain, LlamaIndex, CrewAI, AutoGen, LangGraph).
+> - **What you need**: A running G1 Docket Prevalidator gateway (e.g. at `http://localhost:18082` or your enterprise endpoint). To host the server components, deploy via Docker Compose (`docker compose up`) or Kubernetes (`deploy/helm/`).
+
+```bash
+# Install the client SDK from wheel or PyPI
+pip install G1-Docket-SDK
+
+# Or install directly from GitHub Releases asset (.whl)
+pip install dist/g1_docket_sdk-0.1.0-py3-none-any.whl
+
+# Verify client CLI
+docket --help
+
+# Test connection to your G1 Docket gateway
+docket status --url http://localhost:18082
+
+# Use in your Python AI agent
+python -c "import docket; print('G1-Docket-SDK version:', docket.__version__)"
+```
+
 ### 1. Run the Reproducible End-to-End Demo (Phases 0–3)
 ```bash
 python -m examples.run_demo

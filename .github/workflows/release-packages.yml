@@ -1,0 +1,96 @@
+name: Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  build-and-release:
+    name: Build & Release Packages
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build distribution packages (.whl and .tar.gz)
+      run: |
+        python -m build
+
+    - name: Validate distribution packages with Twine
+      run: |
+        twine check dist/*
+
+    - name: Upload artifacts to GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="${{ github.event.release.tag_name }}"
+        if [ -z "$TAG" ]; then
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+          fi
+        fi
+        echo "Target release tag: $TAG"
+        if [ -n "$TAG" ]; then
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists. Uploading dist/* assets..."
+            gh release upload "$TAG" dist/* --clobber
+          else
+            echo "Creating release $TAG and uploading dist/* assets..."
+            gh release create "$TAG" dist/* --title "G1 Docket $TAG" --generate-notes
+          fi
+        else
+          echo "No tag detected; skipping release asset upload."
+        fi
+
+    - name: Publish to GitHub Packages
+      if: env.PUBLISH_GH_PACKAGES == 'true' || env.GITHUB_TOKEN != ''
+      continue-on-error: true
+      env:
+        TWINE_REPOSITORY_URL: https://upload.pkg.github.com/${{ github.repository }}
+        TWINE_USERNAME: ${{ github.actor }}
+        TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        twine upload --repository-url https://upload.pkg.github.com/${{ github.repository }} --skip-existing dist/*
+
+    - name: Publish to PyPI (API Token)
+      if: env.PYPI_API_TOKEN != ''
+      continue-on-error: true
+      env:
+        PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        twine upload --skip-existing dist/*
+
+    - name: Publish to PyPI (Trusted Publishing OIDC)
+      if: env.PYPI_API_TOKEN == '' && (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/'))
+      uses: pypa/gh-action-pypi-publish@release/v1
+      continue-on-error: true
+      with:
+        skip-existing: true

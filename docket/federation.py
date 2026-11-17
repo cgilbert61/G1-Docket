@@ -29,7 +29,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from typing import Any, Callable
 
-from registry.signing import Keyring
+try:
+    from registry.signing import Keyring
+except ImportError:
+    Keyring = Any  # type: ignore
 
 
 @dataclass
@@ -54,7 +57,14 @@ class RegionalPrevalidatorNode:
         from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
         self.region_id = region_id
         self.mode = mode
-        self.keyring = keyring or Keyring()
+        if keyring is not None:
+            self.keyring = keyring
+        else:
+            try:
+                from registry.signing import Keyring as _Keyring
+                self.keyring = _Keyring()
+            except ImportError:
+                raise RuntimeError("RegionalPrevalidatorNode requires the full G1 Docket server stack ('registry' package).")
         self.snapshot_store = InMemorySnapshotStore(self.keyring)
         self.enforcer = PrevalidatorEnforcer(snapshot_store=self.snapshot_store, mode=mode)
         self.is_partitioned = False

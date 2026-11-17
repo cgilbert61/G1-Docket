@@ -5,7 +5,10 @@ Exposes `DocketClient`, `AsyncDocketClient`, `DocketError`, and `PolicyDenialErr
 
 from docket import AsyncDocketClient, DocketClient, DocketError, PolicyDenialError
 
+__version__ = "0.1.0"
+
 __all__ = [
+    "__version__",
     "DocketClient",
     "AsyncDocketClient",
     "DocketError",

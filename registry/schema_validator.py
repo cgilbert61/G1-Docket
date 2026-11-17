@@ -74,6 +74,15 @@ class SchemaValidationError(ValueError):
 
 def _load_schema(filename: str) -> dict[str, Any]:
     path = SCHEMAS_DIR / filename
+    if path.is_file():
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    try:
+        import importlib.resources as pkg_resources
+        content = pkg_resources.files("schemas").joinpath(filename).read_text(encoding="utf-8")
+        return json.loads(content)
+    except Exception:
+        pass
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 

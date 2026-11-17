@@ -38,7 +38,10 @@ from docket.watermark import (
     has_invisible_watermark,
 )
 
+__version__ = "0.1.0"
+
 __all__ = [
+    "__version__",
     "DocketClient",
     "AsyncDocketClient",
     "DocketError",
