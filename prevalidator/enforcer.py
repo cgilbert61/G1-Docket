@@ -38,6 +38,15 @@ REASON_DATA_RESIDENCY_VIOLATION = "DATA_RESIDENCY_VIOLATION"
 REASON_DEPARTMENTAL_ISOLATION_VIOLATION = "DEPARTMENTAL_ISOLATION_VIOLATION"
 REASON_CLEARANCE_ESCALATION_BLOCKED = "CLEARANCE_ESCALATION_BLOCKED"
 REASON_DELEGATION_VIOLATION = "DELEGATION_VIOLATION"
+REASON_UNOWNED_AGENT_BLOCKED = "UNOWNED_AGENT_BLOCKED"
+
+def is_auth_enforced() -> bool:
+    env = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
+    req_auth = os.environ.get("DOCKET_REQUIRE_AUTH", "").strip().lower() in ("1", "true", "yes")
+    demo_mode = os.environ.get("DOCKET_DEMO_MODE", "").strip().lower()
+    if req_auth or env in ("production", "prod") or demo_mode in ("false", "0", "no"):
+        return True
+    return False
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
@@ -74,6 +83,9 @@ class AuditLogEntry:
     masked_locators: list[str] = field(default_factory=list)
     decision_latency_ms: float = 0.0
     decision_latency_us: float = 0.0
+    caller_id: str | None = None
+    agent_id: str | None = None
+    owner: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -88,6 +100,9 @@ class AuditLogEntry:
             "masked_locators": self.masked_locators,
             "decision_latency_ms": self.decision_latency_ms,
             "decision_latency_us": self.decision_latency_us,
+            "caller_id": self.caller_id,
+            "agent_id": self.agent_id,
+            "owner": self.owner,
         }
 
 
@@ -339,26 +354,36 @@ class PrevalidatorEnforcer:
 
         return "\n".join(lines) + "\n"
 
-    def resolve_caller_clearance(self, headers: dict[str, str]) -> str:
+    def resolve_caller_clearance(self, headers: dict[str, str]) -> str | None:
         """Resolve caller clearance from verified JWT or configured caller API key (defaults to 'Public')."""
         norm_headers = {k.lower(): v for k, v in headers.items()}
 
         # 1. Check signed JWT in X-POD-Caller-Token
-        jwt_token = norm_headers.get("x-pod-caller-token")
+        jwt_token = norm_headers.get("x-pod-caller-token", "").strip()
         if jwt_token:
             try:
                 decoded = jwt.decode(jwt_token, self.jwt_secret, algorithms=["HS256"])
                 clearance = decoded.get("clearance", "Public")
                 if clearance in CLEARANCE_ORDER:
                     return clearance
+                if is_auth_enforced():
+                    return None
             except Exception:
+                if is_auth_enforced():
+                    return None
                 return "Public"
 
         # 2. Check configured caller key map in X-POD-Caller-Key
-        caller_key = norm_headers.get("x-pod-caller-key")
-        if caller_key and caller_key in self.caller_key_clearance_map:
-            return self.caller_key_clearance_map[caller_key]
+        caller_key = norm_headers.get("x-pod-caller-key", "").strip()
+        if caller_key:
+            if caller_key in self.caller_key_clearance_map:
+                return self.caller_key_clearance_map[caller_key]
+            if is_auth_enforced():
+                return None
+            return "Public"
 
+        if is_auth_enforced():
+            return None
         return "Public"
 
     def resolve_target_egress(self, model_name: str | None, route_override: str | None = None) -> str:
@@ -395,6 +420,8 @@ class PrevalidatorEnforcer:
             "target_egress": target_egress,
             "model": payload.get("model", ""),
             "caller_id": norm_headers.get("x-pod-caller-id", norm_headers.get("x-pod-caller-key", "anonymous")),
+            "agent_id": norm_headers.get("x-pod-agent-id", ""),
+            "owner": norm_headers.get("x-pod-owner", ""),
             "department": norm_headers.get("x-pod-caller-dept", ""),
             "jurisdiction": norm_headers.get("x-pod-caller-region", norm_headers.get("x-pod-caller-jurisdiction", "")),
             "target_region": norm_headers.get("x-pod-target-region", ""),
@@ -406,12 +433,16 @@ class PrevalidatorEnforcer:
         }
 
         # Enrich from verified JWT claims if present
-        jwt_token = norm_headers.get("x-pod-caller-token")
+        jwt_token = norm_headers.get("x-pod-caller-token", "").strip()
         if jwt_token:
             try:
                 decoded = jwt.decode(jwt_token, self.jwt_secret, algorithms=["HS256"])
-                if "sub" in decoded and not ctx["caller_id"]:
+                if "sub" in decoded and decoded["sub"]:
                     ctx["caller_id"] = decoded["sub"]
+                if "agent_id" in decoded and decoded["agent_id"]:
+                    ctx["agent_id"] = decoded["agent_id"]
+                if "owner" in decoded and decoded["owner"]:
+                    ctx["owner"] = decoded["owner"]
                 if "dept" in decoded and not ctx["department"]:
                     ctx["department"] = decoded["dept"]
                 if "tenant_id" in decoded and not ctx["tenant_id"]:
@@ -659,7 +690,33 @@ class PrevalidatorEnforcer:
 
         caller_clearance = self.resolve_caller_clearance(hdrs)
         target_egress = self.resolve_target_egress(payload.get("model"))
-        caller_context = self.resolve_caller_context(hdrs, payload, caller_clearance, target_egress)
+        caller_context = self.resolve_caller_context(hdrs, payload, caller_clearance or "Public", target_egress)
+
+        if caller_clearance is None:
+            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns)
+            audit = AuditLogEntry(
+                timestamp=now_str,
+                mode=self.mode,
+                decision="deny",
+                reason_codes=[REASON_UNOWNED_AGENT_BLOCKED],
+                locators_evaluated=[],
+                caller_clearance="Unresolved",
+                target_egress=target_egress,
+                caller_id=caller_context.get("caller_id"),
+                agent_id=caller_context.get("agent_id"),
+                owner=caller_context.get("owner"),
+                decision_latency_ms=lat_ms,
+                decision_latency_us=lat_us,
+            )
+            self.audit_log.append(audit)
+            return EnforcementOutcome(
+                allowed_to_forward=False,
+                transformed_payload=payload,
+                client_denial_body=self._uniform_denial_response(),
+                audit_entry=audit,
+                decision_latency_ms=lat_ms,
+                decision_latency_us=lat_us,
+            )
 
         snapshot = self.snapshot_store.get_active_snapshot(now=now_dt)
         if snapshot is None:
@@ -673,6 +730,9 @@ class PrevalidatorEnforcer:
                 locators_evaluated=[],
                 caller_clearance=caller_clearance,
                 target_egress=target_egress,
+                caller_id=caller_context.get("caller_id"),
+                agent_id=caller_context.get("agent_id"),
+                owner=caller_context.get("owner"),
                 decision_latency_ms=lat_ms,
                 decision_latency_us=lat_us,
             )
@@ -895,6 +955,9 @@ class PrevalidatorEnforcer:
                     caller_clearance=caller_clearance,
                     target_egress=target_egress,
                     stripped_locators=stripped_locators,
+                    caller_id=caller_context.get("caller_id"),
+                    agent_id=caller_context.get("agent_id"),
+                    owner=caller_context.get("owner"),
                     decision_latency_ms=lat_ms,
                     decision_latency_us=lat_us,
                 )
@@ -917,6 +980,9 @@ class PrevalidatorEnforcer:
                 caller_clearance=caller_clearance,
                 target_egress=target_egress,
                 stripped_locators=stripped_locators,
+                caller_id=caller_context.get("caller_id"),
+                agent_id=caller_context.get("agent_id"),
+                owner=caller_context.get("owner"),
                 decision_latency_ms=lat_ms,
                 decision_latency_us=lat_us,
             )
@@ -942,6 +1008,9 @@ class PrevalidatorEnforcer:
             target_egress=target_egress,
             stripped_locators=stripped_locators,
             masked_locators=masked_locators,
+            caller_id=caller_context.get("caller_id"),
+            agent_id=caller_context.get("agent_id"),
+            owner=caller_context.get("owner"),
             decision_latency_ms=lat_ms,
             decision_latency_us=lat_us,
         )

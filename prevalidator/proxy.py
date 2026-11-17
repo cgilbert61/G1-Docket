@@ -35,7 +35,7 @@ from engine.directory_bridge import (
     resolve_pc_directory_path,
 )
 from engine.storage_connectors import is_enterprise_store_uri
-from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer
+from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer, is_auth_enforced
 from registry.signing import Keyring, compute_file_sha256
 
 
@@ -52,6 +52,9 @@ async def _emit_governance_event_async(
     triggered_rules: list[str],
     extracted_text: str | None = None,
     caller_clearance: str | None = None,
+    caller_id: str | None = None,
+    agent_id: str | None = None,
+    owner: str | None = None,
 ) -> None:
     """Non-blocking background emitter to G1 Governance, WORM ledger & SIEM hub (:18084)."""
     global _governance_target_cache
@@ -81,6 +84,11 @@ async def _emit_governance_event_async(
         "extracted_text": extracted_text,
         "actor_identity": "boundary:prevalidator",
         "caller_clearance": caller_clearance,
+        "metadata": {
+            "caller_id": caller_id,
+            "agent_id": agent_id,
+            "owner": owner,
+        },
     }
 
     try:
@@ -107,6 +115,9 @@ def emit_governance_event_background(
     triggered_rules: list[str],
     extracted_text: str | None = None,
     caller_clearance: str | None = None,
+    caller_id: str | None = None,
+    agent_id: str | None = None,
+    owner: str | None = None,
 ) -> None:
     """Fire-and-forget emitter that does not block the inference hot-path."""
     try:
@@ -121,6 +132,9 @@ def emit_governance_event_background(
                 triggered_rules=triggered_rules,
                 extracted_text=extracted_text,
                 caller_clearance=caller_clearance,
+                caller_id=caller_id,
+                agent_id=agent_id,
+                owner=owner,
             )
         )
     except Exception:
@@ -1616,6 +1630,9 @@ def create_prevalidator_app(
         loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:openai"
         cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
         reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+        c_id = outcome.audit_entry.caller_id if outcome.audit_entry else None
+        a_id = outcome.audit_entry.agent_id if outcome.audit_entry else None
+        own = outcome.audit_entry.owner if outcome.audit_entry else None
 
         if not outcome.allowed_to_forward:
             emit_governance_event_background(
@@ -1628,6 +1645,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
@@ -1652,6 +1672,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
         else:
             emit_governance_event_background(
@@ -1664,6 +1687,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
 
         clean_payload = outcome.transformed_payload
@@ -1784,6 +1810,9 @@ def create_prevalidator_app(
         loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:anthropic"
         cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
         reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+        c_id = outcome.audit_entry.caller_id if outcome.audit_entry else None
+        a_id = outcome.audit_entry.agent_id if outcome.audit_entry else None
+        own = outcome.audit_entry.owner if outcome.audit_entry else None
 
         if not outcome.allowed_to_forward:
             emit_governance_event_background(
@@ -1796,6 +1825,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
@@ -1820,6 +1852,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
         else:
             emit_governance_event_background(
@@ -1832,6 +1867,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
 
         clean_payload = outcome.transformed_payload
@@ -1950,6 +1988,9 @@ def create_prevalidator_app(
         loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:gemini"
         cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
         reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+        c_id = outcome.audit_entry.caller_id if outcome.audit_entry else None
+        a_id = outcome.audit_entry.agent_id if outcome.audit_entry else None
+        own = outcome.audit_entry.owner if outcome.audit_entry else None
 
         if not outcome.allowed_to_forward:
             emit_governance_event_background(
@@ -1962,6 +2003,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
@@ -1986,6 +2030,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
         else:
             emit_governance_event_background(
@@ -1998,6 +2045,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
 
         clean_payload = outcome.transformed_payload
@@ -2089,6 +2139,9 @@ def create_prevalidator_app(
         loc_uri = outcome.audit_entry.locators_evaluated[0] if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else "urn:prompt:gemini"
         cl_tier = outcome.audit_entry.caller_clearance if outcome.audit_entry else "Public"
         reasons = outcome.audit_entry.reason_codes if outcome.audit_entry else []
+        c_id = outcome.audit_entry.caller_id if outcome.audit_entry else None
+        a_id = outcome.audit_entry.agent_id if outcome.audit_entry else None
+        own = outcome.audit_entry.owner if outcome.audit_entry else None
 
         if not outcome.allowed_to_forward:
             emit_governance_event_background(
@@ -2101,6 +2154,9 @@ def create_prevalidator_app(
                 triggered_rules=reasons,
                 extracted_text=user_text,
                 caller_clearance=cl_tier,
+                caller_id=c_id,
+                agent_id=a_id,
+                owner=own,
             )
             denial_headers = {
                 "X-Blocked-By": "G1-Docket-Prevalidator",
