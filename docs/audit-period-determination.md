@@ -5,6 +5,10 @@
 
 > 📄 **Downloadable Whitepaper**: [`G1-Docket-Audit-Period.pdf`](whitepapers/G1-Docket-Audit-Period.pdf)
 
+<p align="center">
+  <img src="assets/G1-Docket-Audit-Monitor-Demo.gif" alt="G1 Docket - Audit Runway & Go-Live Readiness Monitor" width="100%" />
+</p>
+
 ---
 
 G1 Docket deploys in **AUDIT** first: it attests the estate, evaluates every request your AI makes, and logs what it *would* deny — while blocking nothing. The flip to **ENFORCE** is the moment of commitment, so the audit period is the one number every deployment plan has to get right. It is usually guessed. It can instead be determined — from the figures measured by the G1 Docket benchmark suite.

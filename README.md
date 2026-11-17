@@ -38,7 +38,7 @@ AI gateways govern requests. Nothing attests the data those requests touch. **G1
 > Real-time observation of periodic estate traffic without blocking requests. Tracks empirical exit criteria (traffic coverage, denial stability, and triage disposition) to determine when an organization is ready to flip from OBSERVE to ENFORCE mode.
 
 <p align="center">
-  <img src="docs/assets/G1-Docket-Audit-Monitor-Demo.jpg" alt="G1 Docket - Audit Runway & Go-Live Readiness Monitor" width="100%" />
+  <img src="docs/assets/G1-Docket-Audit-Monitor-Demo.gif" alt="G1 Docket - Audit Runway & Go-Live Readiness Monitor" width="100%" />
 </p>
 
 ---
