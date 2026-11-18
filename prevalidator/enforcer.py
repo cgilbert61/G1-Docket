@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import functools
 import hashlib
 import json
+import logging
 import os
 import re
 import time
@@ -13,6 +16,8 @@ from pathlib import Path
 from typing import Any
 
 import jwt
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from engine.classifier import RESTRICTED_CATEGORIES, PresidioClassifier
 from registry.schema_validator import (
@@ -24,6 +29,9 @@ from registry.schema_validator import (
 )
 from registry.signing import Keyring, normalize_canonical_text, verify_dsse_envelope
 from docket.chunking import ChunkProof, MerkleChunkTree
+from docket.integrations import compute_delegate_canonical_string, _resolve_ed25519_public_key
+
+logger = logging.getLogger("prevalidator.enforcer")
 
 # Uniform denial message mandated by Phase 2 Consumer Conformance Suite (never leaks which rule fired)
 UNIFORM_DENIAL_MESSAGE = "Request denied by data attestation policy."
@@ -38,6 +46,8 @@ REASON_DATA_RESIDENCY_VIOLATION = "DATA_RESIDENCY_VIOLATION"
 REASON_DEPARTMENTAL_ISOLATION_VIOLATION = "DEPARTMENTAL_ISOLATION_VIOLATION"
 REASON_CLEARANCE_ESCALATION_BLOCKED = "CLEARANCE_ESCALATION_BLOCKED"
 REASON_DELEGATION_VIOLATION = "DELEGATION_VIOLATION"
+REASON_DELEGATION_SIGNATURE_INVALID = "DELEGATION_SIGNATURE_INVALID"
+REASON_DELEGATION_CHAIN_BROKEN = "DELEGATION_CHAIN_BROKEN"
 REASON_UNOWNED_AGENT_BLOCKED = "UNOWNED_AGENT_BLOCKED"
 
 def is_auth_enforced() -> bool:
@@ -47,6 +57,13 @@ def is_auth_enforced() -> bool:
     if req_auth or env in ("production", "prod") or demo_mode in ("false", "0", "no"):
         return True
     return False
+
+@functools.lru_cache(maxsize=4096)
+def _verify_ed25519_signature_cached(pub_raw_bytes: bytes, sig_bytes: bytes, canonical_bytes: bytes) -> bool:
+    """Cached Ed25519 verification for high-throughput pipeline and multi-agent envelope traversal."""
+    key = Ed25519PublicKey.from_public_bytes(pub_raw_bytes)
+    key.verify(sig_bytes, canonical_bytes)
+    return True
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
@@ -86,6 +103,9 @@ class AuditLogEntry:
     caller_id: str | None = None
     agent_id: str | None = None
     owner: str | None = None
+    delegate_chain_root: str | None = None
+    verified_root_owner: str | None = None
+    delegate_chain_hops: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -103,6 +123,9 @@ class AuditLogEntry:
             "caller_id": self.caller_id,
             "agent_id": self.agent_id,
             "owner": self.owner,
+            "delegate_chain_root": self.delegate_chain_root,
+            "verified_root_owner": self.verified_root_owner,
+            "delegate_chain_hops": self.delegate_chain_hops,
         }
 
 
@@ -175,6 +198,7 @@ class PrevalidatorEnforcer:
         allow_header_only_objects: bool | None = None,
         strict_inline_hash: bool | None = None,
         max_untagged_chars: int | None = None,
+        delegate_verify_key: bytes | str | None = None,
     ) -> None:
         if mode not in ("enforce", "observe"):
             raise ValueError("mode must be 'enforce' or 'observe'")
@@ -217,6 +241,22 @@ class PrevalidatorEnforcer:
             if max_untagged_chars is not None
             else int(os.environ.get("POD_MAX_UNTAGGED_CHARS", "2000"))
         )
+        if delegate_verify_key is not None:
+            self.delegate_verify_key = _resolve_ed25519_public_key(delegate_verify_key)
+        else:
+            env_key = os.environ.get("POD_DELEGATE_VERIFY_KEY", "").strip()
+            self.delegate_verify_key = _resolve_ed25519_public_key(env_key) if env_key else None
+        self._delegate_verify_key_raw = (
+            self.delegate_verify_key.public_bytes_raw() if self.delegate_verify_key is not None else None
+        )
+
+        if is_auth_enforced():
+            logger.warning(
+                "Auth-enforced mode: callers authenticating by API key present agent_id and owner as "
+                "caller-asserted headers, not signed claims. For production, prefer token authentication "
+                "(X-POD-Caller-Token) so agent_id and owner are verified claims."
+            )
+
         self.classifier = PresidioClassifier()
         self.custom_policy_hooks: list[Any] = []
         if os.environ.get("POD_ENABLE_ABAC_DATA_RESIDENCY", "false").lower() in ("1", "true", "yes"):
@@ -754,20 +794,156 @@ class PrevalidatorEnforcer:
         masked_locators: list[str] = []
         total_untagged_chars = 0
         has_inline_pod_tags = False
+        has_delegate_blocks = False
+        delegate_chain_root: str | None = None
+        verified_root_owner: str | None = None
+        delegate_chain_hops: int = 0
+        delegate_inner_chars = 0
 
         # 1. Evaluate and transform message texts (strict `<pod:object>` parser + live inner-text SHA-256 + fallback Presidio)
         new_payload = json.loads(json.dumps(payload))
 
         def process_delegates(text_val: str) -> str:
-            nonlocal reason_codes
+            nonlocal reason_codes, has_delegate_blocks, delegate_chain_root, verified_root_owner, delegate_chain_hops, delegate_inner_chars
             if "pod:delegate" not in text_val.lower():
                 return text_val
 
             def replace_delegate(m: re.Match[str]) -> str:
+                nonlocal reason_codes, has_delegate_blocks, delegate_chain_root, verified_root_owner, delegate_chain_hops, delegate_inner_chars
+                has_delegate_blocks = True
                 attrs_str = m.group(1)
                 inner_body = m.group(2)
+                delegate_inner_chars += len(inner_body.strip())
+
+                raw_attrs = dict(re.findall(r'(\w+)=["\']([^"\']*)["\']', attrs_str))
                 tier_match = re.search(r'parent_tier=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
                 parent_tier = tier_match.group(1).capitalize() if tier_match else "Restricted"
+                agent_match = re.search(r'agent_id=["\']([^"\']+)["\']', attrs_str, re.IGNORECASE)
+                agent_id = agent_match.group(1).strip() if agent_match else "agent-worker"
+
+                chain_attr = raw_attrs.get("chain")
+                sig_attr = raw_attrs.get("sig")
+                origin_sha = raw_attrs.get("origin_sha256", "")
+                origin_loc = raw_attrs.get("origin_locator", "")
+
+                if is_auth_enforced():
+                    # 1. chain present and decodable, at least one entry — else append DELEGATION_SIGNATURE_INVALID + DELEGATION_VIOLATION, block.
+                    if not chain_attr:
+                        reason_codes.append(REASON_DELEGATION_SIGNATURE_INVALID)
+                        reason_codes.append(REASON_DELEGATION_VIOLATION)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    try:
+                        padded = chain_attr + "=" * ((4 - len(chain_attr) % 4) % 4)
+                        chain_json = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+                        entries_list = json.loads(chain_json)
+                        if not isinstance(entries_list, list) or len(entries_list) == 0:
+                            raise ValueError("Empty chain")
+                    except Exception:
+                        reason_codes.append(REASON_DELEGATION_SIGNATURE_INVALID)
+                        reason_codes.append(REASON_DELEGATION_VIOLATION)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    delegate_chain_root = entries_list[0].get("agent")
+                    delegate_chain_hops = len(entries_list)
+
+                    # 2. A verify key is configured — if none is configured in production, block the same way.
+                    if self.delegate_verify_key is None:
+                        reason_codes.append(REASON_DELEGATION_SIGNATURE_INVALID)
+                        reason_codes.append(REASON_DELEGATION_VIOLATION)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    # 3. Every entry's sig verifies sequentially over the canonical string, chaining prev_sig — any failure: DELEGATION_SIGNATURE_INVALID, block.
+                    prev_sig = "root"
+                    for entry in entries_list:
+                        if not isinstance(entry, dict):
+                            reason_codes.append(REASON_DELEGATION_SIGNATURE_INVALID)
+                            return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+                        e_agent = entry.get("agent", "")
+                        e_tier = entry.get("tier", "")
+                        e_owner = entry.get("owner", "")
+                        e_sig = entry.get("sig", "")
+
+                        canonical_str = compute_delegate_canonical_string(
+                            origin_sha256=origin_sha,
+                            origin_locator=origin_loc,
+                            agent=e_agent,
+                            tier=e_tier,
+                            owner=e_owner,
+                            inner_body=inner_body,
+                            prev_sig=prev_sig,
+                        )
+                        try:
+                            padded_sig = e_sig + "=" * ((4 - len(e_sig) % 4) % 4)
+                            sig_bytes = base64.urlsafe_b64decode(padded_sig.encode("ascii"))
+                            if self._delegate_verify_key_raw is not None:
+                                _verify_ed25519_signature_cached(self._delegate_verify_key_raw, sig_bytes, canonical_str.encode("utf-8"))
+                            else:
+                                self.delegate_verify_key.verify(sig_bytes, canonical_str.encode("utf-8"))
+                        except Exception:
+                            reason_codes.append(REASON_DELEGATION_SIGNATURE_INVALID)
+                            return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+                        prev_sig = e_sig
+
+                    # 4. Tier sequence non-increasing by CLEARANCE_ORDER level — a widening hop: DELEGATION_CHAIN_BROKEN + CLEARANCE_ESCALATION_BLOCKED, block.
+                    prev_level = None
+                    for entry in entries_list:
+                        e_tier = entry.get("tier", "").capitalize()
+                        if e_tier not in CLEARANCE_ORDER:
+                            reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                            return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+                        curr_level = CLEARANCE_ORDER[e_tier]
+                        if prev_level is not None and curr_level > prev_level:
+                            reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                            reason_codes.append(REASON_CLEARANCE_ESCALATION_BLOCKED)
+                            return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+                        prev_level = curr_level
+
+                    # 5. Root entry owner non-empty and every later entry's owner empty — else DELEGATION_CHAIN_BROKEN, block. An unattributed chain is not a chain.
+                    root_owner = entries_list[0].get("owner", "").strip()
+                    if not root_owner:
+                        reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    for entry in entries_list[1:]:
+                        if entry.get("owner", "") != "":
+                            reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                            return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    verified_root_owner = root_owner
+
+                    # 6. The consistency rules from the format section — any mismatch: DELEGATION_CHAIN_BROKEN, block.
+                    last_entry = entries_list[-1]
+                    if sig_attr is not None and sig_attr.strip() != last_entry.get("sig", ""):
+                        reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    tag_parent_tier = parent_tier.capitalize()
+                    if tag_parent_tier != last_entry.get("tier", "").capitalize():
+                        reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    if agent_id != last_entry.get("agent", ""):
+                        reason_codes.append(REASON_DELEGATION_CHAIN_BROKEN)
+                        return inner_body if self.mode == "observe" else "[POD:DELEGATE_BLOCKED]"
+
+                    parent_tier = last_entry.get("tier", parent_tier).capitalize()
+
+                else:
+                    if chain_attr:
+                        try:
+                            padded = chain_attr + "=" * ((4 - len(chain_attr) % 4) % 4)
+                            chain_json = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+                            entries_list = json.loads(chain_json)
+                            if isinstance(entries_list, list) and len(entries_list) > 0:
+                                delegate_chain_root = entries_list[0].get("agent")
+                                delegate_chain_hops = len(entries_list)
+                                verified_root_owner = entries_list[0].get("owner")
+                        except Exception:
+                            pass
+                    if delegate_chain_root is None:
+                        delegate_chain_root = agent_id
+                        delegate_chain_hops = 1
 
                 req_level = CLEARANCE_ORDER.get(parent_tier, 2)
                 caller_level = CLEARANCE_ORDER.get(caller_clearance, 0)
@@ -787,7 +963,7 @@ class PrevalidatorEnforcer:
             return POD_DELEGATE_TAG_RE.sub(replace_delegate, text_val)
 
         def process_text(text: str) -> str:
-            nonlocal reason_codes, locators_seen, stripped_locators, masked_locators, total_untagged_chars, has_inline_pod_tags
+            nonlocal reason_codes, locators_seen, stripped_locators, masked_locators, total_untagged_chars, has_inline_pod_tags, delegate_inner_chars
 
             text = process_delegates(text)
 
@@ -848,7 +1024,8 @@ class PrevalidatorEnforcer:
             untagged_parts.append(tail_seg)
             for p in untagged_parts:
                 total_untagged_chars += len(p.strip())
-            untagged_joined = " ".join(p for p in untagged_parts if p.strip())
+            total_untagged_chars = max(0, total_untagged_chars - delegate_inner_chars)
+            untagged_joined = " ".join(p.strip() for p in untagged_parts if p.strip())
 
             # Fallback content inspection (Presidio) ONLY on untagged free text carrying no object identity
             if self.enable_presidio_fallback and untagged_joined:
@@ -905,11 +1082,12 @@ class PrevalidatorEnforcer:
                 if isinstance(part, dict) and isinstance(part.get("text"), str):
                     part["text"] = process_text(part["text"])
 
-        # 2. Enforce Untagged Context Quota when <pod:object> tags or X-POD-Require-Attested-Context: true are present
+        # 2. Enforce Untagged Context Quota when <pod:object> tags, X-POD-Require-Attested-Context: true, or production delegate blocks are present
         require_attested_ctx = norm_hdrs.get("x-pod-require-attested-context", "").lower() in ("1", "true", "yes")
+        delegate_quota_active = is_auth_enforced() and has_delegate_blocks
         if require_attested_ctx and not has_inline_pod_tags:
             reason_codes.append("UNATTESTED_DATA_OBJECT")
-        elif (has_inline_pod_tags or require_attested_ctx) and total_untagged_chars > self.max_untagged_chars:
+        elif (has_inline_pod_tags or require_attested_ctx or delegate_quota_active) and total_untagged_chars > self.max_untagged_chars:
             reason_codes.append(REASON_UNATTESTED_CONTEXT_OVERFLOW)
 
         # 3. Evaluate request-level header locators (`X-POD-Locators` or `X-POD-Objects`)
@@ -960,6 +1138,9 @@ class PrevalidatorEnforcer:
                     owner=caller_context.get("owner"),
                     decision_latency_ms=lat_ms,
                     decision_latency_us=lat_us,
+                    delegate_chain_root=delegate_chain_root,
+                    verified_root_owner=verified_root_owner,
+                    delegate_chain_hops=delegate_chain_hops,
                 )
                 self.audit_log.append(audit)
                 return EnforcementOutcome(
@@ -985,6 +1166,9 @@ class PrevalidatorEnforcer:
                 owner=caller_context.get("owner"),
                 decision_latency_ms=lat_ms,
                 decision_latency_us=lat_us,
+                delegate_chain_root=delegate_chain_root,
+                verified_root_owner=verified_root_owner,
+                delegate_chain_hops=delegate_chain_hops,
             )
             self.audit_log.append(audit)
             return EnforcementOutcome(
@@ -1013,6 +1197,9 @@ class PrevalidatorEnforcer:
             owner=caller_context.get("owner"),
             decision_latency_ms=lat_ms,
             decision_latency_us=lat_us,
+            delegate_chain_root=delegate_chain_root,
+            verified_root_owner=verified_root_owner,
+            delegate_chain_hops=delegate_chain_hops,
         )
         self.audit_log.append(audit)
         return EnforcementOutcome(

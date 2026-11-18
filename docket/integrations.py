@@ -6,12 +6,17 @@ G1 Docket zero-trust attestation into LangChain, LlamaIndex, AutoGen, CrewAI, an
 
 from __future__ import annotations
 
+import base64
 import functools
 import hashlib
 import json
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from docket.client import DocketClient, PolicyDenialError
 
@@ -817,6 +822,104 @@ class DocketVectorIndexer:
         return lance_records
 
 
+def compute_delegate_canonical_string(
+    origin_sha256: str,
+    origin_locator: str | None,
+    agent: str,
+    tier: str,
+    owner: str,
+    inner_body: str,
+    prev_sig: str | None,
+) -> str:
+    """Compute the canonical UTF-8 string for an Ed25519 delegate chain hop.
+
+    Format: v1|{origin_sha256}|{origin_locator or ""}|{entry.agent}|{entry.tier}|{entry.owner}|{sha256_hex(inner_body)}|{prev_sig or "root"}
+    """
+    inner_sha256 = hashlib.sha256(inner_body.encode("utf-8")).hexdigest()
+    locator_val = origin_locator or ""
+    prev_sig_val = prev_sig or "root"
+    fields = [
+        "v1",
+        origin_sha256,
+        locator_val,
+        agent,
+        tier,
+        owner,
+        inner_sha256,
+        prev_sig_val,
+    ]
+    return "|".join(fields)
+
+
+def _resolve_ed25519_private_key(key: bytes | str | Ed25519PrivateKey | None) -> Ed25519PrivateKey | None:
+    """Resolve an Ed25519 private key from instance, bytes, base64 string, or environment variable."""
+    if key is None:
+        env_val = os.environ.get("POD_DELEGATE_SIGNING_KEY", "").strip()
+        if not env_val:
+            return None
+        key = env_val
+
+    if isinstance(key, Ed25519PrivateKey):
+        return key
+
+    if isinstance(key, str):
+        key = key.strip()
+        padded = key + "=" * ((4 - len(key) % 4) % 4)
+        try:
+            raw_bytes = base64.urlsafe_b64decode(padded)
+        except Exception:
+            raw_bytes = base64.b64decode(padded)
+        return Ed25519PrivateKey.from_private_bytes(raw_bytes)
+
+    if isinstance(key, bytes):
+        if len(key) == 32:
+            return Ed25519PrivateKey.from_private_bytes(key)
+        padded = key + b"=" * ((4 - len(key) % 4) % 4)
+        try:
+            raw_bytes = base64.urlsafe_b64decode(padded)
+        except Exception:
+            raw_bytes = base64.b64decode(padded)
+        return Ed25519PrivateKey.from_private_bytes(raw_bytes)
+
+    return None
+
+
+def _resolve_ed25519_public_key(key: bytes | str | Ed25519PublicKey | None) -> Ed25519PublicKey | None:
+    """Resolve an Ed25519 public key from instance, bytes, base64 string, or environment variable."""
+    if key is None:
+        env_val = os.environ.get("POD_DELEGATE_VERIFY_KEY", "").strip()
+        if not env_val:
+            return None
+        key = env_val
+
+    if isinstance(key, Ed25519PublicKey):
+        return key
+
+    if isinstance(key, str):
+        key = key.strip()
+        padded = key + "=" * ((4 - len(key) % 4) % 4)
+        try:
+            raw_bytes = base64.urlsafe_b64decode(padded)
+        except Exception:
+            raw_bytes = base64.b64decode(padded)
+        return Ed25519PublicKey.from_public_bytes(raw_bytes)
+
+    if isinstance(key, bytes):
+        if len(key) == 32:
+            return Ed25519PublicKey.from_public_bytes(key)
+        padded = key + b"=" * ((4 - len(key) % 4) % 4)
+        try:
+            raw_bytes = base64.urlsafe_b64decode(padded)
+        except Exception:
+            raw_bytes = base64.b64decode(padded)
+        return Ed25519PublicKey.from_public_bytes(raw_bytes)
+
+    return None
+
+
+# Trust model: the signing key is held by the integration/harness layer that calls
+# wrap_delegated_context (client/SDK plumbing), never by the agent process whose output
+# is wrapped. A compromised harness minting a fresh chain is out of scope — do not try to solve it.
 def wrap_delegated_context(
     content: str,
     origin_sha256: str,
@@ -824,12 +927,121 @@ def wrap_delegated_context(
     agent_id: str = "agent-worker",
     origin_locator: str | None = None,
     sig: str | None = None,
+    parent_envelope: str | None = None,
+    signing_key: bytes | str | Ed25519PrivateKey | None = None,
+    owner: str = "",
 ) -> str:
-    """Wrap agent output or summary in a `<pod:delegate>` container for multi-agent swarm handoffs.
+    """Wrap agent output in a <pod:delegate> container for multi-agent handoffs. When a signing key is configured, the envelope carries a signed, append-only chain of hops that the prevalidator verifies in production mode: the root agent cannot be dropped and tier ceilings can only narrow from hop to hop. Unsigned envelopes are a demo convenience and are refused when authentication is enforced."""
+    priv_key = _resolve_ed25519_private_key(signing_key)
 
-    Guarantees that downstream synthesizing agents cannot launder or leak high-clearance
-    information to lower-tier models or unauthorized callers.
-    """
+    if parent_envelope is not None:
+        m = re.search(r'<pod:delegate\b([^>]*)>(.*?)</pod:delegate>', parent_envelope, re.DOTALL | re.IGNORECASE)
+        if not m:
+            raise ValueError("Malformed parent_envelope: not a valid <pod:delegate> envelope")
+        parent_attrs_str, parent_inner = m.group(1), m.group(2)
+
+        parent_sha = hashlib.sha256(parent_inner.encode("utf-8")).hexdigest()
+        content_sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        if parent_sha != content_sha:
+            raise ValueError(
+                f"Parent envelope content hash ({parent_sha}) does not match content being wrapped ({content_sha})"
+            )
+
+        parent_attrs = dict(re.findall(r'(\w+)=["\']([^"\']*)["\']', parent_attrs_str))
+        chain_b64 = parent_attrs.get("chain")
+        if not chain_b64:
+            raise ValueError("Parent envelope is missing 'chain' attribute")
+
+        try:
+            padded = chain_b64 + "=" * ((4 - len(chain_b64) % 4) % 4)
+            chain_json = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+            existing_entries = json.loads(chain_json)
+            if not isinstance(existing_entries, list) or len(existing_entries) == 0:
+                raise ValueError("Parent envelope chain is empty")
+        except Exception as e:
+            raise ValueError(f"Malformed chain in parent envelope: {e}")
+
+        prev_sig = existing_entries[-1].get("sig")
+        if not prev_sig:
+            raise ValueError("Previous hop in parent chain has no signature")
+
+        if not priv_key:
+            raise ValueError("A signing key is required to append a hop to a delegate chain")
+
+        effective_origin_sha = parent_attrs.get("origin_sha256", origin_sha256)
+        effective_origin_loc = parent_attrs.get("origin_locator", origin_locator)
+
+        hop_owner = ""  # Later entries: owner is ""
+        canonical_str = compute_delegate_canonical_string(
+            origin_sha256=effective_origin_sha,
+            origin_locator=effective_origin_loc,
+            agent=agent_id,
+            tier=parent_tier,
+            owner=hop_owner,
+            inner_body=content,
+            prev_sig=prev_sig,
+        )
+        raw_sig = priv_key.sign(canonical_str.encode("utf-8"))
+        hop_sig = base64.urlsafe_b64encode(raw_sig).decode("ascii").rstrip("=")
+
+        new_entry = {
+            "agent": agent_id,
+            "tier": parent_tier,
+            "owner": hop_owner,
+            "sig": hop_sig,
+        }
+        new_chain = list(existing_entries) + [new_entry]
+        new_chain_json = json.dumps(new_chain, separators=(",", ":"))
+        new_chain_b64url = base64.urlsafe_b64encode(new_chain_json.encode("utf-8")).decode("ascii").rstrip("=")
+
+        attrs = [
+            f'origin_sha256="{effective_origin_sha}"',
+            f'parent_tier="{parent_tier}"',
+            f'agent_id="{agent_id}"',
+        ]
+        if effective_origin_loc:
+            attrs.append(f'origin_locator="{effective_origin_loc}"')
+        attrs.append(f'chain="{new_chain_b64url}"')
+        attrs.append(f'sig="{hop_sig}"')
+        attr_str = " ".join(attrs)
+        return f"<pod:delegate {attr_str}>{content}</pod:delegate>"
+
+    if priv_key is not None:
+        canonical_str = compute_delegate_canonical_string(
+            origin_sha256=origin_sha256,
+            origin_locator=origin_locator,
+            agent=agent_id,
+            tier=parent_tier,
+            owner=owner,
+            inner_body=content,
+            prev_sig="root",
+        )
+        raw_sig = priv_key.sign(canonical_str.encode("utf-8"))
+        root_sig = base64.urlsafe_b64encode(raw_sig).decode("ascii").rstrip("=")
+
+        root_entry = {
+            "agent": agent_id,
+            "tier": parent_tier,
+            "owner": owner,
+            "sig": root_sig,
+        }
+        chain_entries = [root_entry]
+        chain_json = json.dumps(chain_entries, separators=(",", ":"))
+        chain_b64url = base64.urlsafe_b64encode(chain_json.encode("utf-8")).decode("ascii").rstrip("=")
+
+        attrs = [
+            f'origin_sha256="{origin_sha256}"',
+            f'parent_tier="{parent_tier}"',
+            f'agent_id="{agent_id}"',
+        ]
+        if origin_locator:
+            attrs.append(f'origin_locator="{origin_locator}"')
+        attrs.append(f'chain="{chain_b64url}"')
+        attrs.append(f'sig="{root_sig}"')
+        attr_str = " ".join(attrs)
+        return f"<pod:delegate {attr_str}>{content}</pod:delegate>"
+
+    # Legacy envelope (no key available, no parent_envelope)
     attrs = [
         f'origin_sha256="{origin_sha256}"',
         f'parent_tier="{parent_tier}"',

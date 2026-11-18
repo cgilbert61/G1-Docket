@@ -336,6 +336,11 @@ In multi-agent swarms, G1 Docket prevents **Provenance Stripping** using the `<p
  └──────────────────────────────────────────────────────────────┘
 ```
 
+### Delegation Grains & Session Pinning:
+G1 Docket distinguishes between two complementary enforcement grains in multi-agent architectures:
+1. **Per-Item Enforcement (Default)**: Every individual data object and delegated context envelope is independently evaluated against its own signed attestation record, verified root owner, and clearance tier—even when multiple disparate objects are merged into a single multi-agent prompt or fan-in payload.
+2. **Session Owner Pinning (Deployment Posture)**: Recommended when strict cross-principal fan-in isolation is required. Pins the entire inference session or agent conversation context to an authenticated sponsor identity, preventing unauthorized cross-tenant or cross-departmental agent context blending.
+
 ---
 
 ## 8. Enterprise SIEM & SOC Integration (Splunk, Datadog & Sentinel)
