@@ -1,21 +1,10 @@
 # Syft SBOM Configuration for G1 Docket
 # Executive Order 14028 & NIST SP 800-161 Supply Chain Risk Management
 
-output:
-  - "cyclonedx-json=reports/sbom.cdx.json"
-  - "spdx-json=reports/sbom.spdx.json"
-
-source:
-  file: "."
-
-catalogers:
-  - python-package-cataloger
-  - python-installed-package-cataloger
-  - binary-cataloger
-
 exclude:
   - "**/__pycache__/**"
   - "**/scratch/**"
   - "**/reports/**"
   - "**/tests/**"
   - "**/.git/**"
+

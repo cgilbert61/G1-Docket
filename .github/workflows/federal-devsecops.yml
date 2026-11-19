@@ -21,20 +21,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Run Semgrep SAST (OWASP Top 10 & Security Audit)
-        uses: returntocorp/semgrep-action@v1
+        uses: semgrep/semgrep-action@v1
         with:
           config: >-
             p/owasp-top-ten
             p/security-audit
             .semgrep.yml
-          generateSarif: "reports/semgrep.sarif"
+          generateSarif: "1"
         continue-on-error: true
+
+      - name: Copy Semgrep SARIF to Reports
+        if: always()
+        run: |
+          if [ -f "semgrep.sarif" ]; then
+            cp semgrep.sarif reports/semgrep.sarif
+          fi
 
       - name: Run Gitleaks Secret Detection
         uses: gitleaks/gitleaks-action@v2
@@ -44,10 +54,10 @@ jobs:
         continue-on-error: true
 
       - name: Upload SAST SARIF
-        if: always()
+        if: always() && hashFiles('semgrep.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: reports/semgrep.sarif
+          sarif_file: semgrep.sarif
           category: semgrep
         continue-on-error: true
 
@@ -57,6 +67,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
 
       - name: Run Checkov IaC Security Scan (Terraform & K8s)
         uses: bridgecrewio/checkov-action@master
@@ -75,7 +88,7 @@ jobs:
           output-file: reports/sbom.cdx.json
 
       - name: Upload IaC SARIF
-        if: always()
+        if: always() && hashFiles('reports/results_sarif.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/results_sarif.sarif
@@ -83,6 +96,7 @@ jobs:
         continue-on-error: true
 
       - name: Archive SBOM Artifacts
+        if: always() && hashFiles('reports/sbom.cdx.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: federal-sbom-cyclonedx
@@ -95,6 +109,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
       - name: Run Trivy Vulnerability & Misconfig Scanner
         uses: aquasecurity/trivy-action@master
         with:
@@ -106,7 +123,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        if: always()
+        if: always() && hashFiles('reports/trivy-fs.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: reports/trivy-fs.sarif

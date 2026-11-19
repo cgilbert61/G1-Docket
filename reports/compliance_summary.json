@@ -1,10 +1,10 @@
 {
   "framework": "G1 Docket Federal DevSecOps Pipeline",
-  "timestamp": "2026-11-19T00:43:14.441890+00:00",
+  "timestamp": "2026-11-19T04:12:01.778811+00:00",
   "total_gates": 9,
   "passed_gates": 9,
   "failed_gates": 0,
-  "duration_seconds": 35.77,
+  "duration_seconds": 41.35,
   "gates": [
     {
       "gate": "SAST & Code Quality",
