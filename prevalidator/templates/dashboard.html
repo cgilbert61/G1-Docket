@@ -436,7 +436,7 @@
         <!-- FIRM SCALE SELECTOR -->
         <div style="display: flex; align-items: center; gap: 6px;">
           <span style="font-size: 11.5px; color: var(--muted); font-weight: 600; text-transform: uppercase;">Scale Tier:</span>
-          <select id="auditFirmScaleSelect" onchange="changeAuditFirmScale()" style="width: auto; padding: 4px 8px; font-size: 12px; margin-bottom: 0; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px;">
+          <select id="auditFirmScaleSelect" aria-label="Scale Tier" onchange="changeAuditFirmScale()" style="width: auto; padding: 4px 8px; font-size: 12px; margin-bottom: 0; background: #FFFFFF; border: 1px solid var(--border); border-radius: 4px;">
             <option value="mid_size" selected>Mid-Size Firm (30 Days - 100K-1M objects)</option>
             <option value="large_enterprise">Large Enterprise (60 Days - 1M-10M objects)</option>
             <option value="hyperscale">Hyperscale / Multi-Cloud (90 Days - 10M-100M objects)</option>
@@ -847,7 +847,7 @@
         </label>
         <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px;">
           <input type="text" id="llmProviderName" value="Built-in G1 Gateway" style="margin-bottom: 0;" placeholder="Provider Name" />
-          <select id="llmProtocol" style="margin-bottom: 0;">
+          <select id="llmProtocol" aria-label="LLM Protocol" style="margin-bottom: 0;">
             <option value="openai">OpenAI (/v1/chat/completions)</option>
             <option value="anthropic">Anthropic (/v1/messages)</option>
           </select>
@@ -1119,7 +1119,7 @@
               <strong>Drill Into Subdirectory / Or Enter Custom Store URI</strong> (<code>s3://...</code>, <code>gs://...</code>, <code>D:\...</code>):
             </label>
             <div style="display: flex; gap: 6px;">
-              <select id="subDirSelect" style="margin-bottom: 0; font-size: 12.5px;" onchange="selectSubdirectory()">
+              <select id="subDirSelect" aria-label="Subdirectory Filter" style="margin-bottom: 0; font-size: 12.5px;" onchange="selectSubdirectory()">
                 <option value="">-- Current Selected Store / Directory --</option>
               </select>
             </div>
@@ -1127,7 +1127,7 @@
 
           <div style="display: flex; gap: 8px;">
             <button class="btn btn-dark" style="white-space: nowrap;" onclick="toggleEnterpriseStoresDrawer()">+ Connect Cloud Store / S3</button>
-            <input type="file" id="winFolderPicker" webkitdirectory directory multiple style="display: none;" onchange="onWinFolderPicked(event)" />
+            <input type="file" id="winFolderPicker" aria-label="Pick Local Folder" webkitdirectory directory multiple style="display: none;" onchange="onWinFolderPicked(event)" />
             <button class="btn btn-dark" style="white-space: nowrap;" onclick="document.getElementById('winFolderPicker').click()">Pick Local Folder</button>
           </div>
         </div>
@@ -1155,28 +1155,28 @@
           <button id="runAttestBtn" class="btn" onclick="attestSelectedDirectory()">1. Run Attestation on Directory (Engine)</button>
           <div style="display: flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px;">
             <span style="font-size: 11.5px; color: var(--muted);">Demo File Cap:</span>
-            <select id="demoMaxFilesSelect" style="width: 155px; margin-bottom: 0; padding: 4px 6px; font-size: 12px;">
+            <select id="demoMaxFilesSelect" aria-label="Demo File Cap" style="width: 155px; margin-bottom: 0; padding: 4px 6px; font-size: 12px;">
               <option value="120" selected>120 Files (Fast Demo)</option>
               <option value="500">500 Files (Medium)</option>
               <option value="2500">2,500 Files (Deep)</option>
               <option value="0">Unbounded (All Files)</option>
             </select>
             <label style="font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap;">
-              <input type="checkbox" id="demoIncludeCodeChk" /> +Code Dirs
+              <input type="checkbox" id="demoIncludeCodeChk" aria-label="Include Code Directories" /> +Code Dirs
             </label>
           </div>
           <button class="btn btn-dark" onclick="sweepSelectedTargetUnbounded()">Continuous Sweep This Target</button>
           <button class="btn btn-amber" onclick="dropUnattestedFile()">+ Add Unattested File</button>
           <div style="margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <span style="font-size: 12px; color: var(--muted);">Caller Clearance:</span>
-            <select id="dirCallerKey" style="width: 185px; margin-bottom: 0;">
+            <select id="dirCallerKey" aria-label="Caller Clearance" style="width: 185px; margin-bottom: 0;">
               <option value="pod-key-confidential" selected>Confidential Clearance</option>
               <option value="pod-key-public">Public Clearance</option>
               <option value="pod-key-internal">Internal Clearance</option>
               <option value="pod-key-restricted">Restricted Clearance</option>
             </select>
             <span style="font-size: 12px; color: var(--muted);">Target Egress:</span>
-            <select id="dirModelSelect" style="width: 170px; margin-bottom: 0;">
+            <select id="dirModelSelect" aria-label="Target Egress Model" style="width: 170px; margin-bottom: 0;">
               <option value="gpt-4" selected>gpt-4 (G1 Combine :8000)</option>
               <option value="local-model">local-model (local_only)</option>
               <option value="vpc-model">vpc-model (private_cloud)</option>
@@ -1401,7 +1401,7 @@
             </div>
           </div>
 
-          <textarea id="promptInput" rows="4"></textarea>
+          <textarea id="promptInput" aria-label="Evaluation Prompt Payload" rows="4"></textarea>
           <button class="btn" style="width: 100%; justify-content: center;" onclick="sendRequest()">Send Prompt Through Prevalidator</button>
 
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; margin-bottom:6px;">

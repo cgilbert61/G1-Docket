@@ -269,23 +269,23 @@
             </select>
           </div>
           <div>
-            <label>Purview Account Name</label>
+            <label for="purviewAccount">Purview Account Name</label>
             <input id="purviewAccount" type="text" value="g1-enterprise-purview" />
           </div>
           <div>
-            <label>Purview / Cloud Catalog Endpoint URL</label>
+            <label for="purviewEndpoint">Purview / Cloud Catalog Endpoint URL</label>
             <input id="purviewEndpoint" type="text" value="https://g1-enterprise-purview.purview.azure.com" />
           </div>
         </div>
 
         <label style="margin-top:12px;">Multi-Cloud Estates Scanned by Purview &amp; Consumed by G1 Docket (Stage 2):</label>
         <div class="cloud-checks">
-          <label><input type="checkbox" class="cloud-src" value="SharePoint Online" checked /> SharePoint Online</label>
-          <label><input type="checkbox" class="cloud-src" value="OneDrive" checked /> OneDrive for Business</label>
-          <label><input type="checkbox" class="cloud-src" value="Azure SQL" checked /> Azure SQL Database</label>
-          <label><input type="checkbox" class="cloud-src" value="Azure Blob" checked /> Azure Blob Storage</label>
-          <label><input type="checkbox" class="cloud-src" value="AWS S3" checked /> AWS S3 (Multi-Cloud)</label>
-          <label><input type="checkbox" class="cloud-src" value="GCP BigQuery" checked /> GCP BigQuery (Multi-Cloud)</label>
+          <label><input type="checkbox" class="cloud-src" value="SharePoint Online" aria-label="SharePoint Online" checked /> SharePoint Online</label>
+          <label><input type="checkbox" class="cloud-src" value="OneDrive" aria-label="OneDrive for Business" checked /> OneDrive for Business</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure SQL" aria-label="Azure SQL Database" checked /> Azure SQL Database</label>
+          <label><input type="checkbox" class="cloud-src" value="Azure Blob" aria-label="Azure Blob Storage" checked /> Azure Blob Storage</label>
+          <label><input type="checkbox" class="cloud-src" value="AWS S3" aria-label="AWS S3 (Multi-Cloud)" checked /> AWS S3 (Multi-Cloud)</label>
+          <label><input type="checkbox" class="cloud-src" value="GCP BigQuery" aria-label="GCP BigQuery (Multi-Cloud)" checked /> GCP BigQuery (Multi-Cloud)</label>
         </div>
       </div>
     </div>
@@ -312,7 +312,7 @@
             <button class="btn-green" style="width:100%;" onclick="runStage1Inspect()">1. Scan Files for Embedded Purview Labels</button>
           </div>
           <div style="display:flex; gap:6px;">
-            <select id="stampLabelSelect" style="width:55%;">
+            <select id="stampLabelSelect" aria-label="Sensitivity Label to Apply" style="width:55%;">
               <option value="Highly Confidential">Highly Confidential (&rarr; Restricted)</option>
               <option value="Confidential">Confidential (&rarr; Confidential)</option>
               <option value="Internal">Internal (&rarr; Internal)</option>

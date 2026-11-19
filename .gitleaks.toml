@@ -1,0 +1,29 @@
+# Gitleaks Configuration for G1 Docket
+# Federal DevSecOps Secret Detection (NIST SP 800-53 IA-5, DISA STIG Application Security)
+
+title = "G1 Docket Gitleaks Secret Detection Policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for synthetic test fixtures and cryptographic verification public keys"
+paths = [
+  '''(?i)tests/.*''',
+  '''(?i)benchmarks/.*''',
+  '''(?i)reports/.*''',
+  '''(?i)scratch/.*''',
+  '''(?i)\.git/.*'''
+]
+regexes = [
+  '''[a-f0-9]{64}''', # SHA-256 test hashes
+  '''MCowBQYDK2VwAyEA[a-zA-Z0-9+/=]{44}''', # Ed25519 synthetic public keys in tests
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[a-zA-Z0-9_\-\.]*''' # Mock JWT test tokens
+]
+stopwords = [
+  "test-secret",
+  "mock_key",
+  "synthetic_token",
+  "SAMPLE_KEY",
+  "MOCK_PUBLIC_KEY"
+]

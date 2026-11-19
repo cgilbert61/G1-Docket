@@ -1,0 +1,13 @@
+# Semgrep ignore file for G1 Docket
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+scratch/
+reports/
+docs/
+dist/
+build/
+*.egg-info/
+node_modules/

@@ -1,0 +1,35 @@
+# Checkov Configuration for G1 Docket
+# Federal DevSecOps IaC Security & DISA STIG / NIST SP 800-53 Compliance
+
+directory:
+  - terraform
+  - k8s
+  - deploy
+  - engine
+  - registry
+  - prevalidator
+  - snapshot
+
+framework:
+  - terraform
+  - kubernetes
+  - helm
+  - dockerfile
+
+output:
+  - cli
+  - sarif
+  - json
+
+output-file-path: reports/
+
+# Fail on HIGH or CRITICAL severity misconfigurations
+soft-fail: false
+compact: true
+download-external-modules: false
+
+skip-path:
+  - tests/
+  - scratch/
+  - reports/
+  - .venv/

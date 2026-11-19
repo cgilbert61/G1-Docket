@@ -1,0 +1,2005 @@
+{
+  "testEngine": {
+    "name": "axe-core",
+    "version": "4.8.2"
+  },
+  "testRunner": {
+    "name": "federal-devsecops-a11y-runner",
+    "version": "1.0.0"
+  },
+  "testEnvironment": {
+    "userAgent": "HeadlessAuditor/G1-Docket",
+    "standard": "WCAG 2.1 Level AA",
+    "compliance": "Section 508 Federal Accessibility"
+  },
+  "timestamp": "2026-11-19T00:43:11.806044+00:00",
+  "filesAudited": 14,
+  "violations": [],
+  "passes": [
+    {
+      "id": "html-has-lang",
+      "impact": "serious",
+      "description": "<html> element has a valid lang attribute",
+      "tags": [
+        "wcag2a",
+        "wcag311",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "document-title",
+      "impact": "serious",
+      "description": "Document has a valid <title> element",
+      "tags": [
+        "wcag2a",
+        "wcag242",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dlpProvider has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dlpAuthMode has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #purviewAccount has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #purviewEndpoint has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #anon has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #stage1DirSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #stampLabelSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "image-alt",
+      "impact": "critical",
+      "description": "Image '/assets/g1-logo.png' has alt text attribute",
+      "tags": [
+        "wcag2a",
+        "wcag111",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "image-alt",
+      "impact": "critical",
+      "description": "Image '/assets/g1-logo.png' has alt text attribute",
+      "tags": [
+        "wcag2a",
+        "wcag111",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dlp_connector.html"
+    },
+    {
+      "id": "html-has-lang",
+      "impact": "serious",
+      "description": "<html> element has a valid lang attribute",
+      "tags": [
+        "wcag2a",
+        "wcag311",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "document-title",
+      "impact": "serious",
+      "description": "Document has a valid <title> element",
+      "tags": [
+        "wcag2a",
+        "wcag242",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #auditFirmScaleSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #newCrawlerTargetUri has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #crawlerMicroBatchSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #crawlerThrottleSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #crawlerIncludeCodeChk has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #crawlerAutoRevokeChk has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dsProviderSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dsUriInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dsNameInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dsAuthSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dsRegionInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #evtTypeSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #evtKeyInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #evtSampleInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmPresetSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmProviderName has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmProtocol has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmBaseUrl has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmDefaultModel has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmEgressClass has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #llmApiKey has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #pcFolderSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #subDirSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #winFolderPicker has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #demoMaxFilesSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #demoIncludeCodeChk has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dirCallerKey has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #dirModelSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #endpointSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #callerKey has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #modelSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #callerDeptSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #targetRegionSelect has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #promptInput has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "image-alt",
+      "impact": "critical",
+      "description": "Image '/assets/g1-logo.png' has alt text attribute",
+      "tags": [
+        "wcag2a",
+        "wcag111",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "image-alt",
+      "impact": "critical",
+      "description": "Image '/assets/g1-logo.png' has alt text attribute",
+      "tags": [
+        "wcag2a",
+        "wcag111",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/dashboard.html"
+    },
+    {
+      "id": "html-has-lang",
+      "impact": "serious",
+      "description": "<html> element has a valid lang attribute",
+      "tags": [
+        "wcag2a",
+        "wcag311",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "document-title",
+      "impact": "serious",
+      "description": "Document has a valid <title> element",
+      "tags": [
+        "wcag2a",
+        "wcag242",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #username has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #password has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #totp_code has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "image-alt",
+      "impact": "critical",
+      "description": "Image '/assets/g1-logo.png' has alt text attribute",
+      "tags": [
+        "wcag2a",
+        "wcag111",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "prevalidator/templates/login.html"
+    },
+    {
+      "id": "html-has-lang",
+      "impact": "serious",
+      "description": "<html> element has a valid lang attribute",
+      "tags": [
+        "wcag2a",
+        "wcag311",
+        "section508"
+      ],
+      "file": "governance/templates/base.html"
+    },
+    {
+      "id": "document-title",
+      "impact": "serious",
+      "description": "Document has a valid <title> element",
+      "tags": [
+        "wcag2a",
+        "wcag242",
+        "section508"
+      ],
+      "file": "governance/templates/base.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/dashboard.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/dashboard.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #username has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/login.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #password has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/login.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #totp_code has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/login.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/login.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_quarantine.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_quarantine.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_worm_ledger.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_siem_hub.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_siem_hub.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_siem_hub.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_siem_hub.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_live_stream.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #k1-operator has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #k1-rationale has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #k2-operator has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #k2-notes has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_triage.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-enabled has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-endpoint-url has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-api-key has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-auth-header has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-index-sourcetype has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-workspace-loggroup has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-syslog-host has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-syslog-port has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "description": "Form control input #cfg-syslog-tls has an associated label or accessible name",
+      "tags": [
+        "wcag2a",
+        "wcag131",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/modal_siem_config.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_cicd_posture.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_cicd_posture.html"
+    },
+    {
+      "id": "button-name",
+      "impact": "critical",
+      "description": "Buttons have accessible name or label",
+      "tags": [
+        "wcag2a",
+        "wcag412",
+        "section508"
+      ],
+      "file": "governance/templates/components/tab_cicd_posture.html"
+    }
+  ],
+  "summary": {
+    "totalChecks": 174,
+    "passedChecks": 174,
+    "violationsCount": 0,
+    "status": "PASS"
+  }
+}

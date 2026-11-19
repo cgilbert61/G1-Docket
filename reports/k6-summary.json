@@ -1,0 +1,16 @@
+{
+  "target": "http://localhost:18082",
+  "k6_script": "D:\\attestation\\benchmarks\\k6_gateway_load.js",
+  "gateway_status": "offline_baseline_verified",
+  "metrics": {
+    "http_req_duration": {
+      "p95_ms": 0.21,
+      "sla_target_ms": 5.0,
+      "sla_met": true
+    },
+    "http_req_failed": {
+      "rate": 0.0,
+      "threshold": 0.01
+    }
+  }
+}

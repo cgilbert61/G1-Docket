@@ -52,6 +52,9 @@ scripts/*
 !scripts/interactive_menu.py
 !scripts/simulate_audit_runway.py
 !scripts/check_mode.py
+!scripts/compliance_harness.py
+!scripts/test_accessibility.py
+!scripts/run_govready_assessment.py
 
 # Audit evidence exports
 audit_evidence_bundles/

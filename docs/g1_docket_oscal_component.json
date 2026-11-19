@@ -1,103 +1,95 @@
 {
   "component-definition": {
-    "uuid": "ce07fce8-9aac-49ec-983d-885d9ae9aa15",
+    "uuid": "91b74d91-62af-4443-b239-06e763d6714d",
     "metadata": {
-      "title": "G1 Docket Security Controls Component Definition",
-      "last-modified": "2026-11-18T21:57:12.855934+00:00",
-      "version": "1.0.0",
-      "oscal-version": "1.0.0",
-      "parties": [
-        {
-          "uuid": "a335e7e1-cfa9-410f-9313-719423b68f0b",
-          "type": "organization",
-          "name": "G1163RT Security Labs"
-        }
-      ]
+      "title": "G1 Docket Core Enforcer",
+      "last-modified": "2026-11-19T00:43:13.943657+00:00",
+      "version": "0.1.0",
+      "oscal-version": "1.0.0"
     },
     "components": [
       {
-        "uuid": "22979737-63ce-4c18-8a6b-ceecfd95073f",
+        "uuid": "b2510bc1-1fbd-4527-83c6-8a908db6bd43",
         "type": "software",
-        "title": "G1 Docket Data Attestation Framework & Zero-DB-Call Prevalidator",
-        "description": "Enterprise cryptographic data attestation engine and zero-DB-call AI gateway prevalidator enforcing in-flight LLM governance.",
-        "purpose": "Cryptographic Data Attestation Engine and Zero-DB-Call AI Gateway Prevalidator",
+        "title": "g1-docket-core",
+        "description": "",
         "control-implementations": [
           {
-            "uuid": "4573b1af-ac00-4910-a830-73a82efc2318",
-            "source": "https://doi.org/10.6028/NIST.SP.800-53r4",
-            "description": "NIST SP 800-53 Rev 4 Security Controls Implemented by G1 Docket",
+            "uuid": "9f14fa55-84e7-4df0-bd38-30e6b2a30849",
+            "source": "NIST_SP-800-53_rev4",
+            "description": "NIST SP 800-53 Rev 4 baseline compliance implementation",
             "implemented-requirements": [
               {
-                "uuid": "a5c83004-9260-457b-a91b-e5186c981b07",
+                "uuid": "5c433cd6-5244-4ae9-b0f5-a5c50bb46921",
                 "control-id": "ac-3",
-                "description": "G1 Docket prevalidator (prevalidator/enforcer.py) intercepts all model prompt traffic (/v1/chat/completions, /v1/messages) in-memory before reaching upstream LLMs. It resolves caller clearance from verified JWT tokens (X-POD-Caller-Token) or API keys, evaluates presented object locators against active signed snapshots, and enforces minimum clearance thresholds with zero database calls. Violations result in deterministic uniform denials without policy leakage.",
+                "description": "Intercepts all prompt traffic in-memory before reaching LLMs. Evaluates presented object locators against active signed snapshots with zero DB calls.",
                 "remarks": "Mechanism: PrevalidatorEnforcer.evaluate_request() & resolve_caller_clearance()"
               },
               {
-                "uuid": "80a94057-eaf6-424e-a4bb-4baf0c7189f0",
+                "uuid": "ab98c8e9-30ac-48ea-9eed-c782aa19b347",
                 "control-id": "ac-4",
-                "description": "Enforces destination egress classes (internal_only vs commercial_cloud) mapped to target models. Data attested above Public tier is strictly prevented from egressing to commercial LLM routes (EGRESS_DENIED). Custom ABAC hooks enforce departmental isolation and data residency boundaries based on caller and object jurisdiction.",
-                "remarks": "Mechanism: PrevalidatorEnforcer.resolve_target_egress() & custom_policy_hooks"
+                "description": "Enforces destination egress classes (internal_only vs commercial_cloud) mapped to target models. Prevents unauthorized egress of sensitive data.",
+                "remarks": "Mechanism: PrevalidatorEnforcer.resolve_target_egress() & custom ABAC hooks"
               },
               {
-                "uuid": "838de75d-5acc-4a88-a589-bb886f0ae357",
+                "uuid": "b4890842-274b-45d7-b8ca-f7aaf551a260",
                 "control-id": "au-2",
-                "description": "Every admission evaluation produces an immutable AuditLogEntry containing timestamp, mode (enforce/observe), decision (allow/strip/mask/deny), reason codes, locators evaluated, caller clearance, egress class, caller identity, and sub-millisecond decision latency (decision_latency_ms, decision_latency_us).",
-                "remarks": "Mechanism: AuditLogEntry dataclass & PrevalidatorEnforcer.audit_log"
+                "description": "Produces immutable AuditLogEntry containing timestamp, mode, verdict, reason codes, locators, clearance, and sub-millisecond decision latency.",
+                "remarks": "Mechanism: AuditLogEntry dataclass & in-memory audit emission"
               },
               {
-                "uuid": "95cb2ef4-55dd-46a4-989a-7726de4f79e3",
+                "uuid": "c3cc3b45-5581-44a5-a37e-bd71d7e45ee7",
                 "control-id": "au-9",
-                "description": "Audit records are serialized and committed to an append-only WORM (Write Once Read Many) cryptographic audit ledger (governance/worm_ledger.py). Log entries cannot be overwritten, modified, or deleted without breaking cryptographic hash chains.",
-                "remarks": "Mechanism: WormAuditLedger & SHA-256 tamper-evident block linking"
+                "description": "Audit records are serialized and committed to an append-only WORM cryptographic audit ledger with immutable hash chains.",
+                "remarks": "Mechanism: WormAuditLedger SHA-256 tamper-evident chaining"
               },
               {
-                "uuid": "94e88800-0692-4b54-879c-2e9218a7bf74",
+                "uuid": "a909f011-8697-4542-ae23-0b7498a86549",
                 "control-id": "au-10",
-                "description": "Attestation records and published snapshots are sealed using DSSE (Dead Simple Signing Envelope) specifications with Ed25519 digital signatures. Keys are bound to verified key IDs and keyrings, ensuring non-repudiation of all issued attestations.",
-                "remarks": "Mechanism: registry/signing.py verify_dsse_envelope() & Keyring"
+                "description": "Attestation records and snapshots are encapsulated within DSSE envelopes. Public keys in keyring provide unforgeable non-repudiation.",
+                "remarks": "Mechanism: DSSE RFC 9421 envelopes & Ed25519 keyring verification"
               },
               {
-                "uuid": "26ac27e5-ef62-4206-9f7e-fd5067c4aab2",
+                "uuid": "45ae6445-74b1-4a90-8570-d764010d33b3",
                 "control-id": "sc-8",
-                "description": "In-flight transmission integrity is enforced by matching live SHA-256 digests of <pod:object> inner content against the cryptographically attested content_sha256 or Merkle chunk proofs. In-flight tampering or hash drift triggers REASON_HASH_MISMATCH and immediate request denial.",
-                "remarks": "Mechanism: PrevalidatorEnforcer._verify_inner_text_cryptographically()"
+                "description": "Payloads transmitted across agent networks are wrapped in <pod:delegate> containers carrying cryptographically chained Ed25519 signatures.",
+                "remarks": "Mechanism: In-Memory Prevalidator Gate & Signed Multi-Hop Handoffs"
               },
               {
-                "uuid": "0e788a99-8b25-47a7-aa8f-b48d9d851b97",
+                "uuid": "a6a189c6-7c58-4079-958c-0ea7b4d9f7b3",
                 "control-id": "sc-12",
-                "description": "Strict cryptographic key isolation is enforced. Data plane prevalidator gateways maintain verification-only public keys (POD_DELEGATE_VERIFY_KEY, Keyring verify keys). Private signing keys reside strictly within control plane registry services or hardware KMS modules, preventing key extraction from gateway processes.",
-                "remarks": "Mechanism: Keyring & POD_DELEGATE_VERIFY_KEY separation"
+                "description": "Employs strict Ed25519 asymmetric cryptography with dynamic key discovery, key pinning, and zero-downtime rotation.",
+                "remarks": "Mechanism: Keyring Ed25519 public key management & rotation"
               },
               {
-                "uuid": "c1f77d39-070c-429b-87fb-2ccfcb8fad61",
+                "uuid": "102ca74d-351d-4e88-a1ad-ed6eeddf93bd",
                 "control-id": "sc-13",
-                "description": "Uses FIPS-compatible and modern cryptographic primitives: RFC-8032 Ed25519 asymmetric signatures, RFC-009 Merkle Chunk Trees (MCT), and SHA-256 cryptographic hashes for whole-object and chunk-level integrity verification.",
-                "remarks": "Mechanism: cryptography.hazmat.primitives.asymmetric.ed25519 & hashlib.sha256"
+                "description": "Utilizes standard Ed25519 signatures and SHA-256 digests over canonical UTF-8 representations.",
+                "remarks": "Mechanism: DSSE v1.0 signature verification & content digest chaining"
               },
               {
-                "uuid": "63dbfea8-0a54-4f05-b9bd-d3983e1e2562",
+                "uuid": "ed3247d4-e703-471a-9460-196d7b5fc295",
                 "control-id": "si-7",
-                "description": "Detects and blocks prompt smuggling, XML tag tampering, and unverified data injection. Untagged-context quotas prevent context flooding (REASON_UNATTESTED_CONTEXT_OVERFLOW). Presidio DLP classifier operates as a defense-in-depth fallback to mask unclassified sensitive data entities ([MASKED_*]) on allowed paths.",
-                "remarks": "Mechanism: PrevalidatorEnforcer tag parser, PresidioClassifier & untagged quota"
+                "description": "Validates hash integrity of presented prompt payloads against signed snapshot records, blocking tampered payloads immediately.",
+                "remarks": "Mechanism: Snapshot SHA-256 Merkle verification & hash drift detection"
               },
               {
-                "uuid": "caebd2d9-97d9-4d39-839b-183fe8c41775",
+                "uuid": "8a8b02f5-3059-46ec-b8d0-e8c782c63195",
                 "control-id": "ia-2",
-                "description": "Gateway callers are authenticated via signed JWT tokens (X-POD-Caller-Token) containing verified subject, clearance, department, and owner claims, or authenticated caller API keys (X-POD-Caller-Key). In auth-enforced production mode, anonymous or unowned agent requests are rejected with UNOWNED_AGENT_BLOCKED.",
-                "remarks": "Mechanism: PrevalidatorEnforcer.resolve_caller_clearance() & resolve_caller_context()"
+                "description": "Authenticates callers using signed JWT tokens or API keys, mapping identities into clearance tiers.",
+                "remarks": "Mechanism: X-POD-Caller-Token JWT validation & clearance mapping"
               },
               {
-                "uuid": "b0e06735-0636-40f5-943e-14db833961ad",
+                "uuid": "599df087-fdb1-4736-a2f4-f80cdb015085",
                 "control-id": "ia-8",
-                "description": "Multi-agent autonomous delegation chains (<pod:delegate>) are cryptographically signed at each hop with Ed25519 signatures over canonical UTF-8 strings. The chain cryptographically binds all intermediate agent hops back to a verified human root accountable owner, enforcing monotonic non-escalating clearance tiers.",
-                "remarks": "Mechanism: docket/integrations.py wrap_delegated_context() & PrevalidatorEnforcer.process_delegates()"
+                "description": "Autonomous agents must present cryptographically signed delegation envelopes containing verified provenance chains rooted in an accountable human principal.",
+                "remarks": "Mechanism: <pod:delegate> provenance chains with accountable root owner"
               },
               {
-                "uuid": "f66ef8f5-2a9f-4056-a11a-e01f624c672a",
+                "uuid": "f85ada80-fb74-4e37-b3cb-6a3d8a64cf2a",
                 "control-id": "ca-7",
-                "description": "Provides real-time Prometheus telemetry (/metrics) exposing total evaluations, policy denials by reason code, and decision duration percentiles (P50, P95, P99). Continuous Delta Crawler polls underlying data stores for document updates, automatically revoking stale attestation records upon content drift.",
-                "remarks": "Mechanism: PrevalidatorEnforcer.generate_prometheus_metrics() & delta crawler"
+                "description": "Features continuous in-memory sweepers and an Audit Runway Monitor tracking traffic coverage, denial stability, and triage disposition.",
+                "remarks": "Mechanism: 30-Day Audit Runway Monitor & in-memory state sweepers"
               }
             ]
           }

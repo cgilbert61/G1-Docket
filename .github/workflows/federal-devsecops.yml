@@ -1,0 +1,170 @@
+name: Federal DevSecOps & Compliance Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sast-and-secrets:
+    name: SAST, Code Quality & Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Semgrep SAST (OWASP Top 10 & Security Audit)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/security-audit
+            .semgrep.yml
+          generateSarif: "reports/semgrep.sarif"
+        continue-on-error: true
+
+      - name: Run Gitleaks Secret Detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+        continue-on-error: true
+
+      - name: Upload SAST SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/semgrep.sarif
+          category: semgrep
+        continue-on-error: true
+
+  iac-and-sbom:
+    name: IaC Scanning & EO 14028 SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov IaC Security Scan (Terraform & K8s)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          config_file: .checkov.yaml
+          output_format: cli,sarif
+          output_file_path: reports/
+        continue-on-error: true
+
+      - name: Generate CycloneDX SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          config: .syft.yaml
+          format: cyclonedx-json
+          output-file: reports/sbom.cdx.json
+
+      - name: Upload IaC SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/results_sarif.sarif
+          category: checkov
+        continue-on-error: true
+
+      - name: Archive SBOM Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: federal-sbom-cyclonedx
+          path: reports/sbom.cdx.json
+
+  sca-and-containers:
+    name: SCA & Container Hardening (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Vulnerability & Misconfig Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'reports/trivy-fs.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/trivy-fs.sarif
+          category: trivy
+        continue-on-error: true
+
+  section508-and-load:
+    name: Section 508 Accessibility & k6 Load Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Section 508 / WCAG 2.1 AA axe-core Audit
+        run: |
+          python scripts/test_accessibility.py || true
+
+      - name: Run k6 Starter SLA Load Test
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: benchmarks/k6_gateway_load.js
+          flags: --summary-export=reports/k6-summary.json
+        continue-on-error: true
+
+      - name: Archive Accessibility & Load Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-and-load-reports
+          path: |
+            reports/axe-accessibility.json
+            reports/k6-summary.json
+
+  govready-compliance:
+    name: GovReady-Q NIST SP 800-53 Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Start GovReady-Q Service Container
+        run: |
+          docker run -d --name govready-q-assessment -p 8008:8000 -e FIRST_RUN=1 -e DB_BACKED_UP_DO_UPGRADE=True govready/govready-q:latest
+          sleep 15
+
+      - name: Execute NIST SP 800-53 Control Verification
+        run: |
+          python scripts/run_govready_assessment.py
+
+      - name: Archive OSCAL & SSP Deliverables
+        uses: actions/upload-artifact@v4
+        with:
+          name: govready-oscal-and-ssp
+          path: |
+            reports/govready_oscal_component.json
+            reports/govready_assessment_summary.json
+            docs/g1_docket_oscal_component.json

@@ -1,0 +1,35 @@
+# Trivy Scanner Configuration for G1 Docket
+# Federal DevSecOps Vulnerability Management & Container Hardening (DISA STIG)
+
+format: sarif
+output: reports/trivy-fs.sarif
+
+severity:
+  - HIGH
+  - CRITICAL
+
+exit-code: 1
+ignore-unfixed: false
+
+scanners:
+  - vuln
+  - misconfig
+  - secret
+
+scan:
+  file-patterns:
+    - "requirements.txt"
+    - "pyproject.toml"
+  skip-dirs:
+    - "scratch"
+    - "reports"
+    - "tests"
+    - ".git"
+    - ".venv"
+    - "venv"
+
+misconfiguration:
+  scanners:
+    - dockerfile
+    - kubernetes
+    - terraform

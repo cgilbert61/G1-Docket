@@ -1,0 +1,41 @@
+# Semgrep SAST Configuration for G1 Docket
+# Federal DevSecOps Profile: OWASP Top 10, DISA STIG Application Security, CWE Detection
+rules:
+  - id: insecure-deserialization-pickle
+    pattern: pickle.loads(...)
+    message: "Avoid using pickle deserialization for untrusted data (CWE-502). Use json or pydantic schemas."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+
+  - id: avoid-eval-exec
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    message: "Dynamic code execution via eval/exec detected (CWE-95). Prohibited under federal DevSecOps standards."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code"
+      owasp: "A03:2021 - Injection"
+
+  - id: insecure-hash-md5-sha1
+    pattern-either:
+      - pattern: hashlib.md5(...)
+      - pattern: hashlib.sha1(...)
+    message: "MD5/SHA1 are broken hash algorithms prohibited under NIST SP 800-131A (CWE-328). Use SHA-256 or SHA-512."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-328: Use of Weak Hash"
+      owasp: "A02:2021 - Cryptographic Failures"
+
+  - id: ed25519-proper-crypto-enforcement
+    pattern: hashlib.sha256(...)
+    message: "Cryptographic digest generation detected. Ensure canonical UTF-8 encoding is used before hashing."
+    languages: [python]
+    severity: INFO
+    metadata:
+      cwe: "CWE-310: Cryptographic Issues"

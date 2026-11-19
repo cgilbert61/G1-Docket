@@ -1,0 +1,108 @@
+{
+  "platform": "GovReady-Q v0.9.1",
+  "system": "G1 Docket Core Enforcer",
+  "fisma_id": "G1-DOCKET-001",
+  "timestamp": "2026-11-19T00:43:13.944364+00:00",
+  "total_controls": 12,
+  "passed": 12,
+  "failed": 0,
+  "status": "PASS",
+  "controls": [
+    {
+      "control_id": "AC-3",
+      "title": "Access Enforcement",
+      "family": "Access Control",
+      "status": "Implemented",
+      "mechanism": "PrevalidatorEnforcer.evaluate_request() & resolve_caller_clearance()",
+      "narrative": "Intercepts all prompt traffic in-memory before reaching LLMs. Evaluates presented object locators against active signed snapshots with zero DB calls."
+    },
+    {
+      "control_id": "AC-4",
+      "title": "Information Flow Enforcement",
+      "family": "Access Control",
+      "status": "Implemented",
+      "mechanism": "PrevalidatorEnforcer.resolve_target_egress() & custom ABAC hooks",
+      "narrative": "Enforces destination egress classes (internal_only vs commercial_cloud) mapped to target models. Prevents unauthorized egress of sensitive data."
+    },
+    {
+      "control_id": "AU-2",
+      "title": "Audit Events",
+      "family": "Audit and Accountability",
+      "status": "Implemented",
+      "mechanism": "AuditLogEntry dataclass & in-memory audit emission",
+      "narrative": "Produces immutable AuditLogEntry containing timestamp, mode, verdict, reason codes, locators, clearance, and sub-millisecond decision latency."
+    },
+    {
+      "control_id": "AU-9",
+      "title": "Protection of Audit Information",
+      "family": "Audit and Accountability",
+      "status": "Implemented",
+      "mechanism": "WormAuditLedger SHA-256 tamper-evident chaining",
+      "narrative": "Audit records are serialized and committed to an append-only WORM cryptographic audit ledger with immutable hash chains."
+    },
+    {
+      "control_id": "AU-10",
+      "title": "Non-repudiation",
+      "family": "Audit and Accountability",
+      "status": "Implemented",
+      "mechanism": "DSSE RFC 9421 envelopes & Ed25519 keyring verification",
+      "narrative": "Attestation records and snapshots are encapsulated within DSSE envelopes. Public keys in keyring provide unforgeable non-repudiation."
+    },
+    {
+      "control_id": "SC-8",
+      "title": "Transmission Confidentiality and Integrity",
+      "family": "System and Communications Protection",
+      "status": "Implemented",
+      "mechanism": "In-Memory Prevalidator Gate & Signed Multi-Hop Handoffs",
+      "narrative": "Payloads transmitted across agent networks are wrapped in <pod:delegate> containers carrying cryptographically chained Ed25519 signatures."
+    },
+    {
+      "control_id": "SC-12",
+      "title": "Cryptographic Key Establishment and Management",
+      "family": "System and Communications Protection",
+      "status": "Implemented",
+      "mechanism": "Keyring Ed25519 public key management & rotation",
+      "narrative": "Employs strict Ed25519 asymmetric cryptography with dynamic key discovery, key pinning, and zero-downtime rotation."
+    },
+    {
+      "control_id": "SC-13",
+      "title": "Cryptographic Protection",
+      "family": "System and Communications Protection",
+      "status": "Implemented",
+      "mechanism": "DSSE v1.0 signature verification & content digest chaining",
+      "narrative": "Utilizes standard Ed25519 signatures and SHA-256 digests over canonical UTF-8 representations."
+    },
+    {
+      "control_id": "SI-7",
+      "title": "Software, Firmware, and Information Integrity",
+      "family": "System and Information Integrity",
+      "status": "Implemented",
+      "mechanism": "Snapshot SHA-256 Merkle verification & hash drift detection",
+      "narrative": "Validates hash integrity of presented prompt payloads against signed snapshot records, blocking tampered payloads immediately."
+    },
+    {
+      "control_id": "IA-2",
+      "title": "Identification and Authentication (organizational Users)",
+      "family": "Identification and Authentication",
+      "status": "Implemented",
+      "mechanism": "X-POD-Caller-Token JWT validation & clearance mapping",
+      "narrative": "Authenticates callers using signed JWT tokens or API keys, mapping identities into clearance tiers."
+    },
+    {
+      "control_id": "IA-8",
+      "title": "Identification and Authentication (non-organizational Users)",
+      "family": "Identification and Authentication",
+      "status": "Implemented",
+      "mechanism": "<pod:delegate> provenance chains with accountable root owner",
+      "narrative": "Autonomous agents must present cryptographically signed delegation envelopes containing verified provenance chains rooted in an accountable human principal."
+    },
+    {
+      "control_id": "CA-7",
+      "title": "Continuous Monitoring",
+      "family": "Assessment, Authorization, and Monitoring",
+      "status": "Implemented",
+      "mechanism": "30-Day Audit Runway Monitor & in-memory state sweepers",
+      "narrative": "Features continuous in-memory sweepers and an Audit Runway Monitor tracking traffic coverage, denial stability, and triage disposition."
+    }
+  ]
+}

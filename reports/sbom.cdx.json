@@ -1,0 +1,211 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:g1-docket-sbom-001",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-18T23:48:29.554268+00:00",
+    "component": {
+      "name": "G1 Docket",
+      "version": "0.1.0",
+      "type": "application"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "annotated-doc",
+      "version": "0.0.5"
+    },
+    {
+      "type": "library",
+      "name": "annotated-types",
+      "version": "0.8.0"
+    },
+    {
+      "type": "library",
+      "name": "anyio",
+      "version": "4.15.1"
+    },
+    {
+      "type": "library",
+      "name": "attrs",
+      "version": "26.1.0"
+    },
+    {
+      "type": "library",
+      "name": "certifi",
+      "version": "2026.10.23"
+    },
+    {
+      "type": "library",
+      "name": "cffi",
+      "version": "2.1.1"
+    },
+    {
+      "type": "library",
+      "name": "click",
+      "version": "8.5.0"
+    },
+    {
+      "type": "library",
+      "name": "colorama",
+      "version": "0.4.6"
+    },
+    {
+      "type": "library",
+      "name": "cryptography",
+      "version": "50.0.2"
+    },
+    {
+      "type": "library",
+      "name": "et_xmlfile",
+      "version": "2.0.0"
+    },
+    {
+      "type": "library",
+      "name": "fastapi",
+      "version": "0.162.0"
+    },
+    {
+      "type": "library",
+      "name": "h11",
+      "version": "0.16.0"
+    },
+    {
+      "type": "library",
+      "name": "httpcore",
+      "version": "1.0.9"
+    },
+    {
+      "type": "library",
+      "name": "httpx",
+      "version": "0.28.1"
+    },
+    {
+      "type": "library",
+      "name": "idna",
+      "version": "3.20"
+    },
+    {
+      "type": "library",
+      "name": "iniconfig",
+      "version": "2.3.1"
+    },
+    {
+      "type": "library",
+      "name": "jinja2>=3.1.0",
+      "version": "latest"
+    },
+    {
+      "type": "library",
+      "name": "jsonschema",
+      "version": "4.26.0"
+    },
+    {
+      "type": "library",
+      "name": "jsonschema-specifications",
+      "version": "2025.9.1"
+    },
+    {
+      "type": "library",
+      "name": "openpyxl",
+      "version": "3.1.5"
+    },
+    {
+      "type": "library",
+      "name": "opentelemetry-api",
+      "version": "1.45.2"
+    },
+    {
+      "type": "library",
+      "name": "packaging",
+      "version": "26.3"
+    },
+    {
+      "type": "library",
+      "name": "pluggy",
+      "version": "1.7.0"
+    },
+    {
+      "type": "library",
+      "name": "psycopg2-binary>=2.9.9",
+      "version": "latest"
+    },
+    {
+      "type": "library",
+      "name": "pycparser",
+      "version": "3.12"
+    },
+    {
+      "type": "library",
+      "name": "pydantic",
+      "version": "2.14.2"
+    },
+    {
+      "type": "library",
+      "name": "pydantic_core",
+      "version": "2.50.2"
+    },
+    {
+      "type": "library",
+      "name": "Pygments",
+      "version": "2.21.0"
+    },
+    {
+      "type": "library",
+      "name": "PyJWT",
+      "version": "2.15.1"
+    },
+    {
+      "type": "library",
+      "name": "pytest",
+      "version": "9.2.0"
+    },
+    {
+      "type": "library",
+      "name": "pytest-asyncio",
+      "version": "1.4.1"
+    },
+    {
+      "type": "library",
+      "name": "pyyaml>=6.0.0",
+      "version": "latest"
+    },
+    {
+      "type": "library",
+      "name": "referencing",
+      "version": "0.37.0"
+    },
+    {
+      "type": "library",
+      "name": "rpds-py",
+      "version": "2026.9.1"
+    },
+    {
+      "type": "library",
+      "name": "SQLAlchemy",
+      "version": "2.1.6"
+    },
+    {
+      "type": "library",
+      "name": "starlette",
+      "version": "1.10.0"
+    },
+    {
+      "type": "library",
+      "name": "typing-inspection",
+      "version": "0.4.4"
+    },
+    {
+      "type": "library",
+      "name": "typing_extensions",
+      "version": "4.16.0"
+    },
+    {
+      "type": "library",
+      "name": "uvicorn",
+      "version": "0.54.0"
+    }
+  ]
+}

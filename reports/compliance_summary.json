@@ -1,0 +1,82 @@
+{
+  "framework": "G1 Docket Federal DevSecOps Pipeline",
+  "timestamp": "2026-11-19T00:43:14.441890+00:00",
+  "total_gates": 9,
+  "passed_gates": 9,
+  "failed_gates": 0,
+  "duration_seconds": 35.77,
+  "gates": [
+    {
+      "gate": "SAST & Code Quality",
+      "tool": "Semgrep + SonarQube",
+      "standard": "NIST SP 800-53 SA-11 / OWASP Top 10",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\semgrep.sarif",
+      "findings": 0
+    },
+    {
+      "gate": "Secrets Detection",
+      "tool": "Gitleaks",
+      "standard": "NIST SP 800-53 IA-5 / DISA STIG",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\gitleaks.sarif",
+      "findings": 0
+    },
+    {
+      "gate": "IaC Security Scanning",
+      "tool": "Checkov",
+      "standard": "NIST SP 800-53 CM-2 / DISA STIG K8s & Terraform",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\checkov.sarif",
+      "findings": 0
+    },
+    {
+      "gate": "SBOM Generation",
+      "tool": "Syft (CycloneDX 1.5)",
+      "standard": "Executive Order 14028 / NIST SP 800-161",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\sbom.cdx.json",
+      "findings": 0
+    },
+    {
+      "gate": "SCA & Container Hardening",
+      "tool": "Trivy",
+      "standard": "DISA STIG / NIST SP 800-53 SI-2 & RA-5",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\trivy-fs.sarif",
+      "findings": 0
+    },
+    {
+      "gate": "DAST Dynamic Scan",
+      "tool": "OWASP ZAP Baseline",
+      "standard": "NIST SP 800-53 RA-5 / OWASP Top 10",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\zap_prevalidator_report.json",
+      "findings": 0
+    },
+    {
+      "gate": "Section 508 Accessibility",
+      "tool": "axe-core / WCAG 2.1 AA",
+      "standard": "Section 508 / WCAG 2.1 Level AA",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\axe-accessibility.json",
+      "findings": 0
+    },
+    {
+      "gate": "Load & SLA Compliance",
+      "tool": "k6",
+      "standard": "Section 508 Hot-Path SLA (<= 5.0ms p95)",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\k6-summary.json",
+      "findings": 0
+    },
+    {
+      "gate": "Federal GRC Assessment",
+      "tool": "GovReady-Q",
+      "standard": "NIST SP 800-53 Rev 4 (12 Controls)",
+      "status": "PASS",
+      "report": "D:\\attestation\\reports\\govready_oscal_component.json",
+      "findings": 0
+    }
+  ]
+}

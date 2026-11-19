@@ -1,0 +1,100 @@
+{
+  "component-definition": {
+    "uuid": "91b74d91-62af-4443-b239-06e763d6714d",
+    "metadata": {
+      "title": "G1 Docket Core Enforcer",
+      "last-modified": "2026-11-19T00:43:13.943657+00:00",
+      "version": "0.1.0",
+      "oscal-version": "1.0.0"
+    },
+    "components": [
+      {
+        "uuid": "b2510bc1-1fbd-4527-83c6-8a908db6bd43",
+        "type": "software",
+        "title": "g1-docket-core",
+        "description": "",
+        "control-implementations": [
+          {
+            "uuid": "9f14fa55-84e7-4df0-bd38-30e6b2a30849",
+            "source": "NIST_SP-800-53_rev4",
+            "description": "NIST SP 800-53 Rev 4 baseline compliance implementation",
+            "implemented-requirements": [
+              {
+                "uuid": "5c433cd6-5244-4ae9-b0f5-a5c50bb46921",
+                "control-id": "ac-3",
+                "description": "Intercepts all prompt traffic in-memory before reaching LLMs. Evaluates presented object locators against active signed snapshots with zero DB calls.",
+                "remarks": "Mechanism: PrevalidatorEnforcer.evaluate_request() & resolve_caller_clearance()"
+              },
+              {
+                "uuid": "ab98c8e9-30ac-48ea-9eed-c782aa19b347",
+                "control-id": "ac-4",
+                "description": "Enforces destination egress classes (internal_only vs commercial_cloud) mapped to target models. Prevents unauthorized egress of sensitive data.",
+                "remarks": "Mechanism: PrevalidatorEnforcer.resolve_target_egress() & custom ABAC hooks"
+              },
+              {
+                "uuid": "b4890842-274b-45d7-b8ca-f7aaf551a260",
+                "control-id": "au-2",
+                "description": "Produces immutable AuditLogEntry containing timestamp, mode, verdict, reason codes, locators, clearance, and sub-millisecond decision latency.",
+                "remarks": "Mechanism: AuditLogEntry dataclass & in-memory audit emission"
+              },
+              {
+                "uuid": "c3cc3b45-5581-44a5-a37e-bd71d7e45ee7",
+                "control-id": "au-9",
+                "description": "Audit records are serialized and committed to an append-only WORM cryptographic audit ledger with immutable hash chains.",
+                "remarks": "Mechanism: WormAuditLedger SHA-256 tamper-evident chaining"
+              },
+              {
+                "uuid": "a909f011-8697-4542-ae23-0b7498a86549",
+                "control-id": "au-10",
+                "description": "Attestation records and snapshots are encapsulated within DSSE envelopes. Public keys in keyring provide unforgeable non-repudiation.",
+                "remarks": "Mechanism: DSSE RFC 9421 envelopes & Ed25519 keyring verification"
+              },
+              {
+                "uuid": "45ae6445-74b1-4a90-8570-d764010d33b3",
+                "control-id": "sc-8",
+                "description": "Payloads transmitted across agent networks are wrapped in <pod:delegate> containers carrying cryptographically chained Ed25519 signatures.",
+                "remarks": "Mechanism: In-Memory Prevalidator Gate & Signed Multi-Hop Handoffs"
+              },
+              {
+                "uuid": "a6a189c6-7c58-4079-958c-0ea7b4d9f7b3",
+                "control-id": "sc-12",
+                "description": "Employs strict Ed25519 asymmetric cryptography with dynamic key discovery, key pinning, and zero-downtime rotation.",
+                "remarks": "Mechanism: Keyring Ed25519 public key management & rotation"
+              },
+              {
+                "uuid": "102ca74d-351d-4e88-a1ad-ed6eeddf93bd",
+                "control-id": "sc-13",
+                "description": "Utilizes standard Ed25519 signatures and SHA-256 digests over canonical UTF-8 representations.",
+                "remarks": "Mechanism: DSSE v1.0 signature verification & content digest chaining"
+              },
+              {
+                "uuid": "ed3247d4-e703-471a-9460-196d7b5fc295",
+                "control-id": "si-7",
+                "description": "Validates hash integrity of presented prompt payloads against signed snapshot records, blocking tampered payloads immediately.",
+                "remarks": "Mechanism: Snapshot SHA-256 Merkle verification & hash drift detection"
+              },
+              {
+                "uuid": "8a8b02f5-3059-46ec-b8d0-e8c782c63195",
+                "control-id": "ia-2",
+                "description": "Authenticates callers using signed JWT tokens or API keys, mapping identities into clearance tiers.",
+                "remarks": "Mechanism: X-POD-Caller-Token JWT validation & clearance mapping"
+              },
+              {
+                "uuid": "599df087-fdb1-4736-a2f4-f80cdb015085",
+                "control-id": "ia-8",
+                "description": "Autonomous agents must present cryptographically signed delegation envelopes containing verified provenance chains rooted in an accountable human principal.",
+                "remarks": "Mechanism: <pod:delegate> provenance chains with accountable root owner"
+              },
+              {
+                "uuid": "f85ada80-fb74-4e37-b3cb-6a3d8a64cf2a",
+                "control-id": "ca-7",
+                "description": "Features continuous in-memory sweepers and an Audit Runway Monitor tracking traffic coverage, denial stability, and triage disposition.",
+                "remarks": "Mechanism: 30-Day Audit Runway Monitor & in-memory state sweepers"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
