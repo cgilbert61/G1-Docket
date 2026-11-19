@@ -28,6 +28,7 @@ from registry.schema_validator import (
     parse_iso8601,
 )
 from registry.signing import Keyring, normalize_canonical_text, verify_dsse_envelope
+from governance.auth import verify_oidc_token
 from docket.chunking import ChunkProof, MerkleChunkTree
 from docket.integrations import compute_delegate_canonical_string, _resolve_ed25519_public_key
 
@@ -64,6 +65,8 @@ def _verify_ed25519_signature_cached(pub_raw_bytes: bytes, sig_bytes: bytes, can
     key = Ed25519PublicKey.from_public_bytes(pub_raw_bytes)
     key.verify(sig_bytes, canonical_bytes)
     return True
+
+DEFAULT_POD_JWT_SECRET = "pod-local-jwt-secret-key-minimum-32-bytes-long"
 
 # Strict regexes for <pod:object> structural validation
 POD_OPEN_TAG_STRICT_RE = re.compile(
@@ -199,6 +202,8 @@ class PrevalidatorEnforcer:
         strict_inline_hash: bool | None = None,
         max_untagged_chars: int | None = None,
         delegate_verify_key: bytes | str | None = None,
+        oidc_issuer: str | None = None,
+        oidc_audience: str | None = None,
     ) -> None:
         if mode not in ("enforce", "observe"):
             raise ValueError("mode must be 'enforce' or 'observe'")
@@ -220,7 +225,31 @@ class PrevalidatorEnforcer:
             "pod-key-confidential": "Confidential",
             "pod-key-restricted": "Restricted",
         }
-        self.jwt_secret = jwt_secret or "pod-local-jwt-secret-key-minimum-32-bytes-long"
+        self.oidc_issuer = (
+            oidc_issuer
+            if oidc_issuer is not None
+            else (os.environ.get("POD_OIDC_ISSUER", "").strip() or os.environ.get("DOCKET_OIDC_ISSUER", "").strip() or None)
+        )
+        self.oidc_audience = (
+            oidc_audience
+            if oidc_audience is not None
+            else (os.environ.get("POD_OIDC_AUDIENCE", "").strip() or os.environ.get("DOCKET_OIDC_AUDIENCE", "").strip() or None)
+        )
+
+        resolved_secret = jwt_secret or os.environ.get("POD_JWT_SECRET", "").strip()
+        if not resolved_secret:
+            self.jwt_secret = DEFAULT_POD_JWT_SECRET
+            logger.warning(
+                "[SECURITY WARNING] POD_JWT_SECRET is unset; falling back to hardcoded default. "
+                "Set POD_JWT_SECRET in production environments."
+            )
+        else:
+            self.jwt_secret = resolved_secret
+            if self.jwt_secret == DEFAULT_POD_JWT_SECRET:
+                logger.warning(
+                    "[SECURITY WARNING] POD_JWT_SECRET is using built-in default secret. "
+                    "Set POD_JWT_SECRET in production environments."
+                )
         self.enable_presidio_fallback = (
             enable_presidio_fallback
             if enable_presidio_fallback is not None
@@ -394,6 +423,33 @@ class PrevalidatorEnforcer:
 
         return "\n".join(lines) + "\n"
 
+    def _verify_caller_token(self, token: str) -> dict[str, Any] | None:
+        """Shared verification helper for caller JWT tokens (HS256 local secret or RS256/ES256 federated OIDC)."""
+        clean_token = token.strip()
+        if not clean_token:
+            return None
+        try:
+            header = jwt.get_unverified_header(clean_token)
+        except Exception:
+            return None
+        alg = header.get("alg")
+        if alg == "HS256":
+            try:
+                return jwt.decode(clean_token, self.jwt_secret, algorithms=["HS256"])
+            except Exception:
+                return None
+        elif alg in ("RS256", "ES256"):
+            if not self.oidc_issuer:
+                return None
+            return verify_oidc_token(
+                clean_token,
+                issuer=self.oidc_issuer,
+                audience=self.oidc_audience,
+                algorithms=[alg],
+            )
+        else:
+            return None
+
     def resolve_caller_clearance(self, headers: dict[str, str]) -> str | None:
         """Resolve caller clearance from verified JWT or configured caller API key (defaults to 'Public')."""
         norm_headers = {k.lower(): v for k, v in headers.items()}
@@ -402,12 +458,17 @@ class PrevalidatorEnforcer:
         jwt_token = norm_headers.get("x-pod-caller-token", "").strip()
         if jwt_token:
             try:
-                decoded = jwt.decode(jwt_token, self.jwt_secret, algorithms=["HS256"])
-                clearance = decoded.get("clearance", "Public")
-                if clearance in CLEARANCE_ORDER:
-                    return clearance
-                if is_auth_enforced():
-                    return None
+                decoded = self._verify_caller_token(jwt_token)
+                if decoded is not None:
+                    clearance = decoded.get("clearance", "Public")
+                    if clearance in CLEARANCE_ORDER:
+                        return clearance
+                    if is_auth_enforced():
+                        return None
+                else:
+                    if is_auth_enforced():
+                        return None
+                    return "Public"
             except Exception:
                 if is_auth_enforced():
                     return None
@@ -476,19 +537,24 @@ class PrevalidatorEnforcer:
         jwt_token = norm_headers.get("x-pod-caller-token", "").strip()
         if jwt_token:
             try:
-                decoded = jwt.decode(jwt_token, self.jwt_secret, algorithms=["HS256"])
-                if "sub" in decoded and decoded["sub"]:
-                    ctx["caller_id"] = decoded["sub"]
-                if "agent_id" in decoded and decoded["agent_id"]:
-                    ctx["agent_id"] = decoded["agent_id"]
-                if "owner" in decoded and decoded["owner"]:
-                    ctx["owner"] = decoded["owner"]
-                if "dept" in decoded and not ctx["department"]:
-                    ctx["department"] = decoded["dept"]
-                if "tenant_id" in decoded and not ctx["tenant_id"]:
-                    ctx["tenant_id"] = decoded["tenant_id"]
-                if "jurisdiction" in decoded and not ctx["jurisdiction"]:
-                    ctx["jurisdiction"] = decoded["jurisdiction"]
+                decoded = self._verify_caller_token(jwt_token)
+                if decoded:
+                    if "sub" in decoded and decoded["sub"]:
+                        ctx["caller_id"] = decoded["sub"]
+                    elif "caller_id" in decoded and decoded["caller_id"] and ctx["caller_id"] == "anonymous":
+                        ctx["caller_id"] = decoded["caller_id"]
+                    if "agent_id" in decoded and decoded["agent_id"]:
+                        ctx["agent_id"] = decoded["agent_id"]
+                    if "owner" in decoded and decoded["owner"]:
+                        ctx["owner"] = decoded["owner"]
+                    dept_val = decoded.get("dept") or decoded.get("department")
+                    if dept_val and not ctx["department"]:
+                        ctx["department"] = dept_val
+                    tenant_val = decoded.get("tenant_id") or decoded.get("tenant")
+                    if tenant_val and not ctx["tenant_id"]:
+                        ctx["tenant_id"] = tenant_val
+                    if "jurisdiction" in decoded and not ctx["jurisdiction"]:
+                        ctx["jurisdiction"] = decoded["jurisdiction"]
             except Exception:
                 pass
 

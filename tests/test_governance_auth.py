@@ -472,8 +472,41 @@ siem_destinations: []
     assert "dotfile_isolation" in sec_data
 
 
-def test_oidc_jwt_bearer_token_validation(tmp_path):
+def test_oidc_jwt_bearer_token_validation(tmp_path, monkeypatch):
     import time
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    import governance.auth as g_auth
+
+    priv_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pub_key = priv_key.public_key()
+    wrong_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+    class MockJWK:
+        def __init__(self, key):
+            self.key = key
+
+    class MockJWKSClient:
+        def __init__(self, key):
+            self._key = key
+
+        def get_signing_key_from_jwt(self, token):
+            return MockJWK(self._key)
+
+        def get_signing_keys(self):
+            return [MockJWK(self._key)]
+
+        def get_signing_key(self, kid=None):
+            return MockJWK(self._key)
+
+    mock_client = MockJWKSClient(pub_key)
+    monkeypatch.setattr(g_auth, "get_jwks_client", lambda iss: mock_client)
+
+    test_iss = "https://sts.windows.net/enterprise-tenant-id/"
+    test_aud = "api://g1-docket-governance"
+    monkeypatch.setenv("DOCKET_OIDC_ISSUER", test_iss)
+    monkeypatch.setenv("DOCKET_OIDC_AUDIENCE", test_aud)
+
     mgr = AuthManager(keys_dir=tmp_path)
 
     # 1. Native 2-part HMAC token is valid as a bearer token
@@ -483,9 +516,8 @@ def test_oidc_jwt_bearer_token_validation(tmp_path):
     assert native_sess["sub"] == "operator1"
     assert native_sess["role"] == "triage_operator"
 
-    # 2. Forge an OIDC JWT with claims
+    # 2. Token signed with wrong key or fake signature is REJECTED (defect D1 fix)
     now = int(time.time())
-    header = {"alg": "RS256", "typ": "JWT"}
     payload = {
         "sub": "auth0|6123456789abcdef",
         "email": "ciso-officer@enterprise.corp",
@@ -494,28 +526,30 @@ def test_oidc_jwt_bearer_token_validation(tmp_path):
         "roles": ["Security_Approver", "Data_Governance"],
         "exp": now + 3600,
         "iat": now,
-        "iss": "https://sts.windows.net/enterprise-tenant-id/",
-        "aud": "api://g1-docket-governance",
+        "iss": test_iss,
+        "aud": test_aud,
     }
-    b64_h = base64.urlsafe_b64encode(json.dumps(header).encode("utf-8")).decode("ascii").rstrip("=")
-    b64_p = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode("ascii").rstrip("=")
-    fake_jwt = f"{b64_h}.{b64_p}.fake_signature"
 
-    # Verify OIDC token extracts user and maps role
-    sess = mgr.verify_bearer_token(fake_jwt)
+    wrong_key_jwt = jwt.encode(payload, wrong_key, algorithm="RS256")
+    fake_jwt = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjMifQ.fake_signature"
+    assert mgr.verify_bearer_token(wrong_key_jwt) is None
+    assert mgr.verify_bearer_token(fake_jwt) is None
+
+    # 3. Validly signed token with correct issuer/audience is ACCEPTED
+    valid_jwt = jwt.encode(payload, priv_key, algorithm="RS256")
+    sess = mgr.verify_bearer_token(valid_jwt)
     assert sess is not None
     assert sess["sub"] == "ciso-officer@enterprise.corp"
     assert sess["role"] == "security_approver"
     assert sess["auth_type"] == "oidc_jwt"
 
-    # 3. Test expired OIDC JWT is rejected
+    # 4. Expired token is rejected
     expired_payload = dict(payload)
     expired_payload["exp"] = now - 60
-    b64_exp_p = base64.urlsafe_b64encode(json.dumps(expired_payload).encode("utf-8")).decode("ascii").rstrip("=")
-    expired_jwt = f"{b64_h}.{b64_exp_p}.fake_signature"
+    expired_jwt = jwt.encode(expired_payload, priv_key, algorithm="RS256")
     assert mgr.verify_bearer_token(expired_jwt) is None
 
-    # 4. Test HTTP API with Authorization: Bearer <fake_jwt>
+    # 5. Test HTTP API with Authorization: Bearer <valid_jwt> vs <fake_jwt>
     p_str = str(tmp_path).replace("\\", "/")
     cfg_file = tmp_path / "test_oidc_config.yaml"
     cfg_file.write_text(f"""
@@ -531,13 +565,17 @@ storage:
 """, encoding="utf-8")
     app = create_governance_app(config_path=cfg_file)
     with TestClient(app) as client:
-        # Calling /api/whoami with Bearer token
-        resp = client.get("/api/whoami", headers={"Authorization": f"Bearer {fake_jwt}"})
+        # Calling /api/whoami with valid Bearer token -> 200 OK
+        resp = client.get("/api/whoami", headers={"Authorization": f"Bearer {valid_jwt}"})
         assert resp.status_code == 200
         who = resp.json()
         assert who["logged_in"] is True
         assert who["operator"] == "ciso-officer@enterprise.corp"
         assert who["role"] == "security_approver"
+
+        # Calling /api/whoami with forged Bearer token -> rejected / not logged in
+        resp_fake = client.get("/api/whoami", headers={"Authorization": f"Bearer {fake_jwt}"})
+        assert resp_fake.status_code in (401, 403) or (resp_fake.status_code == 200 and resp_fake.json()["logged_in"] is False)
 
 
 

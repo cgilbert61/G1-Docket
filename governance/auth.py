@@ -15,10 +15,12 @@ import os
 import secrets
 import struct
 import time
+import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
+import jwt
 from fastapi import HTTPException, Request, Response, status
 
 logger = logging.getLogger("g1.governance.auth")
@@ -28,6 +30,107 @@ DEFAULT_SESSION_TTL_SECONDS = 8 * 3600  # 8 hours maximum session limit
 DEFAULT_INACTIVITY_TIMEOUT_SECONDS = 1800  # 30 minutes idle inactivity timeout
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION_SECONDS = 300  # 5 minutes
+
+_warned_unverified_oidc: bool = False
+_jwks_clients: Dict[str, Any] = {}
+
+
+def is_auth_enforced() -> bool:
+    """Check if production-grade authentication enforcement is active."""
+    env = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
+    req_auth = os.environ.get("DOCKET_REQUIRE_AUTH", "").strip().lower() in ("1", "true", "yes")
+    demo_mode = os.environ.get("DOCKET_DEMO_MODE", "").strip().lower()
+    if req_auth or env in ("production", "prod") or demo_mode in ("false", "0", "no"):
+        return True
+    return False
+
+
+def resolve_jwks_uri(issuer: str) -> str:
+    """Discover jwks_uri from {issuer}/.well-known/openid-configuration or default path."""
+    clean_issuer = issuer.rstrip("/")
+    if clean_issuer.endswith("/jwks") or clean_issuer.endswith("/jwks.json"):
+        return clean_issuer
+    discovery_url = f"{clean_issuer}/.well-known/openid-configuration"
+    try:
+        req = urllib.request.Request(discovery_url, headers={"User-Agent": "G1-Docket-OIDC/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.load(resp)
+            if isinstance(data, dict) and "jwks_uri" in data:
+                return data["jwks_uri"]
+    except Exception as e:
+        logger.debug("OIDC discovery failed for %s: %s; falling back to default jwks path", discovery_url, e)
+    return f"{clean_issuer}/.well-known/jwks.json"
+
+
+def get_jwks_client(issuer: str) -> jwt.PyJWKClient:
+    """Return a cached PyJWKClient for the given issuer, discovering jwks_uri and caching keys for ~3600s."""
+    clean_issuer = issuer.rstrip("/")
+    if clean_issuer not in _jwks_clients:
+        jwks_uri = resolve_jwks_uri(clean_issuer)
+        _jwks_clients[clean_issuer] = jwt.PyJWKClient(
+            uri=jwks_uri,
+            cache_keys=True,
+            cache_jwk_set=True,
+            lifespan=3600,
+        )
+    return _jwks_clients[clean_issuer]
+
+
+def get_signing_key_from_jwt(jwks_client: Any, token: str) -> Any:
+    """Retrieve signing key from JWKS client matching token's kid, with fallback for test JWKS."""
+    if hasattr(jwks_client, "get_signing_key_from_jwt"):
+        try:
+            return jwks_client.get_signing_key_from_jwt(token)
+        except Exception:
+            pass
+    if hasattr(jwks_client, "get_signing_keys"):
+        try:
+            keys = jwks_client.get_signing_keys()
+            if keys:
+                return keys[0]
+        except Exception:
+            pass
+    if hasattr(jwks_client, "get_signing_key"):
+        try:
+            header = jwt.get_unverified_header(token)
+            return jwks_client.get_signing_key(header.get("kid"))
+        except Exception:
+            pass
+    raise jwt.PyJWKClientError(f"Unable to find signing key for token in JWKS client: {jwks_client}")
+
+
+def verify_oidc_token(
+    token: str,
+    issuer: str,
+    audience: Optional[str] = None,
+    algorithms: Optional[list[str]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Verify OIDC JWT signature, iss, aud, exp, nbf using cached PyJWKClient."""
+    if not token or not issuer:
+        return None
+    algs = algorithms or ["RS256", "ES256"]
+    try:
+        client = get_jwks_client(issuer)
+        signing_key = get_signing_key_from_jwt(client, token)
+        key_obj = signing_key.key if hasattr(signing_key, "key") else signing_key
+        decode_kwargs: Dict[str, Any] = {
+            "algorithms": algs,
+            "issuer": issuer,
+            "options": {
+                "verify_signature": True,
+                "verify_exp": True,
+                "verify_nbf": True,
+                "verify_iss": True,
+                "verify_aud": bool(audience),
+            },
+        }
+        if audience:
+            decode_kwargs["audience"] = audience
+        claims = jwt.decode(token, key_obj, **decode_kwargs)
+        return claims
+    except Exception as e:
+        logger.debug("OIDC JWT verification rejected: %s", e)
+        return None
 
 
 @dataclass
@@ -312,36 +415,63 @@ class AuthManager:
         if len(parts) != 3:
             return None
 
+        expected_iss = os.getenv("DOCKET_OIDC_ISSUER", "").strip() or None
+        expected_aud = os.getenv("DOCKET_OIDC_AUDIENCE", "").strip() or None
+
+        if expected_iss:
+            # Cryptographic signature verification via issuer JWKS
+            claims = verify_oidc_token(
+                clean_token,
+                issuer=expected_iss,
+                audience=expected_aud,
+                algorithms=["RS256", "ES256"],
+            )
+            if not claims:
+                return None
+        else:
+            # DOCKET_OIDC_ISSUER is NOT set
+            if is_auth_enforced():
+                # In production mode, reject OIDC-shaped tokens
+                logger.info("Rejecting OIDC bearer token in auth-enforced mode because DOCKET_OIDC_ISSUER is unset.")
+                return None
+
+            # Outside production, keep current claims-only behavior with one warning per process
+            global _warned_unverified_oidc
+            if not _warned_unverified_oidc:
+                logger.warning(
+                    "[SECURITY WARNING] DOCKET_OIDC_ISSUER is unset: accepting OIDC JWT bearer tokens unverified (claims-only) "
+                    "because production auth is not enforced. Set DOCKET_OIDC_ISSUER to enforce cryptographic signature verification."
+                )
+                _warned_unverified_oidc = True
+
+            try:
+                b64_header, b64_payload, b64_sig = parts
+                payload_pad = b64_payload + "=" * (-len(b64_payload) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(payload_pad).decode("utf-8"))
+
+                now = int(time.time())
+                # Verify expiry if present
+                if "exp" in claims and claims["exp"] < now:
+                    logger.info("OIDC Bearer token expired (exp=%s, now=%s)", claims["exp"], now)
+                    return None
+
+                # Verify nbf (not before) if present
+                if "nbf" in claims and claims["nbf"] > now:
+                    return None
+
+                # Verify audience if configured
+                if expected_aud:
+                    aud = claims.get("aud")
+                    if isinstance(aud, list) and expected_aud not in aud:
+                        return None
+                    elif isinstance(aud, str) and aud != expected_aud:
+                        return None
+            except Exception as e:
+                logger.debug("Failed parsing unverified OIDC Bearer token: %s", e)
+                return None
+
+        # Existing claims -> identity/role mapping (shared for both paths)
         try:
-            b64_header, b64_payload, b64_sig = parts
-            payload_pad = b64_payload + "=" * (-len(b64_payload) % 4)
-            claims = json.loads(base64.urlsafe_b64decode(payload_pad).decode("utf-8"))
-
-            now = int(time.time())
-            # Verify expiry if present
-            if "exp" in claims and claims["exp"] < now:
-                logger.info("OIDC Bearer token expired (exp=%s, now=%s)", claims["exp"], now)
-                return None
-
-            # Verify nbf (not before) if present
-            if "nbf" in claims and claims["nbf"] > now:
-                return None
-
-            # Verify audience if configured
-            expected_aud = os.getenv("DOCKET_OIDC_AUDIENCE")
-            if expected_aud:
-                aud = claims.get("aud")
-                if isinstance(aud, list) and expected_aud not in aud:
-                    return None
-                elif isinstance(aud, str) and aud != expected_aud:
-                    return None
-
-            # Verify issuer if configured
-            expected_iss = os.getenv("DOCKET_OIDC_ISSUER")
-            if expected_iss and claims.get("iss") != expected_iss:
-                return None
-
-            # Extract subject / identity claim
             user_id = (
                 claims.get("email")
                 or claims.get("preferred_username")
@@ -376,7 +506,7 @@ class AuthManager:
                 "auth_type": "oidc_jwt",
             }
         except Exception as e:
-            logger.debug("Failed parsing OIDC Bearer token: %s", e)
+            logger.debug("Failed mapping OIDC claims: %s", e)
             return None
 
 

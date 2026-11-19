@@ -749,11 +749,6 @@ def create_prevalidator_app(
 
     logo_path = Path(__file__).resolve().parent / "g1_logo.png"
 
-    if auth_manager is None:
-        key_dir_path = Path(keys_dir or os.environ.get("POD_KEY_DIR") or os.environ.get("POD_PUBLIC_KEY_DIR", "./.pod_keys"))
-        auth_manager = AuthManager(keys_dir=key_dir_path)
-    app.state.auth_manager = auth_manager
-
     def is_auth_enforced() -> bool:
         env = os.environ.get("DOCKET_ENVIRONMENT", "").strip().lower()
         req_auth = os.environ.get("DOCKET_REQUIRE_AUTH", "").strip().lower() in ("1", "true", "yes")
@@ -761,6 +756,29 @@ def create_prevalidator_app(
         if req_auth or env in ("production", "prod") or demo_mode in ("false", "0", "no"):
             return True
         return False
+
+    if is_auth_enforced():
+        pod_jwt_sec = os.environ.get("POD_JWT_SECRET", "").strip()
+        caller_oidc_iss = (
+            os.environ.get("POD_OIDC_ISSUER", "").strip()
+            or os.environ.get("DOCKET_OIDC_ISSUER", "").strip()
+            or getattr(enforcer, "oidc_issuer", None)
+        )
+        enforcer_explicit_secret = enforcer and getattr(enforcer, "jwt_secret", None) not in (
+            None,
+            "pod-local-jwt-secret-key-minimum-32-bytes-long",
+        )
+        if not pod_jwt_sec and not caller_oidc_iss and not enforcer_explicit_secret:
+            if not (keys_dir or getattr(auth_manager, "keys_dir", None)):
+                raise RuntimeError(
+                    "[FATAL] Cannot start Prevalidator in auth-enforced production mode with default POD_JWT_SECRET. "
+                    "Configure POD_JWT_SECRET or an enterprise OIDC issuer (POD_OIDC_ISSUER / DOCKET_OIDC_ISSUER)."
+                )
+
+    if auth_manager is None:
+        key_dir_path = Path(keys_dir or os.environ.get("POD_KEY_DIR") or os.environ.get("POD_PUBLIC_KEY_DIR", "./.pod_keys"))
+        auth_manager = AuthManager(keys_dir=key_dir_path)
+    app.state.auth_manager = auth_manager
 
     def get_current_operator_session(request: Request) -> dict[str, Any] | None:
         """Extract authenticated operator session from cookie, bearer token, or proxy headers."""

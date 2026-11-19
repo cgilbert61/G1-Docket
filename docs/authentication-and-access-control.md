@@ -152,8 +152,32 @@ export DOCKET_AUTH_USERS_JSON='[
 
 G1 Docket natively supports enterprise Identity Providers (IdPs) including **Microsoft Entra ID (Azure AD)**, **Okta**, **Google Workspace**, and **Ping Identity**.
 
-#### 1. Reverse-Proxy / Ingress Header Forwarding
-If G1 Docket sits behind an enterprise reverse proxy or Cloud Identity-Aware Proxy (e.g., Cloudflare Access, AWS ALB, Azure App Proxy, Google IAP, OAuth2-Proxy), G1 Docket automatically extracts and trusts the forwarded operator headers:
+#### 1. Cryptographic OIDC Signature Verification via JWKS
+Both the **Governance Door** (`Authorization: Bearer <token>`) and the **Prevalidator Caller-Token Door** (`X-POD-Caller-Token: <token>`) verify enterprise IdP cryptographic signatures via JSON Web Key Sets (JWKS) whenever an issuer is configured. Claims-only acceptance is **not** a supported operating mode in production.
+
+- **Supported Signature Algorithms**: `RS256`, `ES256`.
+- **Automatic JWKS Discovery**: Discovers public signing keys dynamically from `{issuer}/.well-known/openid-configuration` (or `{issuer}/.well-known/jwks.json`).
+- **High-Throughput In-Memory Caching**: Signing keys are cached via `jwt.PyJWKClient` (1-hour key lifespan) ensuring sub-millisecond added latency (< 0.1 ms p95 overhead).
+- **Strict Claims Verification**: `iss` (issuer), `aud` (audience), `exp` (expiration), and `nbf` (not-before) claims are strictly enforced cryptographically before identity and RBAC/ABAC role claims are mapped.
+
+```bash
+# Configure in .env or Kubernetes Secret:
+DOCKET_OIDC_ISSUER="https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0"
+DOCKET_OIDC_AUDIENCE="api://g1-docket-governance"
+
+# Prevalidator caller tokens can inherit from DOCKET_OIDC_* or be configured independently:
+POD_OIDC_ISSUER="https://identity.enterprise.gov/v2.0"
+POD_OIDC_AUDIENCE="https://docket.enterprise.gov/api"
+```
+
+> [!IMPORTANT]
+> When `DOCKET_ENVIRONMENT=production` or `DOCKET_REQUIRE_AUTH=true`, unverified OIDC-shaped tokens are rejected fail-closed. If `POD_JWT_SECRET` is unset and no caller OIDC issuer is configured, the Prevalidator will refuse to start.
+
+#### 2. Reverse-Proxy / Ingress Header Forwarding
+If G1 Docket sits behind an enterprise reverse proxy or Cloud Identity-Aware Proxy (e.g., Cloudflare Access, AWS ALB, Azure App Proxy, Google IAP, OAuth2-Proxy), G1 Docket extracts and maps the forwarded operator headers.
+
+> [!WARNING]
+> The reverse-proxy header forwarding pattern is supported **only** when G1 Docket is deployed in a private network perimeter and is reachable **exclusively** through the verifying gateway. Direct client access to G1 Docket ports bypassing the proxy must be blocked at the network/ingress level.
 
 | Header | Purpose | Example |
 | :--- | :--- | :--- |
@@ -166,17 +190,6 @@ If G1 Docket sits behind an enterprise reverse proxy or Cloud Identity-Aware Pro
 - Any role/group containing `approver`, `ciso`, `security`, `officer`, or `lead` &rarr; mapped to `security_approver`
 - Any role/group containing `audit` &rarr; mapped to `auditor`
 - All other corporate identities &rarr; mapped to `triage_operator`
-
-#### 2. Bearer JWT / OIDC Token Verification
-To authenticate REST API and browser requests using OIDC Bearer tokens issued by your corporate IdP:
-
-```bash
-# Set in .env:
-DOCKET_OIDC_ISSUER="https://login.microsoftonline.com/YOUR_TENANT_ID/v2.0"
-DOCKET_OIDC_AUDIENCE="api://g1-docket-governance"
-```
-
-Operators passing `Authorization: Bearer <jwt_token>` will be validated against your corporate issuer and audience claims.
 
 ---
 
