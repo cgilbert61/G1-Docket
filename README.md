@@ -178,7 +178,7 @@ pip install -r requirements.txt
 pip install G1-Docket-SDK
 
 # Or install directly from GitHub Releases asset (.whl)
-pip install dist/g1_docket_sdk-0.1.0-py3-none-any.whl
+pip install dist/g1_docket_sdk-1.0.1-py3-none-any.whl
 
 # Verify client CLI
 docket --help
@@ -343,7 +343,7 @@ Unauthenticated browser traffic is strictly redirected to `/login` when `DOCKET_
 
 ### Attestation Engine Service (`:18083/docs`)
 
-The **Attestation Engine Service** (OpenAPI 3.1, `v0.1.0`) provides programmatic APIs to discover, inspect, and attest assets across local disks, network shares, and enterprise cloud data lakes:
+The **Attestation Engine Service** (OpenAPI 3.1, `v1.0.1`) provides programmatic APIs to discover, inspect, and attest assets across local disks, network shares, and enterprise cloud data lakes:
 
 ```
 default

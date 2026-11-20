@@ -288,7 +288,8 @@ def _fetch_from_github_api(repo: str = "cgilbert61/G1-Docket") -> Optional[Dict[
             if not runs:
                 return None
 
-            latest = runs[0]
+            ci_runs = [r for r in runs if (r.get("name") or "").strip().lower() == "ci"]
+            latest = ci_runs[0] if ci_runs else runs[0]
             latest_id = str(latest["id"])
 
             # Query jobs for latest run
@@ -425,7 +426,8 @@ def fetch_cicd_status(force_refresh: bool = False) -> Dict[str, Any]:
         if not runs_data:
             return _get_offline_cicd_fallback()
 
-        latest = runs_data[0]
+        ci_runs = [r for r in runs_data if (r.get("workflowName") or "").strip().lower() == "ci"]
+        latest = ci_runs[0] if ci_runs else runs_data[0]
         latest_id = str(latest.get("databaseId"))
 
         # Query jobs for latest run

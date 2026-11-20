@@ -199,7 +199,7 @@ def create_engine_app() -> FastAPI:
                 await task
             registry.close()
 
-    app = FastAPI(title="G1 Docket by G1163RT Security Labs — Attestation Engine Service", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="G1 Docket by G1163RT Security Labs — Attestation Engine Service", version="1.0.1", lifespan=lifespan)
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):

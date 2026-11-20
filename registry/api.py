@@ -60,7 +60,7 @@ class IssueFindingRequest(BaseModel):
 
 def create_registry_app(registry: RegistryService | None = None) -> FastAPI:
     """Create the hardened Registry FastAPI server (requires X-POD-Admin-Key for all catalog queries and mutations)."""
-    app = FastAPI(title="POD Authoritative Registry API", version="0.1.0")
+    app = FastAPI(title="POD Authoritative Registry API", version="1.0.1")
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):

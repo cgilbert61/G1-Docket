@@ -732,7 +732,7 @@ def create_prevalidator_app(
     keys_dir: str | Path | None = None,
 ) -> FastAPI:
     """Create the Prevalidator proxy application."""
-    app = FastAPI(title="G1 Docket by G1163RT Security Labs - AI Gateway Prevalidator", version="0.1.0")
+    app = FastAPI(title="G1 Docket by G1163RT Security Labs - AI Gateway Prevalidator", version="1.0.1")
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
