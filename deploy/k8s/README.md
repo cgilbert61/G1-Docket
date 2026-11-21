@@ -72,7 +72,7 @@ The `g1-docket-config` ConfigMap controls global security posture across all pod
 
 | Environment Variable | Default | Description |
 | :--- | :--- | :--- |
-| `POD_GATEWAY_MODE` | `"enforce"` | Operational mode: `"enforce"` (inline blocking) or `"observe"` (audit-only pass-through). |
+| `POD_PREVALIDATOR_MODE` | `"enforce"` | Operational mode: `"enforce"` (inline blocking) or `"observe"` (audit-only pass-through). |
 | `POD_ENABLE_ABAC_DATA_RESIDENCY` | `"true"` | Enforce regional sovereign boundary claims (e.g. EU GDPR enclaves). |
 | `POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION` | `"true"` | Enforce departmental compartmentalization (`X-POD-Caller-Dept` matching). |
 | `POD_STRICT_INLINE_HASH` | `"true"` | Live cryptographic SHA-256 fingerprint verification of `<pod:object>` tokens. |

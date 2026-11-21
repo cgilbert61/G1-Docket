@@ -80,15 +80,8 @@ def gate_sast() -> dict:
             "/src"
         ]
     else:
-        # Fallback python syntax & AST audit
-        print("  [WARN] Neither semgrep CLI nor Docker available; falling back to Python AST scanner...")
-        sarif_stub = {
-            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-            "version": "2.1.0",
-            "runs": [{"tool": {"driver": {"name": "Semgrep-Local-Fallback", "version": "1.0"}}, "results": []}]
-        }
-        report_sarif.write_text(json.dumps(sarif_stub, indent=2), encoding="utf-8")
-        return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_sarif), "findings": 0}
+        print("  [WARN] Neither semgrep CLI nor Docker available; marking gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_sarif), "findings": None}
 
     code, out, err = run_command(cmd)
 
@@ -138,9 +131,8 @@ def gate_secrets() -> dict:
             f"--report-path=/path/{report_sarif.relative_to(WORKSPACE).as_posix()}"
         ]
     else:
-        print("  [WARN] Neither gitleaks CLI nor Docker available; generating baseline report...")
-        report_sarif.write_text(json.dumps({"runs": [{"results": []}]}, indent=2), encoding="utf-8")
-        return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_sarif), "findings": 0}
+        print("  [WARN] Neither gitleaks CLI nor Docker available; marking gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_sarif), "findings": None}
 
     code, out, err = run_command(cmd)
 
@@ -186,9 +178,8 @@ def gate_iac() -> dict:
             "--output-file-path", f"/tf/{REPORTS_DIR.relative_to(WORKSPACE).as_posix()}"
         ]
     else:
-        print("  [WARN] Neither checkov CLI nor Docker available; creating stub...")
-        report_sarif.write_text(json.dumps({"runs": [{"results": []}]}, indent=2), encoding="utf-8")
-        return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_sarif), "findings": 0}
+        print("  [WARN] Neither checkov CLI nor Docker available; marking gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_sarif), "findings": None}
 
     code, out, err = run_command(cmd)
 
@@ -328,9 +319,8 @@ def gate_trivy() -> dict:
             "/src"
         ]
     else:
-        print("  [WARN] Neither trivy CLI nor Docker available; generating baseline SCA report...")
-        report_sarif.write_text(json.dumps({"runs": [{"results": []}]}, indent=2), encoding="utf-8")
-        return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_sarif), "findings": 0}
+        print("  [WARN] Neither trivy CLI nor Docker available; marking gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_sarif), "findings": None}
 
     code, out, err = run_command(cmd)
 
@@ -380,11 +370,8 @@ def gate_dast() -> dict:
             "-c", ".zap/zap-baseline.conf"
         ]
     else:
-        print("  [INFO] Checking existing baseline ZAP reports...")
-        if report_json.exists():
-            return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_json), "findings": 0}
-        report_json.write_text(json.dumps({"site": [{"alerts": []}]}, indent=2), encoding="utf-8")
-        return {"gate": name, "tool": tool, "standard": standard, "status": "PASS", "report": str(report_json), "findings": 0}
+        print("  [WARN] Neither ZAP CLI nor Docker available; marking gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_json), "findings": None}
 
     code, out, err = run_command(cmd, timeout=120)
 
@@ -454,28 +441,8 @@ def gate_load() -> dict:
         gateway_online = False
 
     if not gateway_online:
-        print("  [INFO] Prevalidator gateway (http://localhost:18082) is offline; verifying k6 script syntax & baseline SLA metrics...")
-        benchmark_file = REPORTS_DIR / "concurrency_benchmark_report.json"
-        sla_p95 = 0.21
-        if benchmark_file.exists():
-            try:
-                bdata = json.loads(benchmark_file.read_text(encoding="utf-8"))
-                sla_p95 = bdata.get("p95_ms", 0.21)
-            except Exception:
-                pass
-
-        report_file.write_text(json.dumps({
-            "target": "http://localhost:18082",
-            "k6_script": str(k6_script),
-            "gateway_status": "offline_baseline_verified",
-            "metrics": {
-                "http_req_duration": {"p95_ms": sla_p95, "sla_target_ms": 5.0, "sla_met": True},
-                "http_req_failed": {"rate": 0.0, "threshold": 0.01}
-            }
-        }, indent=2), encoding="utf-8")
-        status = "PASS"
-        print(f"  Results: k6 script validated, p95 hot-path SLA met ({sla_p95}ms <= 5.0ms). Status: {status}")
-        return {"gate": name, "tool": tool, "standard": standard, "status": status, "report": str(report_file), "findings": 0}
+        print("  [WARN] Prevalidator gateway (http://localhost:18082) is offline; marking live load gate UNVERIFIED...")
+        return {"gate": name, "tool": tool, "standard": standard, "status": "UNVERIFIED", "executed": False, "report": str(report_file), "findings": None}
 
     code, out, err = run_command(cmd, timeout=60)
     status = "PASS" if code == 0 else "FAIL"
@@ -577,21 +544,34 @@ def main():
 
     # Write consolidated summary
     summary_path = REPORTS_DIR / "compliance_summary.json"
+    passed_count = len([r for r in results if r["status"] == "PASS"])
+    failed_count = len([r for r in results if r["status"] == "FAIL"])
+    unverified_count = len([r for r in results if r["status"] in ("UNVERIFIED", "SKIPPED")])
+    if failed_count > 0:
+        overall_status = "FAIL"
+    elif unverified_count > 0:
+        overall_status = "UNVERIFIED"
+    else:
+        overall_status = "PASS"
     summary_data = {
         "framework": "G1 Docket Federal DevSecOps Pipeline",
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "overall_status": overall_status,
         "total_gates": len(results),
-        "passed_gates": len([r for r in results if r["status"] == "PASS"]),
-        "failed_gates": len([r for r in results if r["status"] == "FAIL"]),
+        "passed_gates": passed_count,
+        "failed_gates": failed_count,
+        "unverified_gates": unverified_count,
         "duration_seconds": round(time.time() - start_time, 2),
-        "gates": results
+        "executed_checks": [r for r in results if r.get("executed", r["status"] in ("PASS", "FAIL"))],
+        "unverified_checks": [r for r in results if r["status"] in ("UNVERIFIED", "SKIPPED")],
+        "gates": results,
     }
     summary_path.write_text(json.dumps(summary_data, indent=2), encoding="utf-8")
 
     print_summary_table(results)
 
-    # Return non-zero if any gate failed
-    has_failure = any(r["status"] == "FAIL" for r in results)
+    # Return non-zero if any gate failed or was unverified
+    has_failure = any(r["status"] != "PASS" for r in results)
     sys.exit(1 if has_failure else 0)
 
 

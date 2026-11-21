@@ -11,13 +11,15 @@ import os
 import sqlite3
 import time
 import uuid
+import warnings
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Mapping
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response, StreamingResponse
 from jinja2 import Template
 
 from governance.auth import (
@@ -35,8 +37,294 @@ from engine.directory_bridge import (
     resolve_pc_directory_path,
 )
 from engine.storage_connectors import is_enterprise_store_uri
-from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer, is_auth_enforced
+from prevalidator.enforcer import InMemorySnapshotStore, PrevalidatorEnforcer, SnapshotRollbackError, is_auth_enforced
 from registry.signing import Keyring, compute_file_sha256
+
+
+DEFAULT_DECISION_RECEIPT_KEY = "g1-docket-attestation-v1"
+
+CANONICAL_GATEWAY_ENV_VARS: frozenset[str] = frozenset(
+    {
+        "POD_PREVALIDATOR_MODE",
+        "POD_UPSTREAM_GATEWAY_URL",
+        "POD_ENGINE_SERVICE_URL",
+        "POD_SNAPSHOT_PUBLISHER_URL",
+        "POD_REGISTRY_URL",
+        "POD_GOVERNANCE_URL",
+        "POD_SNAPSHOT_FILE",
+        "POD_SNAPSHOT_STATE_FILE",
+        "POD_PUBLIC_KEY_DIR",
+        "POD_PRIVATE_KEY_DIR",
+        "POD_KEY_DIR",
+        "POD_ADMIN_API_KEY",
+        "POD_CONTROL_PLANE_TOKEN",
+        "POD_DECISION_RECEIPT_KEY",
+        "POD_JWT_SECRET",
+        "POD_OIDC_ISSUER",
+        "POD_OIDC_AUDIENCE",
+        "POD_OIDC_JWKS_JSON",
+        "POD_OIDC_JWKS_URI",
+        "DOCKET_OIDC_ISSUER",
+        "DOCKET_OIDC_AUDIENCE",
+        "DOCKET_OIDC_JWKS_JSON",
+        "DOCKET_OIDC_JWKS_URI",
+        "POD_ENABLE_ABAC_DATA_RESIDENCY",
+        "POD_ENABLE_ABAC_DEPARTMENTAL_ISOLATION",
+        "POD_ENABLE_PRESIDIO_FALLBACK",
+        "POD_ALLOW_HEADER_ONLY_OBJECTS",
+        "POD_STRICT_INLINE_HASH",
+        "POD_MAX_UNTAGGED_CHARS",
+        "POD_DELEGATE_VERIFY_KEY",
+        "POD_UPSTREAM_API_KEY",
+        "POD_LLM_CONFIG_FILE",
+        "DOCKET_ENVIRONMENT",
+        "DOCKET_PROFILE",
+        "DOCKET_DEMO_MODE",
+        "DOCKET_REQUIRE_AUTH",
+        "DOCKET_ENABLE_DEMO_BOOTSTRAP",
+    }
+)
+
+LEGACY_GATEWAY_ENV_ALIASES: dict[str, str] = {
+    "POD_GATEWAY_MODE": "POD_PREVALIDATOR_MODE",
+    "POD_UPSTREAM_URL": "POD_UPSTREAM_GATEWAY_URL",
+    "POD_ENGINE_URL": "POD_ENGINE_SERVICE_URL",
+    "POD_SNAPSHOT_URL": "POD_SNAPSHOT_PUBLISHER_URL",
+}
+
+
+def _resolve_env_with_alias(canonical: str, legacy_alias: str | None = None, default: str = "") -> str:
+    val = os.environ.get(canonical, "").strip()
+    if val:
+        return val
+    if legacy_alias:
+        alias_val = os.environ.get(legacy_alias, "").strip()
+        if alias_val:
+            warnings.warn(
+                f"Environment variable '{legacy_alias}' is deprecated; use '{canonical}' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return alias_val
+    return default
+
+
+@dataclass
+class GatewaySettings:
+    """Validated gateway runtime settings resolving canonical environment variables."""
+
+    prevalidator_mode: str = "enforce"
+    upstream_gateway_url: str = "mock://local"
+    engine_service_url: str = "http://engine:8083"
+    snapshot_publisher_url: str = "http://snapshot-publisher:8081"
+    registry_url: str = "http://registry:8080"
+    governance_url: str = "http://governance:8084"
+    snapshot_file: str = "./pod_snapshot.dsse.json"
+    public_key_dir: str = "./.pod_keys"
+    admin_api_key: str = "pod-dev-admin-key"
+    control_plane_token: str = "pod-dev-control-plane-token"
+    decision_receipt_key: str = DEFAULT_DECISION_RECEIPT_KEY
+
+    @classmethod
+    def from_env(cls) -> GatewaySettings:
+        return cls(
+            prevalidator_mode=_resolve_env_with_alias("POD_PREVALIDATOR_MODE", "POD_GATEWAY_MODE", "enforce"),
+            upstream_gateway_url=_resolve_env_with_alias("POD_UPSTREAM_GATEWAY_URL", "POD_UPSTREAM_URL", "mock://local"),
+            engine_service_url=_resolve_env_with_alias("POD_ENGINE_SERVICE_URL", "POD_ENGINE_URL", "http://engine:8083"),
+            snapshot_publisher_url=_resolve_env_with_alias("POD_SNAPSHOT_PUBLISHER_URL", "POD_SNAPSHOT_URL", "http://snapshot-publisher:8081"),
+            registry_url=os.environ.get("POD_REGISTRY_URL", "http://registry:8080").strip(),
+            governance_url=os.environ.get("POD_GOVERNANCE_URL", "http://governance:8084").strip(),
+            snapshot_file=os.environ.get("POD_SNAPSHOT_FILE", "./pod_snapshot.dsse.json").strip(),
+            public_key_dir=(os.environ.get("POD_PUBLIC_KEY_DIR") or os.environ.get("POD_KEY_DIR", "./.pod_keys")).strip(),
+            admin_api_key=os.environ.get("POD_ADMIN_API_KEY", "pod-dev-admin-key").strip(),
+            control_plane_token=os.environ.get("POD_CONTROL_PLANE_TOKEN", "pod-dev-control-plane-token").strip(),
+            decision_receipt_key=os.environ.get("POD_DECISION_RECEIPT_KEY", DEFAULT_DECISION_RECEIPT_KEY).strip() or DEFAULT_DECISION_RECEIPT_KEY,
+        )
+
+
+COMMON_OUTBOUND_HEADER_ALLOWLIST: frozenset[str] = frozenset(
+    {
+        "content-type",
+        "accept",
+        "x-request-id",
+        "x-correlation-id",
+        "user-agent",
+    }
+)
+
+PROVIDER_OUTBOUND_ALLOWLISTS: dict[str, frozenset[str]] = {
+    "openai": COMMON_OUTBOUND_HEADER_ALLOWLIST
+    | frozenset(
+        {
+            "openai-organization",
+            "openai-project",
+            "openai-beta",
+        }
+    ),
+    "anthropic": COMMON_OUTBOUND_HEADER_ALLOWLIST
+    | frozenset(
+        {
+            "anthropic-version",
+            "anthropic-beta",
+        }
+    ),
+    "gemini": COMMON_OUTBOUND_HEADER_ALLOWLIST
+    | frozenset(
+        {
+            "x-goog-api-client",
+            "x-goog-user-project",
+        }
+    ),
+}
+
+
+def build_outbound_provider_headers(
+    provider: str,
+    incoming_headers: Mapping[str, str],
+    outcome: Any,
+    llm_config: Mapping[str, Any],
+) -> dict[str, str]:
+    """Construct provider-specific outbound headers using a strict allowlist.
+
+    Strips client cookies, client Authorization/API-key headers, and internal
+    X-POD-* headers before forwarding to the upstream LLM provider.
+    """
+    allowlist = PROVIDER_OUTBOUND_ALLOWLISTS.get(provider.lower(), COMMON_OUTBOUND_HEADER_ALLOWLIST)
+    forward_headers: dict[str, str] = {}
+    for k, v in incoming_headers.items():
+        if k.lower() in allowlist:
+            forward_headers[k] = v
+
+    if "content-type" not in {k.lower() for k in forward_headers}:
+        forward_headers["Content-Type"] = "application/json"
+
+    if outcome.audit_entry and outcome.audit_entry.locators_evaluated:
+        forward_headers["X-Docket-Attestation-Verdict"] = outcome.audit_entry.decision.upper()
+        forward_headers["X-Docket-Clearance-Tier"] = outcome.audit_entry.caller_clearance.upper()
+        forward_headers["X-Docket-Attested-Locators"] = ",".join(outcome.audit_entry.locators_evaluated)
+        forward_headers["X-Docket-Attestation-Timestamp"] = outcome.audit_entry.timestamp
+    else:
+        forward_headers["X-Docket-Attestation-Verdict"] = "PASSTHROUGH_UNATTESTED"
+        forward_headers["X-Docket-Clearance-Tier"] = "PUBLIC"
+        forward_headers["X-Docket-Attested-Locators"] = ""
+
+    api_key = str(llm_config.get("api_key") or "").strip()
+    prov = provider.lower()
+    if prov == "openai":
+        if api_key:
+            forward_headers["Authorization"] = f"Bearer {api_key}"
+    elif prov == "anthropic":
+        if api_key:
+            forward_headers["x-api-key"] = api_key
+        if "anthropic-version" not in {k.lower() for k in forward_headers}:
+            forward_headers["anthropic-version"] = "2023-06-01"
+    elif prov == "gemini":
+        if api_key:
+            forward_headers["x-goog-api-key"] = api_key
+
+    return forward_headers
+
+
+def build_decision_receipt_headers(
+    *,
+    verdict: str,
+    lat_us: float,
+    seq_num: int,
+    locs_str: str,
+    ts_str: str,
+    request_sha256: str,
+    destination: str,
+    receipt_key: str,
+) -> dict[str, str]:
+    """Build cryptographically bound admission decision receipt headers."""
+    sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}:{request_sha256}:{destination}"
+    verdict_sig = hmac.new(receipt_key.encode("utf-8"), sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    receipt_json = json.dumps(
+        {
+            "verdict": verdict,
+            "snapshot_sequence": seq_num,
+            "locators": [x for x in locs_str.split(",") if x],
+            "timestamp": ts_str,
+            "request_sha256": request_sha256,
+            "destination": destination,
+            "signature": verdict_sig,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return {
+        "X-POD-Attestation-Verdict": verdict,
+        "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
+        "X-POD-Snapshot-Sequence": str(seq_num),
+        "X-POD-Request-Sha256": request_sha256,
+        "X-POD-Destination": destination,
+        "X-POD-Attestation-Signature": verdict_sig,
+        "X-POD-Attestation-Receipt": base64.urlsafe_b64encode(receipt_json.encode("utf-8")).decode("ascii"),
+    }
+
+
+_HOP_BY_HOP_AND_LENGTH_HEADERS: frozenset[str] = frozenset(
+    {
+        "content-length",
+        "transfer-encoding",
+        "content-encoding",
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "upgrade",
+    }
+)
+
+
+def _build_upstream_passthrough_response(
+    resp: httpx.Response,
+    response_headers: Mapping[str, str],
+) -> Response:
+    """Return upstream response bytes verbatim without re-serializing JSON or carrying stale Content-Length."""
+    merged_headers: dict[str, str] = {
+        k: v for k, v in resp.headers.items() if k.lower() not in _HOP_BY_HOP_AND_LENGTH_HEADERS
+    }
+    merged_headers.update(response_headers)
+    media_type = resp.headers.get("content-type", "application/json")
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        media_type=media_type,
+        headers=merged_headers,
+    )
+
+
+def _build_upstream_error_response(
+    exc: Exception,
+    response_headers: Mapping[str, str],
+) -> JSONResponse:
+    """Return HTTP 504 on upstream timeout or HTTP 502 on upstream transport/connect failure (never fabricate HTTP 200)."""
+    if isinstance(exc, httpx.TimeoutException):
+        return JSONResponse(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            content={
+                "error": {
+                    "message": f"Upstream AI gateway timed out: {exc}",
+                    "type": "gateway_timeout",
+                    "code": "UPSTREAM_TIMEOUT",
+                }
+            },
+            headers=dict(response_headers),
+        )
+    return JSONResponse(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        content={
+            "error": {
+                "message": f"Upstream AI gateway unreachable or failed: {exc}",
+                "type": "bad_gateway",
+                "code": "UPSTREAM_UNAVAILABLE",
+            }
+        },
+        headers=dict(response_headers),
+    )
 
 
 _governance_target_cache: str | None = None
@@ -828,11 +1116,14 @@ def create_prevalidator_app(
                     }
         return None
 
+    settings = GatewaySettings.from_env()
+    app.state.gateway_settings = settings
+
     if enforcer is None:
-        pub_key_dir = Path(os.environ.get("POD_PUBLIC_KEY_DIR") or os.environ.get("POD_KEY_DIR", "./.pod_keys"))
+        pub_key_dir = Path(settings.public_key_dir)
         keyring = Keyring(public_key_dir=pub_key_dir, verification_only=True)
         store = InMemorySnapshotStore(keyring)
-        snap_path = Path(snapshot_file or os.environ.get("POD_SNAPSHOT_FILE", "./pod_snapshot.dsse.json"))
+        snap_path = Path(snapshot_file or settings.snapshot_file)
         if snap_path.exists():
             try:
                 store.load_from_file(snap_path)
@@ -840,7 +1131,7 @@ def create_prevalidator_app(
                 # If a stale snapshot from an earlier boot exists on disk, start cleanly (fail-closed)
                 # until SnapshotPublisher/Engine pushes a fresh signed snapshot.
                 pass
-        mode = os.environ.get("POD_PREVALIDATOR_MODE", "enforce")
+        mode = settings.prevalidator_mode
         enforcer = PrevalidatorEnforcer(snapshot_store=store, mode=mode)
         if os.environ.get("POD_ENABLE_ABAC_DATA_RESIDENCY", "").lower() in ("1", "true", "yes"):
             from prevalidator.enforcer import create_data_residency_hook
@@ -857,18 +1148,24 @@ def create_prevalidator_app(
 
     if env_mode in ("production", "prod"):
         if not upstream_gateway_url and (
-            not os.environ.get("POD_UPSTREAM_GATEWAY_URL")
-            or os.environ.get("POD_UPSTREAM_GATEWAY_URL") in ("mock://local", "")
+            not settings.upstream_gateway_url
+            or settings.upstream_gateway_url in ("mock://local", "")
         ):
             raise RuntimeError(
                 "[FATAL] Cannot start Prevalidator in production mode without an authoritative upstream AI gateway. "
                 "Set POD_UPSTREAM_GATEWAY_URL to your corporate gateway endpoint (e.g. LiteLLM, Azure OpenAI, Bedrock)."
             )
+        explicit_receipt_key = os.environ.get("POD_DECISION_RECEIPT_KEY", "").strip()
+        if explicit_receipt_key == DEFAULT_DECISION_RECEIPT_KEY:
+            raise RuntimeError(
+                "[FATAL] Cannot start Prevalidator in production mode with default POD_DECISION_RECEIPT_KEY."
+            )
 
-    upstream_url = (upstream_gateway_url or os.environ.get("POD_UPSTREAM_GATEWAY_URL", "mock://local")).rstrip("/")
-    engine_url = (engine_service_url or os.environ.get("POD_ENGINE_SERVICE_URL", "http://engine:8083")).rstrip("/")
-    admin_key = os.environ.get("POD_ADMIN_API_KEY", "pod-dev-admin-key")
-    control_token = os.environ.get("POD_CONTROL_PLANE_TOKEN", "pod-dev-control-plane-token")
+    upstream_url = (upstream_gateway_url or settings.upstream_gateway_url).rstrip("/")
+    engine_url = (engine_service_url or settings.engine_service_url).rstrip("/")
+    admin_key = settings.admin_api_key
+    control_token = settings.control_plane_token
+    receipt_key = settings.decision_receipt_key
     llm_config_file = Path(os.environ.get("POD_LLM_CONFIG_FILE", "./llm_provider_config.json"))
 
     llm_config: dict[str, Any] = {
@@ -1714,6 +2011,12 @@ def create_prevalidator_app(
         model = clean_payload.get("model", llm_config.get("default_model", "gpt-4o"))
         is_stream = bool(clean_payload.get("stream", False))
         active_base_url = llm_config["base_url"]
+        target_endpoint = (
+            f"{active_base_url}/chat/completions"
+            if active_base_url.endswith("/v1") or active_base_url.endswith("/openai")
+            else f"{active_base_url}/v1/chat/completions"
+        )
+        req_sha256 = compute_bytes_sha256_hex(json.dumps(clean_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
         # Cryptographic admission verdict headers for non-repudiation & telemetry
         verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
@@ -1722,16 +2025,17 @@ def create_prevalidator_app(
         seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
         locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
         ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
-        
-        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
-        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
-        response_headers = {
-            "X-POD-Attestation-Verdict": verdict,
-            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
-            "X-POD-Snapshot-Sequence": str(seq_num),
-            "X-POD-Attestation-Signature": verdict_sig,
-        }
+        response_headers = build_decision_receipt_headers(
+            verdict=verdict,
+            lat_us=lat_us,
+            seq_num=seq_num,
+            locs_str=locs_str,
+            ts_str=ts_str,
+            request_sha256=req_sha256,
+            destination=target_endpoint,
+            receipt_key=receipt_key,
+        )
 
         if active_base_url.startswith("mock://"):
             user_text = _extract_last_user_text(clean_payload)
@@ -1754,33 +2058,21 @@ def create_prevalidator_app(
             }
             return JSONResponse(status_code=200, content=mock_body, headers=response_headers)
 
-        forward_headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k.lower() not in ("host", "content-length", "x-pod-locators", "x-pod-caller-key", "x-pod-caller-token")
-        }
-        if outcome.audit_entry and outcome.audit_entry.locators_evaluated:
-            forward_headers["X-Docket-Attestation-Verdict"] = outcome.audit_entry.decision.upper()
-            forward_headers["X-Docket-Clearance-Tier"] = outcome.audit_entry.caller_clearance.upper()
-            forward_headers["X-Docket-Attested-Locators"] = ",".join(outcome.audit_entry.locators_evaluated)
-            forward_headers["X-Docket-Attestation-Timestamp"] = outcome.audit_entry.timestamp
-        else:
-            forward_headers["X-Docket-Attestation-Verdict"] = "PASSTHROUGH_UNATTESTED"
-            forward_headers["X-Docket-Clearance-Tier"] = "PUBLIC"
-            forward_headers["X-Docket-Attested-Locators"] = ""
+        forward_headers = build_outbound_provider_headers(
+            provider="openai",
+            incoming_headers=request.headers,
+            outcome=outcome,
+            llm_config=llm_config,
+        )
 
-        if llm_config.get("api_key") and "authorization" not in {k.lower() for k in forward_headers}:
-            forward_headers["Authorization"] = f"Bearer {llm_config['api_key']}"
-
-        target_endpoint = f"{active_base_url}/chat/completions" if active_base_url.endswith("/v1") or active_base_url.endswith("/openai") else f"{active_base_url}/v1/chat/completions"
         if is_stream:
             client = httpx.AsyncClient(timeout=60.0)
             try:
                 req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
                 resp = await client.send(req, stream=True)
-            except (httpx.ConnectError, httpx.ConnectTimeout):
-                user_text = _extract_last_user_text(clean_payload)
-                return StreamingResponse(_mock_openai_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
+            except Exception as exc:
+                await client.aclose()
+                return _build_upstream_error_response(exc, response_headers)
 
             async def stream_passthrough() -> AsyncIterator[bytes]:
                 try:
@@ -1790,32 +2082,19 @@ def create_prevalidator_app(
                     await resp.aclose()
                     await client.aclose()
 
-            return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
+            return StreamingResponse(
+                stream_passthrough(),
+                status_code=resp.status_code,
+                media_type="text/event-stream",
+                headers=response_headers,
+            )
 
         client = get_shared_upstream_client()
         try:
             resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-            merged_resp_headers = dict(resp.headers)
-            merged_resp_headers.update(response_headers)
-            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
-        except (httpx.ConnectError, httpx.ConnectTimeout):
-            user_text = _extract_last_user_text(clean_payload)
-            mock_body = {
-                "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
-                "object": "chat.completion",
-                "model": model,
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": f"[Gateway ({model})]: {user_text}",
-                        },
-                        "finish_reason": "stop",
-                    }
-                ],
-            }
-            return JSONResponse(status_code=200, content=mock_body, headers=response_headers)
+            return _build_upstream_passthrough_response(resp, response_headers)
+        except Exception as exc:
+            return _build_upstream_error_response(exc, response_headers)
 
     @app.post("/v1/messages")
     async def anthropic_messages(request: Request) -> Any:
@@ -1894,6 +2173,8 @@ def create_prevalidator_app(
         model = clean_payload.get("model", llm_config.get("default_model", "claude-3-5-sonnet"))
         is_stream = bool(clean_payload.get("stream", False))
         active_base_url = llm_config["base_url"]
+        target_endpoint = f"{active_base_url}/messages" if active_base_url.endswith("/v1") else f"{active_base_url}/v1/messages"
+        req_sha256 = compute_bytes_sha256_hex(json.dumps(clean_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
         # Cryptographic admission verdict headers for non-repudiation & telemetry
         verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
@@ -1902,16 +2183,17 @@ def create_prevalidator_app(
         seq_num = active_snap.get("sequence_number", 0) if active_snap else 0
         locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
         ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
-        
-        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
-        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
 
-        response_headers = {
-            "X-POD-Attestation-Verdict": verdict,
-            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
-            "X-POD-Snapshot-Sequence": str(seq_num),
-            "X-POD-Attestation-Signature": verdict_sig,
-        }
+        response_headers = build_decision_receipt_headers(
+            verdict=verdict,
+            lat_us=lat_us,
+            seq_num=seq_num,
+            locs_str=locs_str,
+            ts_str=ts_str,
+            request_sha256=req_sha256,
+            destination=target_endpoint,
+            receipt_key=receipt_key,
+        )
 
         if active_base_url.startswith("mock://"):
             user_text = _extract_last_user_text(clean_payload)
@@ -1932,27 +2214,21 @@ def create_prevalidator_app(
             }
             return JSONResponse(status_code=200, content=mock_anthropic_body, headers=response_headers)
 
-        forward_headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k.lower() not in ("host", "content-length", "x-pod-locators", "x-pod-caller-key", "x-pod-caller-token")
-        }
-        if llm_config.get("api_key"):
-            lower_keys = {k.lower() for k in forward_headers}
-            if "x-api-key" not in lower_keys:
-                forward_headers["x-api-key"] = llm_config["api_key"]
-            if "anthropic-version" not in lower_keys:
-                forward_headers["anthropic-version"] = "2023-06-01"
+        forward_headers = build_outbound_provider_headers(
+            provider="anthropic",
+            incoming_headers=request.headers,
+            outcome=outcome,
+            llm_config=llm_config,
+        )
 
-        target_endpoint = f"{active_base_url}/messages" if active_base_url.endswith("/v1") else f"{active_base_url}/v1/messages"
         if is_stream:
             client = httpx.AsyncClient(timeout=60.0)
             try:
                 req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
                 resp = await client.send(req, stream=True)
-            except (httpx.ConnectError, httpx.ConnectTimeout):
-                user_text = _extract_last_user_text(clean_payload)
-                return StreamingResponse(_mock_anthropic_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
+            except Exception as exc:
+                await client.aclose()
+                return _build_upstream_error_response(exc, response_headers)
 
             async def stream_passthrough() -> AsyncIterator[bytes]:
                 try:
@@ -1962,30 +2238,19 @@ def create_prevalidator_app(
                     await resp.aclose()
                     await client.aclose()
 
-            return StreamingResponse(stream_passthrough(), status_code=resp.status_code, media_type="text/event-stream")
+            return StreamingResponse(
+                stream_passthrough(),
+                status_code=resp.status_code,
+                media_type="text/event-stream",
+                headers=response_headers,
+            )
 
         client = get_shared_upstream_client()
         try:
             resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-            merged_resp_headers = dict(resp.headers)
-            merged_resp_headers.update(response_headers)
-            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
-        except (httpx.ConnectError, httpx.ConnectTimeout):
-            user_text = _extract_last_user_text(clean_payload)
-            mock_anthropic_body = {
-                "id": f"msg_{uuid.uuid4().hex[:12]}",
-                "type": "message",
-                "role": "assistant",
-                "model": model,
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"[Anthropic Gateway ({model})]: {user_text}",
-                    }
-                ],
-                "stop_reason": "end_turn",
-            }
-            return JSONResponse(status_code=200, content=mock_anthropic_body, headers=response_headers)
+            return _build_upstream_passthrough_response(resp, response_headers)
+        except Exception as exc:
+            return _build_upstream_error_response(exc, response_headers)
 
     # ---------------------------------------------------------
     # Google Gemini Native Gateway Prevalidator
@@ -2072,6 +2337,8 @@ def create_prevalidator_app(
         clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
         model = clean_model or clean_payload.get("model", llm_config.get("default_model", "gemini-1.5-pro"))
         active_base_url = llm_config["base_url"]
+        target_endpoint = f"{active_base_url.rstrip('/')}/v1beta/models/{model}:generateContent"
+        req_sha256 = compute_bytes_sha256_hex(json.dumps(clean_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
         verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
         lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
@@ -2080,15 +2347,16 @@ def create_prevalidator_app(
         locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
         ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
 
-        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
-        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
-
-        response_headers = {
-            "X-POD-Attestation-Verdict": verdict,
-            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
-            "X-POD-Snapshot-Sequence": str(seq_num),
-            "X-POD-Attestation-Signature": verdict_sig,
-        }
+        response_headers = build_decision_receipt_headers(
+            verdict=verdict,
+            lat_us=lat_us,
+            seq_num=seq_num,
+            locs_str=locs_str,
+            ts_str=ts_str,
+            request_sha256=req_sha256,
+            destination=target_endpoint,
+            receipt_key=receipt_key,
+        )
 
         if active_base_url.startswith("mock://"):
             user_text = _extract_last_user_text(clean_payload)
@@ -2107,39 +2375,19 @@ def create_prevalidator_app(
             }
             return JSONResponse(status_code=200, content=mock_gemini_body, headers=response_headers)
 
-        forward_headers = {
-            k: v
-            for k, v in request.headers.items()
-            if k.lower() not in ("host", "content-length", "x-pod-locators", "x-pod-caller-key", "x-pod-caller-token")
-        }
-        if llm_config.get("api_key"):
-            lower_keys = {k.lower() for k in forward_headers}
-            if "x-goog-api-key" not in lower_keys:
-                forward_headers["x-goog-api-key"] = llm_config["api_key"]
+        forward_headers = build_outbound_provider_headers(
+            provider="gemini",
+            incoming_headers=request.headers,
+            outcome=outcome,
+            llm_config=llm_config,
+        )
 
-        target_endpoint = f"{active_base_url.rstrip('/')}/v1beta/models/{model}:generateContent"
         client = get_shared_upstream_client()
         try:
             resp = await client.post(target_endpoint, json=clean_payload, headers=forward_headers)
-            merged_resp_headers = dict(resp.headers)
-            merged_resp_headers.update(response_headers)
-            return JSONResponse(status_code=resp.status_code, content=resp.json(), headers=merged_resp_headers)
-        except (httpx.ConnectError, httpx.ConnectTimeout):
-            user_text = _extract_last_user_text(clean_payload)
-            mock_gemini_body = {
-                "candidates": [
-                    {
-                        "content": {
-                            "parts": [{"text": f"[Google Gemini Fallback Gateway Ack ({model})]: {user_text}"}],
-                            "role": "model",
-                        },
-                        "finishReason": "STOP",
-                        "index": 0,
-                    }
-                ],
-                "modelVersion": model,
-            }
-            return JSONResponse(status_code=200, content=mock_gemini_body, headers=response_headers)
+            return _build_upstream_passthrough_response(resp, response_headers)
+        except Exception as exc:
+            return _build_upstream_error_response(exc, response_headers)
 
     @app.post("/v1beta/models/{model_name:path}:streamGenerateContent")
     @app.post("/v1/models/{model_name:path}:streamGenerateContent")
@@ -2187,6 +2435,8 @@ def create_prevalidator_app(
         clean_model = model_name.split(":")[-1] if ":" in model_name else model_name
         model = clean_model or clean_payload.get("model", llm_config.get("default_model", "gemini-1.5-pro"))
         active_base_url = llm_config["base_url"]
+        target_endpoint = f"{active_base_url.rstrip('/')}/v1beta/models/{model}:streamGenerateContent"
+        req_sha256 = compute_bytes_sha256_hex(json.dumps(clean_payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
         verdict = outcome.audit_entry.decision.upper() if outcome.audit_entry else "ALLOW"
         lat_us = outcome.audit_entry.decision_latency_us if outcome.audit_entry else 0.0
@@ -2195,18 +2445,49 @@ def create_prevalidator_app(
         locs_str = ",".join(outcome.audit_entry.locators_evaluated) if (outcome.audit_entry and outcome.audit_entry.locators_evaluated) else ""
         ts_str = outcome.audit_entry.timestamp if outcome.audit_entry else datetime.now(timezone.utc).isoformat()
 
-        sig_payload = f"{verdict}:{seq_num}:{locs_str}:{ts_str}"
-        verdict_sig = hmac.new(b"g1-docket-attestation-v1", sig_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        response_headers = build_decision_receipt_headers(
+            verdict=verdict,
+            lat_us=lat_us,
+            seq_num=seq_num,
+            locs_str=locs_str,
+            ts_str=ts_str,
+            request_sha256=req_sha256,
+            destination=target_endpoint,
+            receipt_key=receipt_key,
+        )
 
-        response_headers = {
-            "X-POD-Attestation-Verdict": verdict,
-            "X-POD-Decision-Latency-Us": f"{lat_us:.1f}",
-            "X-POD-Snapshot-Sequence": str(seq_num),
-            "X-POD-Attestation-Signature": verdict_sig,
-        }
+        if active_base_url.startswith("mock://"):
+            user_text = _extract_last_user_text(clean_payload)
+            return StreamingResponse(_mock_gemini_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
 
-        user_text = _extract_last_user_text(clean_payload)
-        return StreamingResponse(_mock_gemini_sse_stream(model, user_text), media_type="text/event-stream", headers=response_headers)
+        forward_headers = build_outbound_provider_headers(
+            provider="gemini",
+            incoming_headers=request.headers,
+            outcome=outcome,
+            llm_config=llm_config,
+        )
+        client = httpx.AsyncClient(timeout=60.0)
+        try:
+            req = client.build_request("POST", target_endpoint, json=clean_payload, headers=forward_headers)
+            resp = await client.send(req, stream=True)
+        except Exception as exc:
+            await client.aclose()
+            return _build_upstream_error_response(exc, response_headers)
+
+        async def stream_passthrough() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in resp.aiter_raw():
+                    yield chunk
+            finally:
+                await resp.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            stream_passthrough(),
+            status_code=resp.status_code,
+            media_type="text/event-stream",
+            headers=response_headers,
+        )
 
     @app.get("/v1/admin/audit-log")
     def get_audit_log(x_pod_admin_key: str | None = Header(default=None)) -> dict[str, Any]:
@@ -2260,11 +2541,17 @@ def create_prevalidator_app(
                 detail="Unauthorized control-plane request: valid X-POD-Control-Token or Bearer token required.",
             )
         body = await request.json()
-        if "envelope" in body:
-            pred = enforcer.snapshot_store.load_from_envelope(body["envelope"])
-        else:
-            path = body.get("path") or os.environ.get("POD_SNAPSHOT_FILE", "./pod_snapshot.dsse.json")
-            pred = enforcer.snapshot_store.load_from_file(path)
+        try:
+            if "envelope" in body:
+                pred = enforcer.snapshot_store.load_from_envelope(body["envelope"])
+            else:
+                path = body.get("path") or os.environ.get("POD_SNAPSHOT_FILE", "./pod_snapshot.dsse.json")
+                pred = enforcer.snapshot_store.load_from_file(path)
+        except SnapshotRollbackError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"error_code": "SNAPSHOT_ROLLBACK_REJECTED", "message": str(exc)},
+            ) from exc
         return {"loaded": True, "snapshot_id": pred["snapshot_id"], "sequence_number": pred["sequence_number"]}
 
     @app.get("/v1/admin/policies/hooks")

@@ -35,10 +35,25 @@ from engine.dlp_connectors import (
 )
 from engine.pipeline import AttestationEngine
 from engine.storage_connectors import EnterpriseDataStoreManager, is_enterprise_store_uri
-from examples.docker_bootstrap import main as run_bootstrap
 from registry.schema_validator import format_iso8601
 from registry.store import RegistryService
 from snapshot.publisher import SnapshotPublisher
+
+
+def is_demo_bootstrap_enabled() -> bool:
+    """
+    Demo bootstrap is strictly opt-in (default OFF).
+    Requires BOTH DOCKET_ENABLE_DEMO_BOOTSTRAP=true AND DOCKET_PROFILE=demo (or DOCKET_ENVIRONMENT=demo).
+    """
+    opt_in = os.environ.get("DOCKET_ENABLE_DEMO_BOOTSTRAP", "false").strip().lower() in ("true", "1", "yes")
+    if not opt_in:
+        return False
+    profile = (
+        os.environ.get("DOCKET_PROFILE")
+        or os.environ.get("DOCKET_ENVIRONMENT")
+        or "production"
+    ).strip().lower()
+    return profile == "demo"
 
 
 class UploadedFileItem(BaseModel):
@@ -169,22 +184,23 @@ def create_engine_app() -> FastAPI:
 
     @contextlib.asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        # Ensure sample disparate PC demo folder exists on the live-mounted Windows user folder and workspace
-        host_user = Path("/host_user")
-        if host_user.is_dir():
-            try:
-                ensure_sample_pc_demo_folder(host_user / "pc_demo_folder")
-            except Exception:
-                pass
-        host_ws = Path("/host_workspace")
-        if host_ws.is_dir():
-            try:
-                ensure_sample_pc_demo_folder(host_ws / "pc_demo_folder")
-            except Exception:
-                pass
-        await asyncio.to_thread(run_bootstrap)
-        state.last_scan_at = format_iso8601(datetime.now(timezone.utc))
-        state.scans_completed = 1
+        if is_demo_bootstrap_enabled():
+            host_user = Path("/host_user")
+            if host_user.is_dir():
+                try:
+                    ensure_sample_pc_demo_folder(host_user / "pc_demo_folder")
+                except Exception:
+                    pass
+            host_ws = Path("/host_workspace")
+            if host_ws.is_dir():
+                try:
+                    ensure_sample_pc_demo_folder(host_ws / "pc_demo_folder")
+                except Exception:
+                    pass
+            from examples.docker_bootstrap import main as run_bootstrap
+            await asyncio.to_thread(run_bootstrap)
+            state.last_scan_at = format_iso8601(datetime.now(timezone.utc))
+            state.scans_completed = 1
         task = asyncio.create_task(_periodic_loop())
         crawler_task = asyncio.create_task(crawler.run_forever())
         try:

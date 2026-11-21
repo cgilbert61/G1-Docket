@@ -57,10 +57,12 @@ class DocketClient:
         governance_url: str = "http://localhost:18084",
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
+        api_key: str | None = None,
         timeout: float = 30.0,
         transport: httpx.BaseTransport | None = None,
         app: Any = None,
     ) -> None:
+        self._explicit_registry_url = registry_url != "http://localhost:18080"
         if base_url.startswith("mock://"):
             self.base_url = "http://mock-local"
             if app is None and transport is None:
@@ -80,8 +82,13 @@ class DocketClient:
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
         self.governance_url = governance_url.rstrip("/")
-        self.admin_key = admin_key
-        self.default_caller_key = default_caller_key
+        self.api_key = api_key
+        if api_key:
+            self.admin_key = api_key if admin_key == "pod-dev-admin-key" else admin_key
+            self.default_caller_key = api_key if default_caller_key == "pod-key-public" else default_caller_key
+        else:
+            self.admin_key = admin_key
+            self.default_caller_key = default_caller_key
         self.timeout = timeout
         if app is not None and transport is None:
             try:
@@ -382,13 +389,59 @@ class DocketClient:
     # -------------------------------------------------------------------------
 
     def lookup_record(self, locator: str) -> dict[str, Any]:
-        """Look up an attestation record in the Authoritative Registry by canonical locator."""
-        res = self._client.get(
-            f"{self.registry_url}/v1/records/lookup",
-            headers=self._admin_headers(),
-            params={"locator": locator},
-        )
-        return self._handle_response(res)
+        """Look up an attestation record in the Authoritative Registry (or Prevalidator gateway) by canonical locator."""
+        if not self._explicit_registry_url and self.base_url != "http://localhost:18082":
+            candidate_urls = [
+                f"{self.base_url}/v1/records/lookup",
+                f"{self.base_url}/v1/admin/record-detail",
+                f"{self.registry_url}/v1/records/lookup",
+            ]
+        else:
+            candidate_urls = [
+                f"{self.registry_url}/v1/records/lookup",
+                f"{self.base_url}/v1/records/lookup",
+                f"{self.base_url}/v1/admin/record-detail",
+            ]
+        seen: set[str] = set()
+        deduped_urls: list[str] = []
+        for u in candidate_urls:
+            if u not in seen:
+                seen.add(u)
+                deduped_urls.append(u)
+
+        last_response: httpx.Response | None = None
+        last_exc: Exception | None = None
+        for url in deduped_urls:
+            try:
+                res = self._client.get(
+                    url,
+                    headers=self._admin_headers(),
+                    params={"locator": locator},
+                )
+            except Exception as exc:
+                last_exc = exc
+                continue
+            last_response = res
+            if res.status_code == 200:
+                data = self._handle_response(res)
+                if isinstance(data, dict):
+                    if data.get("found") is False and not data.get("in_active_snapshot") and not data.get("record") and not data.get("snapshot_entry"):
+                        continue
+                    if "tier" not in data:
+                        inner = data.get("record") or data.get("snapshot_entry")
+                        if isinstance(inner, dict):
+                            merged = dict(inner)
+                            merged.update(data)
+                            return merged
+                return data
+            if res.status_code not in (404, 502, 503, 504):
+                return self._handle_response(res)
+
+        if last_response is not None:
+            return self._handle_response(last_response)
+        if last_exc is not None:
+            raise DocketError(f"G1 Docket lookup failed: {last_exc}") from last_exc
+        raise DocketError(f"Record NOT_FOUND for locator: {locator}", status_code=404)
 
     def list_records(self, current_only: bool = True) -> list[dict[str, Any]]:
         """List active attestation records from the Authoritative Registry."""
@@ -523,14 +576,26 @@ class DocketClient:
     @staticmethod
     def embed_watermark(
         text: str,
-        snapshot_sequence: int,
-        caller_key: str,
+        snapshot_sequence: int = 1,
+        caller_key: str = "pod-key-public",
         secret_key: bytes | None = None,
+        *,
+        owner: str | None = None,
+        agent_id: str | None = None,
+        tier: str | None = None,
     ) -> str:
         """Embed an invisible cryptographic provenance watermark into text."""
         from docket.watermark import DEFAULT_WATERMARK_SECRET, embed_invisible_watermark
         key = secret_key or DEFAULT_WATERMARK_SECRET
-        return embed_invisible_watermark(text, snapshot_sequence=snapshot_sequence, caller_key=caller_key, secret_key=key)
+        return embed_invisible_watermark(
+            text,
+            snapshot_sequence=snapshot_sequence,
+            caller_key=caller_key,
+            secret_key=key,
+            owner=owner,
+            agent_id=agent_id,
+            tier=tier,
+        )
 
 
 class AsyncDocketClient:
@@ -544,10 +609,12 @@ class AsyncDocketClient:
         governance_url: str = "http://localhost:18084",
         admin_key: str = "pod-dev-admin-key",
         default_caller_key: str = "pod-key-public",
+        api_key: str | None = None,
         timeout: float = 30.0,
         transport: httpx.AsyncBaseTransport | None = None,
         app: Any = None,
     ) -> None:
+        self._explicit_registry_url = registry_url != "http://localhost:18080"
         if base_url.startswith("mock://"):
             self.base_url = "http://mock-local"
             if app is None and transport is None:
@@ -567,8 +634,13 @@ class AsyncDocketClient:
         self.registry_url = registry_url.rstrip("/")
         self.snapshot_url = snapshot_url.rstrip("/")
         self.governance_url = governance_url.rstrip("/")
-        self.admin_key = admin_key
-        self.default_caller_key = default_caller_key
+        self.api_key = api_key
+        if api_key:
+            self.admin_key = api_key if admin_key == "pod-dev-admin-key" else admin_key
+            self.default_caller_key = api_key if default_caller_key == "pod-key-public" else default_caller_key
+        else:
+            self.admin_key = admin_key
+            self.default_caller_key = default_caller_key
         self.timeout = timeout
         if app is not None and transport is None:
             transport = httpx.ASGITransport(app=app)

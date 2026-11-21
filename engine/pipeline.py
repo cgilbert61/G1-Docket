@@ -88,6 +88,9 @@ class AttestationEngine:
             findings=findings,
             metadata_hints=metadata_hints,
             classifier_engine=classifier_engine_label,
+            extraction_quality=doc.extraction_quality,
+            extracted_char_count=doc.extracted_char_count,
+            parse_error=doc.parse_error,
         )
         derived_from = self.lineage_intake.get_derived_from(locator)
 
@@ -114,6 +117,9 @@ class AttestationEngine:
             classifier_engine=verdict.classifier_engine,
             jurisdiction=jurisdiction,
             org_unit=org_unit,
+            extraction_quality=doc.extraction_quality,
+            extracted_char_count=doc.extracted_char_count,
+            parse_error=doc.parse_error,
         )
 
     def crawl_file_share(

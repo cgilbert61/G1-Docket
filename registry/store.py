@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import uuid
@@ -37,6 +39,56 @@ class FingerprintChangedError(RegistryLifecycleError):
 
 class DualApprovalRequiredError(RegistryLifecycleError):
     """Raised when attempting to lower a classification tier without two distinct approvals."""
+
+
+class DualApprovalSamePrincipalError(DualApprovalRequiredError):
+    """Raised when the same principal attempts to provide both approvals (DUAL_APPROVAL_SAME_PRINCIPAL)."""
+
+
+class ApprovalVersionMismatchError(RegistryLifecycleError):
+    """Raised when a dual-approval action references a stale document version or digest (APPROVAL_VERSION_MISMATCH)."""
+
+
+def compute_requested_change_digest(
+    locator: str,
+    document_version: str,
+    from_tier: str,
+    to_tier: str,
+) -> str:
+    payload = {
+        "locator": locator,
+        "document_version": document_version,
+        "from_tier": from_tier,
+        "to_tier": to_tier,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def build_bound_approval_record(
+    *,
+    document_id: str,
+    document_version: str,
+    requested_change_digest: str,
+    approver_principal_id: str,
+    approved_at: str,
+    rationale: str = "Approved tier lowering",
+    secret_key: bytes | None = None,
+) -> dict[str, str]:
+    principal_clean = approver_principal_id.strip()
+    key = secret_key or os.environ.get("POD_CONTROL_PLANE_TOKEN", "pod-dev-control-plane-token").encode("utf-8")
+    canonical = f"{document_id}|{document_version}|{requested_change_digest}|{principal_clean}|{approved_at}".encode("utf-8")
+    sig = hmac.new(key, canonical, hashlib.sha256).hexdigest()
+    return {
+        "approver_id": principal_clean,
+        "approver_principal_id": principal_clean,
+        "approved_at": approved_at,
+        "rationale": rationale or "Reviewed and approved tier lowering.",
+        "document_id": document_id,
+        "document_version": document_version,
+        "requested_change_digest": requested_change_digest,
+        "binding_signature": sig,
+    }
 
 
 class Base(DeclarativeBase):
@@ -212,20 +264,28 @@ class RegistryService:
         chunk_tree_root: str | None = None,
         chunk_tree: dict[str, Any] | None = None,
         classifier_engine: str = "presidio",
+        extraction_quality: str = "COMPLETE",
+        extracted_char_count: int | None = None,
+        parse_error: str | None = None,
         policy: dict[str, str] | None = None,
         ttl_days: int | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         """Process a classification finding from the Engine into a signed record or a pending review queue item.
 
-        - Low-confidence findings (`low_confidence=True` or `confidence < 0.70`) are placed in `PENDING_REVIEW`
-          with NO active record issued (fail-closed default-deny).
+        - Low-confidence findings (`low_confidence=True` or `confidence < 0.70`) or degraded/unreadable
+          extractions (`extraction_quality in ("UNREADABLE", "UNSUPPORTED", "DAMAGED", "PARTIAL")`) are
+          placed in `PENDING_REVIEW` with NO active record issued (fail-closed default-deny).
         - Upstream `derived_from` lineage is checked: a derived object cannot be attested at a lower tier
           than its active upstream sources without dual approval.
         - `Restricted` findings immediately get a signed fail-closed `Restricted` record AND a review queue entry.
         """
         now_dt = now or datetime.now(timezone.utc)
         now_str = format_iso8601(now_dt)
+        norm_quality = (extraction_quality or "COMPLETE").upper()
+        is_degraded_quality = norm_quality in ("UNREADABLE", "UNSUPPORTED", "DAMAGED", "PARTIAL") or (
+            size_bytes is not None and size_bytes > 0 and extracted_char_count is not None and extracted_char_count == 0
+        )
 
         if self.registry_service_url and self.keyring.verification_only:
             import httpx
@@ -236,7 +296,7 @@ class RegistryService:
                 "tier": tier,
                 "owner": owner,
                 "confidence": confidence,
-                "low_confidence": low_confidence,
+                "low_confidence": low_confidence or is_degraded_quality,
                 "sensitive_categories": sensitive_categories,
                 "object_type": object_type,
                 "display_name": display_name,
@@ -255,6 +315,9 @@ class RegistryService:
                 "extracted_text_sha256": extracted_text_sha256,
                 "chunk_hashes": chunk_hashes,
                 "classifier_engine": classifier_engine,
+                "extraction_quality": norm_quality,
+                "extracted_char_count": extracted_char_count,
+                "parse_error": parse_error,
                 "policy": policy,
                 "ttl_days": ttl_days,
             }
@@ -273,6 +336,8 @@ class RegistryService:
 
         # Enforce lineage tier floor: derived objects inherit at least the highest tier of their upstream inputs
         effective_tier = tier
+        if is_degraded_quality and effective_tier == "Public":
+            effective_tier = "Restricted"
         lineage_list = list(derived_from or [])
         with self.SessionLocal() as session:
             for item in lineage_list:
@@ -288,17 +353,18 @@ class RegistryService:
             # Check if an active record already exists for this locator
             prev_row = self._get_single_current_row(session, locator)
 
-            # If low confidence, hold in PENDING_REVIEW without issuing an active record
-            if low_confidence or confidence < 0.70:
+            # If low confidence or degraded extraction, hold in PENDING_REVIEW without issuing an active record
+            if low_confidence or confidence < 0.70 or is_degraded_quality:
                 if prev_row and prev_row.status not in ("revoked", "expired"):
                     # Invalidate previous record if content fingerprint changed into a low-confidence state
                     prev_row.is_current = False
+                rev_reason = "unreadable_or_degraded" if is_degraded_quality else "low_confidence"
                 existing_rev = (
                     session.execute(
                         select(ReviewQueueModel)
                         .where(
                             ReviewQueueModel.locator == locator,
-                            ReviewQueueModel.reason == "low_confidence",
+                            ReviewQueueModel.reason.in_(["low_confidence", "unreadable_or_degraded"]),
                             ReviewQueueModel.status == "PENDING_REVIEW",
                         )
                         .order_by(ReviewQueueModel.created_at.desc())
@@ -323,9 +389,13 @@ class RegistryService:
                         "extracted_text_sha256": extracted_text_sha256,
                         "chunk_hashes": chunk_hashes or [],
                         "derived_from": lineage_list,
+                        "extraction_quality": norm_quality,
+                        "extracted_char_count": extracted_char_count,
+                        "parse_error": parse_error,
                     }
                 )
                 if existing_rev:
+                    existing_rev.reason = rev_reason
                     existing_rev.proposed_tier = effective_tier
                     existing_rev.confidence = confidence
                     existing_rev.metadata_json = meta_payload
@@ -337,7 +407,7 @@ class RegistryService:
                         review_id=review_id,
                         locator=locator,
                         record_id=None,
-                        reason="low_confidence",
+                        reason=rev_reason,
                         current_tier=prev_row.tier if prev_row else None,
                         proposed_tier=effective_tier,
                         confidence=confidence,
@@ -350,7 +420,12 @@ class RegistryService:
                     session.add(rev_row)
                 session.commit()
                 return {
-                    "action": "queued_low_confidence",
+                    "action": "queued_unreadable_or_degraded" if is_degraded_quality else "queued_low_confidence",
+                    "status": "PENDING_REVIEW",
+                    "tier": effective_tier,
+                    "extraction_quality": norm_quality,
+                    "extracted_char_count": extracted_char_count,
+                    "parse_error": parse_error,
                     "record": None,
                     "review": self._review_to_dict(rev_row),
                 }
@@ -393,6 +468,9 @@ class RegistryService:
                 confidence=confidence,
                 sensitive_categories=sensitive_categories,
                 classifier_engine=classifier_engine,
+                extraction_quality=norm_quality,
+                extracted_char_count=extracted_char_count,
+                parse_error=parse_error,
                 policy=policy,
                 status="issued",
                 ttl_days=ttl_days,
@@ -455,6 +533,11 @@ class RegistryService:
             session.commit()
             return {
                 "action": "issued_and_queued_restricted" if review_dict else "issued",
+                "status": "issued",
+                "tier": effective_tier,
+                "extraction_quality": norm_quality,
+                "extracted_char_count": extracted_char_count,
+                "parse_error": parse_error,
                 "record": self._row_to_dict(new_row),
                 "review": review_dict,
             }
@@ -719,12 +802,163 @@ class RegistryService:
             session.commit()
             return self._row_to_dict(new_row)
 
+    def submit_tier_lower_approval(
+        self,
+        *,
+        locator: str,
+        new_tier: str,
+        authenticated_principal: str,
+        rationale: str = "Approved tier lowering",
+        expected_document_version: str | None = None,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        """
+        True two-person dual-approval workflow bound to authenticated principals and document version:
+        - Step 1 (Principal 1): Stages a pending `tier_lower_request` review item bound to
+          (document_id, document_version, requested_change_digest, approver_principal_id, timestamp).
+        - Step 2 (Principal 2 != Principal 1): Verifies principal distinctness (`DUAL_APPROVAL_SAME_PRINCIPAL`)
+          and version match (`APPROVAL_VERSION_MISMATCH`), then lowers the tier.
+        """
+        if new_tier not in TIER_ORDER:
+            raise RegistryLifecycleError(f"Unknown tier: {new_tier}")
+        principal_clean = (authenticated_principal or "").strip()
+        if not principal_clean:
+            raise DualApprovalRequiredError("Authenticated approver principal identity is required.")
+
+        now_dt = now or datetime.now(timezone.utc)
+        now_str = format_iso8601(now_dt)
+
+        with self.SessionLocal() as session:
+            prev_row = self._get_single_current_row(session, locator)
+            if not prev_row:
+                raise RegistryLifecycleError(f"No current record found for locator '{locator}'.")
+            if TIER_ORDER[new_tier] >= TIER_ORDER[prev_row.tier]:
+                raise RegistryLifecycleError(
+                    f"lower_tier requires a strictly lower tier than current '{prev_row.tier}' (got '{new_tier}')."
+                )
+
+            current_doc_id = prev_row.record_id
+            current_doc_version = f"{prev_row.record_id}:{prev_row.content_sha256}"
+
+            if expected_document_version and expected_document_version not in (
+                current_doc_version,
+                prev_row.record_id,
+                prev_row.content_sha256,
+            ):
+                raise ApprovalVersionMismatchError(
+                    f"APPROVAL_VERSION_MISMATCH: Expected document version '{expected_document_version}', "
+                    f"but active record is '{current_doc_version}'."
+                )
+
+            change_digest = compute_requested_change_digest(
+                locator=locator,
+                document_version=current_doc_version,
+                from_tier=prev_row.tier,
+                to_tier=new_tier,
+            )
+
+            existing_rev = (
+                session.execute(
+                    select(ReviewQueueModel)
+                    .where(
+                        ReviewQueueModel.locator == locator,
+                        ReviewQueueModel.reason == "tier_lower_request",
+                        ReviewQueueModel.status == "PENDING_REVIEW",
+                    )
+                    .order_by(ReviewQueueModel.created_at.desc())
+                )
+                .scalars()
+                .first()
+            )
+
+            approval_entry = build_bound_approval_record(
+                document_id=current_doc_id,
+                document_version=current_doc_version,
+                requested_change_digest=change_digest,
+                approver_principal_id=principal_clean,
+                approved_at=now_str,
+                rationale=rationale,
+            )
+
+            if existing_rev is None:
+                review_id = f"pod-rev-{uuid.uuid4().hex[:12]}"
+                rev_row = ReviewQueueModel(
+                    review_id=review_id,
+                    locator=locator,
+                    record_id=current_doc_id,
+                    reason="tier_lower_request",
+                    current_tier=prev_row.tier,
+                    proposed_tier=new_tier,
+                    confidence=prev_row.confidence,
+                    status="PENDING_REVIEW",
+                    metadata_json=json.dumps({
+                        "document_id": current_doc_id,
+                        "document_version": current_doc_version,
+                        "content_sha256": prev_row.content_sha256,
+                        "requested_change_digest": change_digest,
+                        "from_tier": prev_row.tier,
+                        "to_tier": new_tier,
+                    }),
+                    approvals_json=json.dumps([approval_entry]),
+                    created_at=now_str,
+                    resolved_at=None,
+                )
+                session.add(rev_row)
+                session.commit()
+                return {
+                    "action": "awaiting_second_approval",
+                    "status": "PENDING_SECOND_APPROVAL",
+                    "document_id": current_doc_id,
+                    "document_version": current_doc_version,
+                    "requested_change_digest": change_digest,
+                    "record": None,
+                    "review": self._review_to_dict(rev_row),
+                }
+
+            meta = json.loads(existing_rev.metadata_json or "{}")
+            staged_version = meta.get("document_version")
+            staged_digest = meta.get("requested_change_digest")
+            if staged_version != current_doc_version or staged_digest != change_digest:
+                existing_rev.status = "SUPERSEDED_BY_NEW_VERSION"
+                existing_rev.resolved_at = now_str
+                session.commit()
+                raise ApprovalVersionMismatchError(
+                    f"APPROVAL_VERSION_MISMATCH: Staged approval was bound to version '{staged_version}' "
+                    f"(tier->{existing_rev.proposed_tier}), but current document version is '{current_doc_version}' (tier->{new_tier})."
+                )
+
+            staged_approvals = json.loads(existing_rev.approvals_json or "[]")
+            for prev_a in staged_approvals:
+                prev_p = (prev_a.get("approver_principal_id") or prev_a.get("approver_id") or "").strip()
+                if prev_p.lower() == principal_clean.lower():
+                    raise DualApprovalSamePrincipalError(
+                        f"DUAL_APPROVAL_SAME_PRINCIPAL: Principal '{principal_clean}' cannot self-second their own tier-lowering approval."
+                    )
+
+            staged_approvals.append(approval_entry)
+            existing_rev.approvals_json = json.dumps(staged_approvals)
+            session.commit()
+
+        lowered_rec = self.lower_tier(
+            locator=locator,
+            new_tier=new_tier,
+            approvals=staged_approvals,
+            now=now_dt,
+        )
+        return {
+            "action": "tier_lowered",
+            "approval_status": "APPROVED",
+            "record": lowered_rec,
+            **lowered_rec,
+        }
+
     def lower_tier(
         self,
         locator: str,
         new_tier: str,
         approvals: list[dict[str, str]],
         now: datetime | None = None,
+        expected_document_version: str | None = None,
     ) -> dict[str, Any]:
         """Lower an object's classification tier — requires dual approval from at least 2 distinct principals."""
         if new_tier not in TIER_ORDER:
@@ -742,16 +976,56 @@ class RegistryService:
                     f"lower_tier requires a strictly lower tier than current '{prev_row.tier}' (got '{new_tier}')."
                 )
 
-            normalized_approvals = [
-                {
-                    "approver_id": a["approver_id"].strip(),
-                    "approved_at": a.get("approved_at") or now_str,
-                    "rationale": a.get("rationale") or "Reviewed and approved tier lowering.",
-                }
-                for a in approvals
-                if a.get("approver_id") and a.get("approver_id").strip()
-            ]
-            distinct_approvers = {a["approver_id"] for a in normalized_approvals}
+            current_doc_id = prev_row.record_id
+            current_doc_version = f"{prev_row.record_id}:{prev_row.content_sha256}"
+            if expected_document_version and expected_document_version not in (
+                current_doc_version,
+                prev_row.record_id,
+                prev_row.content_sha256,
+            ):
+                raise ApprovalVersionMismatchError(
+                    f"APPROVAL_VERSION_MISMATCH: Expected document version '{expected_document_version}', "
+                    f"but active record is '{current_doc_version}'."
+                )
+
+            change_digest = compute_requested_change_digest(
+                locator=locator,
+                document_version=current_doc_version,
+                from_tier=prev_row.tier,
+                to_tier=new_tier,
+            )
+
+            normalized_approvals: list[dict[str, str]] = []
+            for a in approvals:
+                p_id = (a.get("approver_principal_id") or a.get("approver_id") or "").strip()
+                if not p_id:
+                    continue
+                a_ver = a.get("document_version")
+                if a_ver and a_ver not in (current_doc_version, prev_row.record_id, prev_row.content_sha256):
+                    raise ApprovalVersionMismatchError(
+                        f"APPROVAL_VERSION_MISMATCH: Approval by '{p_id}' bound to version '{a_ver}' "
+                        f"does not match current version '{current_doc_version}'."
+                    )
+                if a.get("binding_signature") and a.get("requested_change_digest") == change_digest:
+                    normalized_approvals.append(dict(a))
+                else:
+                    normalized_approvals.append(
+                        build_bound_approval_record(
+                            document_id=current_doc_id,
+                            document_version=current_doc_version,
+                            requested_change_digest=change_digest,
+                            approver_principal_id=p_id,
+                            approved_at=a.get("approved_at") or now_str,
+                            rationale=a.get("rationale") or "Reviewed and approved tier lowering.",
+                        )
+                    )
+
+            distinct_approvers = {a["approver_id"].lower() for a in normalized_approvals}
+            if len(normalized_approvals) >= 2 and len(distinct_approvers) < 2:
+                raise DualApprovalSamePrincipalError(
+                    f"DUAL_APPROVAL_SAME_PRINCIPAL: Lowering tier from '{prev_row.tier}' to '{new_tier}' requires "
+                    f"2 distinct principals (same principal cannot self-second)."
+                )
             if len(distinct_approvers) < 2:
                 raise DualApprovalRequiredError(
                     f"Lowering tier from '{prev_row.tier}' to '{new_tier}' requires dual approval from 2 distinct principals "
@@ -881,6 +1155,7 @@ class RegistryService:
         confirmed_tier: str | None = None,
         rationale: str = "Confirmed classification in human review",
         now: datetime | None = None,
+        expected_document_version: str | None = None,
     ) -> dict[str, Any]:
         """Approve a pending review queue item (e.g. issuing a held low-confidence record or recording an approval)."""
         now_dt = now or datetime.now(timezone.utc)
@@ -895,14 +1170,48 @@ class RegistryService:
             if rev.status != "PENDING_REVIEW":
                 raise RegistryLifecycleError(f"Review item '{review_id}' is already {rev.status}.")
 
+            prev_row = self._get_single_current_row(session, rev.locator)
+            meta = json.loads(rev.metadata_json)
+            if expected_document_version and prev_row:
+                current_doc_version = f"{prev_row.record_id}:{prev_row.content_sha256}"
+                if expected_document_version not in (current_doc_version, prev_row.record_id, prev_row.content_sha256):
+                    raise ApprovalVersionMismatchError(
+                        f"APPROVAL_VERSION_MISMATCH: Expected document version '{expected_document_version}', "
+                        f"but active record is '{current_doc_version}'."
+                    )
+
             approvals = json.loads(rev.approvals_json)
-            approvals.append({"approver_id": approver_id, "approved_at": now_str, "rationale": rationale})
+            target_tier = confirmed_tier or rev.proposed_tier
+
+            if rev.current_tier and TIER_ORDER[target_tier] < TIER_ORDER[rev.current_tier]:
+                for prev_a in approvals:
+                    prev_p = (prev_a.get("approver_principal_id") or prev_a.get("approver_id") or "").strip()
+                    if prev_p.lower() == approver_id.strip().lower():
+                        raise DualApprovalSamePrincipalError(
+                            f"DUAL_APPROVAL_SAME_PRINCIPAL: Principal '{approver_id}' cannot self-second their own review approval."
+                        )
+
+            doc_id = prev_row.record_id if prev_row else (rev.record_id or rev.locator)
+            doc_ver = f"{prev_row.record_id}:{prev_row.content_sha256}" if prev_row else str(meta.get("content_sha256") or doc_id)
+            change_dig = compute_requested_change_digest(
+                locator=rev.locator,
+                document_version=doc_ver,
+                from_tier=rev.current_tier or target_tier,
+                to_tier=target_tier,
+            )
+            approvals.append(
+                build_bound_approval_record(
+                    document_id=doc_id,
+                    document_version=doc_ver,
+                    requested_change_digest=change_dig,
+                    approver_principal_id=approver_id,
+                    approved_at=now_str,
+                    rationale=rationale,
+                )
+            )
             rev.approvals_json = json.dumps(approvals)
 
-            target_tier = confirmed_tier or rev.proposed_tier
-            meta = json.loads(rev.metadata_json)
-
-            if rev.reason == "low_confidence":
+            if rev.reason in ("low_confidence", "unreadable_or_degraded"):
                 rev.status = "APPROVED"
                 rev.resolved_at = now_str
                 session.commit()

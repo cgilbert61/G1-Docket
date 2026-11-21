@@ -28,9 +28,15 @@ variable "retention_days" {
   default     = 2555
 }
 
+variable "immutability_policy_locked" {
+  type        = bool
+  description = "Whether to lock the container immutability policy permanently (true for statutory WORM, false for testing)"
+  default     = true
+}
+
 variable "immutability_policy_state" {
   type        = string
-  description = "Immutability state: 'Locked' for non-revertible statutory WORM, or 'Unlocked' for testing"
+  description = "Legacy immutability state descriptor ('Locked' or 'Unlocked'); use immutability_policy_locked for azurerm_storage_container_immutability_policy.locked"
   default     = "Locked"
 }
 

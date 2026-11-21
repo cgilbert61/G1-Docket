@@ -44,6 +44,9 @@ class ClassificationVerdict:
     sensitive_categories: list[CategoryFinding] = field(default_factory=list)
     classifier_engine: str = "presidio"
     low_confidence: bool = False
+    extraction_quality: str = "COMPLETE"
+    extracted_char_count: int | None = None
+    parse_error: str | None = None
 
 
 # Category-to-tier severity mapping
@@ -186,10 +189,31 @@ class PresidioClassifier:
 
         return "".join(out), sorted(found_categories)
 
-    def classify_text(self, text: str, metadata_hints: dict[str, Any] | None = None) -> ClassificationVerdict:
+    def classify_text(
+        self,
+        text: str,
+        metadata_hints: dict[str, Any] | None = None,
+        extraction_quality: str | None = None,
+        extracted_char_count: int | None = None,
+        parse_error: str | None = None,
+    ) -> ClassificationVerdict:
         """Classify extracted document text and metadata into a POD tier and category summary."""
+        clean_len = len((text or "").strip())
+        char_cnt = extracted_char_count if extracted_char_count is not None else clean_len
+        quality = extraction_quality or ("COMPLETE" if char_cnt > 0 else "UNREADABLE")
         findings = self.scan_text_segment(text)
-        return self.evaluate_findings(findings, metadata_hints=metadata_hints)
+        hints = dict(metadata_hints or {})
+        hints.setdefault("extraction_quality", quality)
+        hints.setdefault("extracted_char_count", char_cnt)
+        if parse_error is not None:
+            hints.setdefault("parse_error", parse_error)
+        return self.evaluate_findings(
+            findings,
+            metadata_hints=hints,
+            extraction_quality=quality,
+            extracted_char_count=char_cnt,
+            parse_error=parse_error,
+        )
 
     def classify_columns(
         self,
@@ -228,10 +252,28 @@ class PresidioClassifier:
         findings: list[CategoryFinding],
         metadata_hints: dict[str, Any] | None = None,
         classifier_engine: str = "presidio",
+        extraction_quality: str | None = None,
+        extracted_char_count: int | None = None,
+        parse_error: str | None = None,
     ) -> ClassificationVerdict:
-        """Determine classification tier and aggregate confidence from findings."""
+        """Determine classification tier and aggregate confidence from findings.
+
+        Fail-closed invariant:
+        - When `extraction_quality` is in ("UNREADABLE", "UNSUPPORTED", "DAMAGED", "PARTIAL")
+          or when `extracted_char_count == 0` (when provided), never default to `Public` at 0.95 confidence.
+          Instead, assign degraded confidence (< low_confidence_threshold) and non-Public proposed tier
+          (`Restricted` / `Internal`) with `low_confidence=True` so Registry holds it in `PENDING_REVIEW`.
+        """
         hints = metadata_hints or {}
+        quality = (extraction_quality or hints.get("extraction_quality") or "COMPLETE").upper()
+        char_cnt = extracted_char_count if extracted_char_count is not None else hints.get("extracted_char_count")
+        err_msg = parse_error if parse_error is not None else hints.get("parse_error")
+
         detected_cats = {f.category for f in findings}
+        is_degraded_extraction = (
+            quality in ("UNREADABLE", "UNSUPPORTED", "DAMAGED", "PARTIAL")
+            or (char_cnt is not None and int(char_cnt) == 0)
+        )
 
         if detected_cats & RESTRICTED_CATEGORIES:
             tier = "Restricted"
@@ -239,22 +281,38 @@ class PresidioClassifier:
             tier = "Confidential"
         elif detected_cats & INTERNAL_CATEGORIES or "AMBIGUOUS_TOKEN" in detected_cats:
             tier = "Internal"
+        elif is_degraded_extraction:
+            tier = hints.get("default_tier", "Restricted" if quality in ("DAMAGED", "UNSUPPORTED", "UNREADABLE") else "Internal")
+            if tier == "Public":
+                tier = "Restricted"
         else:
             tier = hints.get("default_tier", "Public")
 
-        if findings:
+        if is_degraded_extraction:
+            if quality == "PARTIAL":
+                base_deg_conf = 0.35
+            else:
+                base_deg_conf = 0.0
+            confidence = float(hints.get("confidence", base_deg_conf))
+            is_low_conf = True
+        elif findings:
             # If any finding has confidence below threshold and no high-confidence finding overrides it, mark low_confidence
             min_conf = min(f.max_confidence for f in findings)
             max_conf = max(f.max_confidence for f in findings)
             confidence = min_conf if min_conf < self.low_confidence_threshold else max_conf
+            is_low_conf = confidence < self.low_confidence_threshold
         else:
-            confidence = float(hints.get("confidence", 0.95))
+            # Clean extraction with zero pattern hits: evidence-backed clean text confidence (0.85, not hardcoded 0.95)
+            confidence = float(hints.get("confidence", 0.85))
+            is_low_conf = confidence < self.low_confidence_threshold
 
-        is_low_conf = confidence < self.low_confidence_threshold
         return ClassificationVerdict(
             tier=tier,
             confidence=round(confidence, 4),
             sensitive_categories=findings,
             classifier_engine=classifier_engine,
             low_confidence=is_low_conf,
+            extraction_quality=quality,
+            extracted_char_count=int(char_cnt) if char_cnt is not None else None,
+            parse_error=err_msg,
         )

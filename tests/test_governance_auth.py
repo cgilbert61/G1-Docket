@@ -209,7 +209,8 @@ siem_destinations: []
         json={"notes": "Approved by security officer"},
     )
     assert resp_approver.status_code == 200
-    assert resp_approver.json()["status"] == "RELEASED"
+    assert resp_approver.json()["approval_state"] == "APPROVED"
+    assert resp_approver.json()["status"] in ("APPROVED", "DELIVERED", "DISPATCH_REJECTED")
 
 
 def test_auth_events_recorded_in_worm_ledger(tmp_path):

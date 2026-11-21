@@ -16,7 +16,25 @@ from registry.store import RegistryService
 from snapshot.publisher import SnapshotPublisher
 
 
-def main() -> int:
+def is_demo_bootstrap_allowed() -> bool:
+    """Return True only when explicit opt-in DOCKET_ENABLE_DEMO_BOOTSTRAP=true AND demo profile are set."""
+    opt_in = os.environ.get("DOCKET_ENABLE_DEMO_BOOTSTRAP", "false").strip().lower() in ("true", "1", "yes")
+    if not opt_in:
+        return False
+    profile = (
+        os.environ.get("DOCKET_PROFILE")
+        or os.environ.get("DOCKET_ENVIRONMENT")
+        or "production"
+    ).strip().lower()
+    return profile == "demo"
+
+
+def main(force_demo_opt_in: bool = False) -> int:
+    if not force_demo_opt_in and not is_demo_bootstrap_allowed():
+        raise RuntimeError(
+            "DEMO_BOOTSTRAP_DISABLED: Destructive demo bootstrap (DROP TABLE) is disabled by default. "
+            "Set DOCKET_ENABLE_DEMO_BOOTSTRAP=true and DOCKET_PROFILE=demo to explicitly opt in."
+        )
     db_url = os.environ.get("POD_REGISTRY_DB_URL", "postgresql+psycopg2://pod:pod_password@postgres:5432/pod_registry")
     if db_url.startswith("postgresql://"):
         db_url = "postgresql+psycopg2://" + db_url[len("postgresql://") :]

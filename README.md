@@ -178,7 +178,7 @@ pip install -r requirements.txt
 pip install G1-Docket-SDK
 
 # Or install directly from GitHub Releases asset (.whl)
-pip install dist/g1_docket_sdk-1.0.1-py3-none-any.whl
+pip install dist/g1_docket_sdk-1.0.2-py3-none-any.whl
 
 # Verify client CLI
 docket --help

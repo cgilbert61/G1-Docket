@@ -53,12 +53,43 @@ class BenchmarkResult:
     client_p95_ms: float
     client_p99_ms: float
     client_max_ms: float
-    gateway_p50_us: float
-    gateway_p95_us: float
-    gateway_p99_us: float
+    gateway_p50_us: float | None
+    gateway_p95_us: float | None
+    gateway_p99_us: float | None
     sla_compliance_pct: float
     expected_status: int
     success_rate_pct: float
+    measured_sample_count: int = 0
+
+
+def summarize_decision_latencies(
+    allow_samples_ms: list[float],
+    denial_samples_ms: list[float],
+) -> dict[str, Any]:
+    """Compute separate allow and denial latency percentiles without coercing missing denial samples to 0.0."""
+    def _pct(data: list[float], p: float) -> float | None:
+        if not data:
+            return None
+        s = sorted(data)
+        idx = min(len(s) - 1, max(0, int(len(s) * p)))
+        return round(s[idx], 4)
+
+    allow_count = len(allow_samples_ms)
+    denial_count = len(denial_samples_ms)
+    gate_passed = allow_count > 0 and denial_count > 0
+    return {
+        "allow_sample_count": allow_count,
+        "allow_p50_ms": _pct(allow_samples_ms, 0.50),
+        "allow_p95_ms": _pct(allow_samples_ms, 0.95),
+        "allow_p99_ms": _pct(allow_samples_ms, 0.99),
+        "denial_sample_count": denial_count,
+        "denial_p50_ms": _pct(denial_samples_ms, 0.50),
+        "denial_p95_ms": _pct(denial_samples_ms, 0.95),
+        "denial_p99_ms": _pct(denial_samples_ms, 0.99),
+        "denial_p99_display": f"{_pct(denial_samples_ms, 0.99)} ms" if denial_count > 0 else "N/A (0 samples)",
+        "benchmark_gate_passed": gate_passed,
+        "status": "PASS" if gate_passed else "INCOMPLETE_MISSING_SAMPLES",
+    }
 
 
 def run_single_probe(
@@ -76,11 +107,14 @@ def run_single_probe(
             t1 = time.perf_counter()
             client_lat_ms = (t1 - t0) * 1000.0
 
-            raw_us = resp.headers.get("x-pod-decision-latency-us", "0")
-            try:
-                gateway_lat_us = float(raw_us)
-            except ValueError:
-                gateway_lat_us = 0.0
+            raw_us = resp.headers.get("x-pod-decision-latency-us")
+            if raw_us is not None:
+                try:
+                    gateway_lat_us = float(raw_us)
+                except ValueError:
+                    gateway_lat_us = -1.0
+            else:
+                gateway_lat_us = -1.0
 
             return client_lat_ms, gateway_lat_us, resp.status_code
         except (httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectError):
@@ -115,11 +149,12 @@ def execute_workload(
             for fut in concurrent.futures.as_completed(futures):
                 c_ms, g_us, status_code = fut.result()
                 client_latencies.append(c_ms)
-                gateway_latencies.append(g_us)
+                if g_us >= 0.0:
+                    gateway_latencies.append(g_us)
                 status_codes.append(status_code)
 
     duration_s = time.perf_counter() - t_start
-    throughput = total_requests / duration_s
+    throughput = total_requests / duration_s if duration_s > 0 else 0.0
 
     # Compute percentiles
     client_latencies.sort()
@@ -131,15 +166,21 @@ def execute_workload(
         idx = int(len(data) * p)
         return data[min(idx, len(data) - 1)]
 
+    def opt_pct(data: list[float], p: float) -> float | None:
+        if not data:
+            return None
+        idx = int(len(data) * p)
+        return round(data[min(idx, len(data) - 1)], 1)
+
     p50_c = pct(client_latencies, 0.50)
     p90_c = pct(client_latencies, 0.90)
     p95_c = pct(client_latencies, 0.95)
     p99_c = pct(client_latencies, 0.99)
     max_c = client_latencies[-1] if client_latencies else 0.0
 
-    p50_g = pct(gateway_latencies, 0.50)
-    p95_g = pct(gateway_latencies, 0.95)
-    p99_g = pct(gateway_latencies, 0.99)
+    p50_g = opt_pct(gateway_latencies, 0.50)
+    p95_g = opt_pct(gateway_latencies, 0.95)
+    p99_g = opt_pct(gateway_latencies, 0.99)
 
     # SLA is < 1.0 ms (1000 us) gateway decision time
     sla_count = sum(1 for g in gateway_latencies if g < 1000.0)
@@ -159,12 +200,13 @@ def execute_workload(
         client_p95_ms=round(p95_c, 2),
         client_p99_ms=round(p99_c, 2),
         client_max_ms=round(max_c, 2),
-        gateway_p50_us=round(p50_g, 1),
-        gateway_p95_us=round(p95_g, 1),
-        gateway_p99_us=round(p99_g, 1),
+        gateway_p50_us=p50_g,
+        gateway_p95_us=p95_g,
+        gateway_p99_us=p99_g,
         sla_compliance_pct=round(sla_pct, 2),
         expected_status=expected_status,
         success_rate_pct=round(success_pct, 2),
+        measured_sample_count=len(gateway_latencies),
     )
 
     print(f"    - Throughput      : {result.throughput_rps:>6.1f} RPS")

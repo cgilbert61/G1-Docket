@@ -46,6 +46,14 @@ class ExtractedDocument:
     chunk_hashes: list[str] = field(default_factory=list)
     chunk_tree_root: str = ""
     chunk_tree_depth: int = 0
+    extraction_quality: str = "COMPLETE"  # COMPLETE | PARTIAL | UNREADABLE | UNSUPPORTED | DAMAGED
+    extracted_char_count: int = 0
+    parse_error: str | None = None
+
+
+SUPPORTED_TEXT_EXTENSIONS = {".txt", ".md", ".csv", ".tsv", ".json", ".yaml", ".yml", ".xml", ".html", ".htm", ".sql", ".log", ".ini", ".cfg", ".toml", ".py", ".sh"}
+SUPPORTED_BINARY_DOC_EXTENSIONS = {".xlsx", ".docx", ".pdf", ".pptx", ".odt", ".rtf", ".doc", ".xls"}
+UNSUPPORTED_BINARY_EXTENSIONS = {".bin", ".exe", ".dll", ".so", ".dylib", ".dat", ".iso", ".img", ".tar", ".gz", ".7z", ".rar", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".mp3", ".mp4", ".wav", ".avi"}
 
 
 class TikaDocumentExtractor:
@@ -83,6 +91,9 @@ class TikaDocumentExtractor:
         if tika_result is not None:
             text, meta, row_count = tika_result
             extracted_text_sha256, chunk_hashes, tree = compute_chunk_tree_for_text(text)
+            char_count = len((text or "").strip())
+            quality = "COMPLETE" if (char_count > 0 or size_bytes == 0) else "UNREADABLE"
+            parse_err = None if quality == "COMPLETE" else "Tika Server returned empty text from non-empty file."
             return ExtractedDocument(
                 locator=locator,
                 file_path=path,
@@ -97,11 +108,15 @@ class TikaDocumentExtractor:
                 chunk_hashes=chunk_hashes[:256],
                 chunk_tree_root=tree.root_hex,
                 chunk_tree_depth=len(tree.levels) - 1,
+                extraction_quality=quality,
+                extracted_char_count=char_count,
+                parse_error=parse_err,
             )
 
-        # 2. Deterministic content extraction for spreadsheets (.xlsx, .csv) and documents (.docx, .txt, .md, .json)
-        text, meta, row_count = self._extract_local_content(path, suffix)
+        # 2. Deterministic content extraction for spreadsheets (.xlsx, .csv) and documents (.docx, .txt, .md, .json, .pdf)
+        text, meta, row_count, quality, parse_err = self._extract_local_content(path, suffix, size_bytes)
         extracted_text_sha256, chunk_hashes, tree = compute_chunk_tree_for_text(text)
+        char_count = len((text or "").strip())
         return ExtractedDocument(
             locator=locator,
             file_path=path,
@@ -116,6 +131,9 @@ class TikaDocumentExtractor:
             chunk_hashes=chunk_hashes[:256],
             chunk_tree_root=tree.root_hex,
             chunk_tree_depth=len(tree.levels) - 1,
+            extraction_quality=quality,
+            extracted_char_count=char_count,
+            parse_error=parse_err,
         )
 
     def _try_tika_server(self, path: Path) -> tuple[str, dict[str, Any], int | None] | None:
@@ -143,42 +161,74 @@ class TikaDocumentExtractor:
             return None
         return None
 
-    def _extract_local_content(self, path: Path, suffix: str) -> tuple[str, dict[str, Any], int | None]:
+    def _extract_local_content(
+        self,
+        path: Path,
+        suffix: str,
+        size_bytes: int = 0,
+    ) -> tuple[str, dict[str, Any], int | None, str, str | None]:
         meta: dict[str, Any] = {"Content-Name": path.name, "File-Extension": suffix}
         row_count: int | None = None
 
-        if suffix == ".xlsx" and HAS_OPENPYXL:
-            wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
-            lines: list[str] = []
-            total_rows = 0
-            for sheet_name in wb.sheetnames:
-                ws = wb[sheet_name]
-                lines.append(f"[Sheet: {sheet_name}]")
-                for row in ws.iter_rows(values_only=True):
-                    cells = [str(c) for c in row if c is not None and str(c).strip() != ""]
-                    if cells:
-                        total_rows += 1
-                        lines.append(" | ".join(cells))
-            wb.close()
-            meta["Sheet-Count"] = len(wb.sheetnames)
-            return "\n".join(lines), meta, total_rows
+        if suffix in UNSUPPORTED_BINARY_EXTENSIONS:
+            return "", meta, None, "UNSUPPORTED", f"Unsupported binary format '{suffix}'."
+
+        if suffix == ".xlsx":
+            if not zipfile.is_zipfile(path):
+                return "", meta, None, "DAMAGED", "Corrupted or truncated .xlsx archive (not a valid ZIP container)."
+            if not HAS_OPENPYXL:
+                return "", meta, None, "UNSUPPORTED", "openpyxl not available to parse .xlsx file."
+            try:
+                wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+                lines: list[str] = []
+                total_rows = 0
+                for sheet_name in wb.sheetnames:
+                    ws = wb[sheet_name]
+                    lines.append(f"[Sheet: {sheet_name}]")
+                    for row in ws.iter_rows(values_only=True):
+                        cells = [str(c) for c in row if c is not None and str(c).strip() != ""]
+                        if cells:
+                            total_rows += 1
+                            lines.append(" | ".join(cells))
+                wb.close()
+                meta["Sheet-Count"] = len(wb.sheetnames)
+                joined = "\n".join(lines)
+                if size_bytes > 0 and total_rows == 0:
+                    return joined, meta, 0, "UNREADABLE", "Spreadsheet contained zero readable data cells."
+                return joined, meta, total_rows, "COMPLETE", None
+            except Exception as exc:
+                return "", meta, None, "DAMAGED", f"Failed to parse .xlsx workbook: {exc}"
 
         if suffix in (".csv", ".tsv"):
-            raw = path.read_text(encoding="utf-8", errors="replace")
+            raw_bytes = path.read_bytes()
+            if b"\x00" in raw_bytes:
+                return "", meta, None, "DAMAGED", "Binary NUL bytes detected in tabular text file."
+            try:
+                raw = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                return "", meta, None, "DAMAGED", f"Invalid UTF-8 encoding in tabular file: {exc}"
             delim = "\t" if suffix == ".tsv" else ","
             reader = csv.reader(io.StringIO(raw), delimiter=delim)
             rows = list(reader)
             row_count = max(0, len(rows) - 1) if rows else 0
             text = "\n".join(" | ".join(r) for r in rows)
-            return text, meta, row_count
+            if size_bytes > 0 and not text.strip():
+                return "", meta, 0, "UNREADABLE", "Tabular file contained no readable content."
+            return text, meta, row_count, "COMPLETE", None
 
-        if suffix == ".docx" and zipfile.is_zipfile(path):
-            with zipfile.ZipFile(path, "r") as zf:
-                if "word/document.xml" in zf.namelist():
+        if suffix == ".docx":
+            if not zipfile.is_zipfile(path):
+                return "", meta, None, "DAMAGED", "Corrupted or truncated .docx archive (not a valid ZIP container)."
+            try:
+                with zipfile.ZipFile(path, "r") as zf:
+                    if "word/document.xml" not in zf.namelist():
+                        return "", meta, None, "DAMAGED", "Missing word/document.xml in .docx archive."
                     xml_bytes = zf.read("word/document.xml")
+                    parse_err = None
+                    quality = "COMPLETE"
                     try:
                         root = ET.fromstring(xml_bytes)
-                    except ET.ParseError:
+                    except ET.ParseError as exc:
                         import re as _re
 
                         xml_str = xml_bytes.decode("utf-8", errors="replace")
@@ -187,18 +237,68 @@ class TikaDocumentExtractor:
                             "&amp;",
                             xml_str,
                         )
-                        root = ET.fromstring(sanitized.encode("utf-8"))
+                        try:
+                            root = ET.fromstring(sanitized.encode("utf-8"))
+                        except ET.ParseError:
+                            return "", meta, None, "DAMAGED", f"Malformed XML in word/document.xml: {exc}"
                     texts = [elem.text.strip() for elem in root.iter() if elem.text and elem.text.strip()]
-                    return "\n".join(texts), meta, None
+                    joined = "\n".join(texts)
+                    if not joined.strip():
+                        return "", meta, None, "UNREADABLE", "No extractable text found in .docx document."
+                    return joined, meta, None, quality, parse_err
+            except Exception as exc:
+                return "", meta, None, "DAMAGED", f"Failed to extract .docx archive: {exc}"
+
+        if suffix == ".pdf":
+            raw_bytes = path.read_bytes()
+            if not raw_bytes.startswith(b"%PDF-"):
+                return "", meta, None, "DAMAGED", "Invalid PDF header (missing %PDF- signature)."
+            if b"%%EOF" not in raw_bytes[-2048:]:
+                return "", meta, None, "DAMAGED", "Truncated PDF file (missing %%EOF trailer)."
+            import re as _re
+
+            # Extract literal text strings inside PDF text objects BT ... ET or parentheses
+            bt_blocks = _re.findall(rb"BT[\s\S]*?ET", raw_bytes)
+            extracted_parts: list[str] = []
+            source_blobs = bt_blocks if bt_blocks else [raw_bytes]
+            for blob in source_blobs:
+                for m in _re.finditer(rb"\(([^()\\]*(?:\\.[^()\\]*)*)\)\s*(?:Tj|TJ|'|\"|\])?", blob):
+                    token = m.group(1).decode("latin-1", errors="ignore").strip()
+                    if token and any(ch.isalnum() for ch in token):
+                        extracted_parts.append(token)
+            joined = " ".join(extracted_parts).strip()
+            if not joined or len(joined) < 5:
+                return "", meta, None, "UNREADABLE", "Scanned/image-only or unreadable PDF with zero extractable text."
+            return joined, meta, None, "COMPLETE", None
 
         if suffix == ".json":
-            raw = path.read_text(encoding="utf-8", errors="replace")
+            raw_bytes = path.read_bytes()
+            try:
+                raw = raw_bytes.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                return "", meta, None, "DAMAGED", f"Invalid UTF-8 in JSON file: {exc}"
             try:
                 parsed = json.loads(raw)
                 if isinstance(parsed, list):
                     row_count = len(parsed)
-            except Exception:
-                pass
-            return raw, meta, row_count
+                return raw, meta, row_count, "COMPLETE", None
+            except Exception as exc:
+                return raw, meta, None, "DAMAGED", f"Malformed JSON syntax: {exc}"
 
-        return path.read_text(encoding="utf-8", errors="replace"), meta, None
+        if suffix not in SUPPORTED_TEXT_EXTENSIONS and suffix not in SUPPORTED_BINARY_DOC_EXTENSIONS:
+            return "", meta, None, "UNSUPPORTED", f"Unsupported file extension '{suffix or '<none>'}'."
+
+        raw_bytes = path.read_bytes()
+        if size_bytes == 0 and len(raw_bytes) == 0:
+            return "", meta, None, "UNREADABLE", "Empty 0-byte file."
+        if b"\x00" in raw_bytes:
+            return "", meta, None, "DAMAGED", "Binary NUL bytes found in text document."
+        try:
+            text = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            text = raw_bytes.decode("utf-8", errors="replace")
+            return text, meta, None, "PARTIAL", f"Partial UTF-8 decoding error: {exc}"
+
+        if not text.strip():
+            return "", meta, None, "UNREADABLE", "Whitespace-only or empty text content."
+        return text, meta, None, "COMPLETE", None

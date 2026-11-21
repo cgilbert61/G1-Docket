@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "G1-Docket-SDK"
-version = "1.0.1"
+version = "1.0.2"
 description = "G1 Docket Developer Client SDK — Zero-Trust Data Attestation & AI Gateway Integrations"
 readme = "README.md"
 license = "Apache-2.0"

@@ -37,11 +37,11 @@ spec:
         - containerPort: 18082
           name: local-proxy
       env:
-        - name: POD_GATEWAY_MODE
+        - name: POD_PREVALIDATOR_MODE
           value: "enforce"
         - name: POD_UPSTREAM_GATEWAY_URL
           value: "https://api.openai.com/v1" # Or internal LiteLLM / vLLM cluster
-        - name: POD_SNAPSHOT_URL
+        - name: POD_SNAPSHOT_PUBLISHER_URL
           value: "http://snapshot-publisher.g1-docket.svc.cluster.local:18081/v1/snapshot"
         - name: POD_PUBLIC_KEY_DIR
           value: "/var/lib/pod/public_keys"

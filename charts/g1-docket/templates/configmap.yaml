@@ -5,8 +5,8 @@ metadata:
   labels:
     {{- include "g1-docket.labels" . | nindent 4 }}
 data:
-  POD_GATEWAY_MODE: {{ .Values.gateway.mode | quote }}
-  POD_SNAPSHOT_URL: {{ .Values.gateway.snapshotUrl | quote }}
+  POD_PREVALIDATOR_MODE: {{ .Values.gateway.mode | quote }}
+  POD_SNAPSHOT_PUBLISHER_URL: {{ .Values.gateway.snapshotUrl | quote }}
   POD_PUBLIC_KEY_DIR: "/var/lib/pod/public_keys"
   POD_PREVALIDATOR_PORT: "18082"
   POD_UPSTREAM_GATEWAY_URL: {{ .Values.gateway.upstreamGatewayUrl | quote }}

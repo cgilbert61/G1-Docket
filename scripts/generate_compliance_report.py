@@ -106,18 +106,101 @@ def generate_report():
 
     # 3. Cryptographic WORM Ledger Verification
     st_worm, worm_data = fetch_json(f"{GOV_URL}/api/worm/verify")
-    chain_valid = worm_data.get("chain_valid", True)
-    total_ledger_records = worm_data.get("total_records", 0)
-    tip_hash = worm_data.get("tip_hash", "0" * 64)
+    if st_worm == 200 and isinstance(worm_data, dict):
+        chain_valid = bool(worm_data.get("valid", worm_data.get("chain_valid", False)))
+        worm_check_status = "PASS" if chain_valid else "FAIL"
+    else:
+        chain_valid = False
+        worm_check_status = "UNVERIFIED"
+    total_ledger_records = worm_data.get("total_entries", worm_data.get("total_records", 0)) if st_worm == 200 else 0
+    tip_hash = worm_data.get("head_hash", worm_data.get("tip_hash", "0" * 64)) if st_worm == 200 else "UNVERIFIED"
 
     # 4. Quarantine & Triage Queue
-    st_q, q_items = fetch_json(f"{GOV_URL}/api/quarantine")
-    quarantine_list = q_items if isinstance(q_items, list) else []
+    st_q, q_items = fetch_json(
+        f"{GOV_URL}/api/quarantine",
+        headers={"X-Forwarded-Email": "auditor1@enterprise.org", "X-Forwarded-Roles": "auditor"},
+    )
+    quarantine_list = q_items if (st_q == 200 and isinstance(q_items, list)) else []
     active_quarantined = len(quarantine_list)
+    quarantine_check_status = "PASS" if st_q == 200 else "UNVERIFIED"
 
     # 5. SIEM Forwarders
-    st_siem, siem_data = fetch_json(f"{GOV_URL}/api/siem/status")
-    dests = siem_data.get("destinations", {}) if isinstance(siem_data, dict) else {}
+    st_siem, siem_data = fetch_json(
+        f"{GOV_URL}/api/siem/status",
+        headers={"X-Forwarded-Email": "auditor1@enterprise.org", "X-Forwarded-Roles": "auditor"},
+    )
+    dests = siem_data.get("destinations", {}) if (st_siem == 200 and isinstance(siem_data, dict)) else {}
+    siem_check_status = "PASS" if st_siem == 200 else "UNVERIFIED"
+
+    executed_checks = [
+        {
+            "check_id": "prevalidator_health",
+            "status": "PASS" if st_preval == 200 else "UNVERIFIED",
+            "http_status": st_preval,
+            "measured": st_preval == 200,
+        },
+        {
+            "check_id": "snapshot_contract_loaded",
+            "status": "PASS" if (st_snap == 200 and bool(snap)) else ("FAIL" if st_snap == 200 else "UNVERIFIED"),
+            "http_status": st_snap,
+            "measured": st_snap == 200,
+            "total_objects": total_objects,
+        },
+        {
+            "check_id": "governance_health",
+            "status": "PASS" if st_gov == 200 else "UNVERIFIED",
+            "http_status": st_gov,
+            "measured": st_gov == 200,
+        },
+        {
+            "check_id": "worm_ledger_integrity",
+            "status": worm_check_status,
+            "http_status": st_worm,
+            "measured": st_worm == 200,
+            "chain_valid": chain_valid if st_worm == 200 else None,
+            "total_entries": total_ledger_records,
+        },
+        {
+            "check_id": "quarantine_queue_access",
+            "status": quarantine_check_status,
+            "http_status": st_q,
+            "measured": st_q == 200,
+        },
+        {
+            "check_id": "siem_forwarder_status",
+            "status": siem_check_status,
+            "http_status": st_siem,
+            "measured": st_siem == 200,
+        },
+    ]
+
+    narrative_mappings = [
+        {
+            "framework": "SOC 2 Type II",
+            "controls": ["CC6.1", "CC6.6", "CC6.7"],
+            "evidence_type": "narrative_mapping",
+            "description": "Logical access controls, boundary enforcement, and data transmission protection.",
+        },
+        {
+            "framework": "ISO/IEC 27001:2022",
+            "controls": ["A.8.12", "A.8.24"],
+            "evidence_type": "narrative_mapping",
+            "description": "Data leakage prevention and use of cryptography.",
+        },
+        {
+            "framework": "NIST SP 800-207",
+            "controls": ["Zero Trust Architecture"],
+            "evidence_type": "narrative_mapping",
+            "description": "Policy enforcement point (PEP) and policy decision point (PDP) separation.",
+        },
+    ]
+
+    if any(c["status"] == "FAIL" for c in executed_checks):
+        overall_status = "FAIL"
+    elif any(c["status"] in ("UNVERIFIED", "SKIPPED") for c in executed_checks):
+        overall_status = "UNVERIFIED"
+    else:
+        overall_status = "PASS"
 
     # Compile Markdown Document
     report_md = f"""# G1 Docket — Cryptographic Compliance & Zero-Trust Audit Dossier
@@ -229,19 +312,23 @@ Digest: SHA-256 Validated
     summary_path = reports_dir / "compliance_audit_summary.json"
     summary_data = {
         "timestamp_utc": now_iso,
+        "overall_status": overall_status,
         "mode": mode,
-        "chain_valid": chain_valid,
+        "chain_valid": chain_valid if st_worm == 200 else None,
         "total_objects": total_objects,
         "tier_distribution": tier_counts,
         "provider_distribution": provider_counts,
         "worm_records": total_ledger_records,
         "active_quarantined": active_quarantined,
         "tip_hash": tip_hash,
+        "executed_checks": executed_checks,
+        "narrative_mappings": narrative_mappings,
     }
     summary_path.write_text(json.dumps(summary_data, indent=2), encoding="utf-8")
 
     print(f"[+] Compliance Audit Report written to: {report_path}")
     print(f"[+] Machine-readable Summary written to: {summary_path}")
+    return summary_data
 
 
 if __name__ == "__main__":

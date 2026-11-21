@@ -95,7 +95,8 @@ def test_four_eyes_violation_and_successful_dual_approval(governance_stack):
         notes="Verified board exemption certificate #8841. Approved for 2-hour window.",
         perform_replay=False,
     )
-    assert res_k2["status"] == "RELEASED"
+    assert res_k2["approval_state"] == "APPROVED"
+    assert res_k2["status"] == "APPROVED"
     assert res_k2["requester"] == "secops_analyst_alice"
     assert res_k2["approver"] == "compliance_director_bob"
 
@@ -183,7 +184,8 @@ siem_destinations: []
         json={"approver_id": "auditor_diana", "notes": "Verified"},
     )
     assert resp_distinct.status_code == 200
-    assert resp_distinct.json()["status"] == "RELEASED"
+    assert resp_distinct.json()["approval_state"] == "APPROVED"
+    assert resp_distinct.json()["status"] in ("APPROVED", "DELIVERED", "DISPATCH_REJECTED")
 
     # 6. Verify WORM Chain API
     resp_verify = client.get("/api/worm/verify")
@@ -200,11 +202,12 @@ siem_destinations: []
     assert resp_worm_csv.status_code == 200
     assert "entry_id,timestamp_utc_iso8601" in resp_worm_csv.text
 
-    resp_q_json = client.get("/api/quarantine/export?format=json")
+    export_auth_headers = {"X-Forwarded-Email": "auditor_diana@company.com", "X-Forwarded-Roles": "auditor"}
+    resp_q_json = client.get("/api/quarantine/export?format=json", headers=export_auth_headers)
     assert resp_q_json.status_code == 200
     assert "items" in resp_q_json.json()
 
-    resp_q_csv = client.get("/api/quarantine/export?format=csv")
+    resp_q_csv = client.get("/api/quarantine/export?format=csv", headers=export_auth_headers)
     assert resp_q_csv.status_code == 200
     assert "quarantine_id,timestamp_utc" in resp_q_csv.text
 
@@ -243,7 +246,8 @@ siem_destinations: []
         json={"notes": "SSO approved signoff"},
     )
     assert resp_k2_hdr.status_code == 200
-    assert resp_k2_hdr.json()["status"] == "RELEASED"
+    assert resp_k2_hdr.json()["approval_state"] == "APPROVED"
+    assert resp_k2_hdr.json()["status"] in ("APPROVED", "DELIVERED", "DISPATCH_REJECTED")
     assert resp_k2_hdr.json()["approver"] == "approver_ciso@company.com"
 
 

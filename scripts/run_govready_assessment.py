@@ -21,6 +21,77 @@ DOCS_DIR = Path("docs")
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
+NARRATIVE_CONTROL_MAPPINGS = [
+    {"ctl_id": "ac-3", "family": "Access Control", "mechanism": "PrevalidatorEnforcer.evaluate_request() & resolve_caller_clearance()"},
+    {"ctl_id": "ac-4", "family": "Access Control", "mechanism": "PrevalidatorEnforcer.resolve_target_egress() & custom ABAC hooks"},
+    {"ctl_id": "au-2", "family": "Audit and Accountability", "mechanism": "AuditLogEntry dataclass & in-memory audit emission"},
+    {"ctl_id": "au-9", "family": "Audit and Accountability", "mechanism": "WormAuditLedger SHA-256 tamper-evident chaining"},
+    {"ctl_id": "au-10", "family": "Audit and Accountability", "mechanism": "DSSE RFC 9421 envelopes & Ed25519 keyring verification"},
+    {"ctl_id": "sc-8", "family": "System and Communications Protection", "mechanism": "In-Memory Prevalidator Gate & Signed Multi-Hop Handoffs"},
+    {"ctl_id": "sc-12", "family": "System and Communications Protection", "mechanism": "Keyring Ed25519 public key management & rotation"},
+    {"ctl_id": "sc-13", "family": "System and Communications Protection", "mechanism": "DSSE v1.0 signature verification & content digest chaining"},
+    {"ctl_id": "si-7", "family": "System and Information Integrity", "mechanism": "Snapshot SHA-256 Merkle verification & hash drift detection"},
+    {"ctl_id": "ia-2", "family": "Identification and Authentication", "mechanism": "X-POD-Caller-Token JWT validation & clearance mapping"},
+    {"ctl_id": "ia-8", "family": "Identification and Authentication", "mechanism": "<pod:delegate> provenance chains with accountable root owner"},
+    {"ctl_id": "ca-7", "family": "Assessment, Authorization, and Monitoring", "mechanism": "30-Day Audit Runway Monitor & in-memory state sweepers"},
+]
+
+
+def build_govready_summary(executed_control_results: dict[str, bool] | None = None) -> dict:
+    """Build an empirical GovReady summary separating narrative mappings from executed checks."""
+    executed_map = executed_control_results or {}
+    narrative_mappings = []
+    executed_checks = []
+    for ctl in NARRATIVE_CONTROL_MAPPINGS:
+        cid = ctl["ctl_id"].upper()
+        narrative_mappings.append(
+            {
+                "control_id": cid,
+                "family": ctl["family"],
+                "mechanism": ctl["mechanism"],
+                "evidence_type": "narrative_mapping",
+            }
+        )
+        if cid in executed_map or ctl["ctl_id"] in executed_map:
+            passed = bool(executed_map.get(cid, executed_map.get(ctl["ctl_id"])))
+            executed_checks.append(
+                {
+                    "control_id": cid,
+                    "status": "PASS" if passed else "FAIL",
+                    "executed": True,
+                    "evidence_type": "executed_check",
+                }
+            )
+        else:
+            executed_checks.append(
+                {
+                    "control_id": cid,
+                    "status": "UNVERIFIED",
+                    "executed": False,
+                    "evidence_type": "unverified",
+                }
+            )
+
+    passed_count = sum(1 for c in executed_checks if c["status"] == "PASS")
+    failed_count = sum(1 for c in executed_checks if c["status"] == "FAIL")
+    unverified_count = sum(1 for c in executed_checks if c["status"] in ("UNVERIFIED", "SKIPPED"))
+    if failed_count > 0:
+        overall_status = "FAIL"
+    elif unverified_count > 0:
+        overall_status = "UNVERIFIED"
+    else:
+        overall_status = "PASS"
+
+    return {
+        "total_controls": len(NARRATIVE_CONTROL_MAPPINGS),
+        "passed": passed_count,
+        "failed": failed_count,
+        "unverified": unverified_count,
+        "status": overall_status,
+        "narrative_mappings": narrative_mappings,
+        "executed_checks": executed_checks,
+    }
+
 # Assessment runner script executed inside container
 CONTAINER_INNER_SCRIPT = """
 import sys

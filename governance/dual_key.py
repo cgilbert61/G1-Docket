@@ -42,7 +42,7 @@ class DualKeyGovernanceManager:
         self,
         quarantine_store: QuarantineStore,
         worm_ledger: WORMAuditLedger,
-        siem_forwarder: SIEMForwarder,
+        siem_forwarder: Optional[SIEMForwarder] = None,
         keyring: Optional[Keyring] = None,
         inference_gateway_url: str = "http://localhost:18082",
     ):
@@ -86,7 +86,8 @@ class DualKeyGovernanceManager:
         )
 
         # Buffer to SIEM
-        self.siem_forwarder.enqueue_event(worm_entry)
+        if self.siem_forwarder is not None:
+            self.siem_forwarder.enqueue_event(worm_entry)
 
         return {
             "status": "AWAITING_SECOND_KEY",
@@ -202,7 +203,7 @@ class DualKeyGovernanceManager:
         self,
         quarantine_id: str,
         approver_id: str,
-        notes: str,
+        notes: str = "",
         ttl_seconds: int = 7200,
         perform_replay: bool = True,
     ) -> Dict[str, Any]:
@@ -257,9 +258,13 @@ class DualKeyGovernanceManager:
             notes=notes,
             emergency_ticket=ticket,
             replay_response=replay_result,
+            perform_replay=perform_replay,
         )
+        final_status = second_key.get("status", "APPROVED")
+        replay_status = second_key.get("replay_status", "APPROVED")
+        lifecycle_history = second_key.get("lifecycle_history", ["APPROVED"])
 
-        # Log release to WORM Ledger
+        # Log release/approval to WORM Ledger
         worm_entry = self.worm_ledger.append_event(
             event_type="HITL_DUAL_KEY_RELEASE",
             actor_identity=f"{requester_id}+{app_clean}",
@@ -270,15 +275,22 @@ class DualKeyGovernanceManager:
                 "approver": app_clean,
                 "ticket_locator": ticket["locator_uri"],
                 "expires_at": ticket["expires_at"],
-                "replay_status": item.get("replay_status", "COMPLETED"),
+                "status": final_status,
+                "replay_status": replay_status,
+                "lifecycle_history": lifecycle_history,
             },
         )
 
         # Buffer to SIEM
-        self.siem_forwarder.enqueue_event(worm_entry)
+        if self.siem_forwarder is not None:
+            self.siem_forwarder.enqueue_event(worm_entry)
 
         return {
-            "status": "RELEASED",
+            "approval_state": "APPROVED",
+            "status": final_status,
+            "lifecycle_state": final_status,
+            "replay_status": replay_status,
+            "lifecycle_history": lifecycle_history,
             "quarantine_id": quarantine_id,
             "requester": requester_id,
             "approver": app_clean,
@@ -306,4 +318,5 @@ class DualKeyGovernanceManager:
                 "reason": reason,
             },
         )
-        self.siem_forwarder.enqueue_event(worm_entry)
+        if self.siem_forwarder is not None:
+            self.siem_forwarder.enqueue_event(worm_entry)

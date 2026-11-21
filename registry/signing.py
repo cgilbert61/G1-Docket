@@ -904,7 +904,11 @@ class Keyring:
         if not target_id and purpose:
             target_id = keyring_data.get("active_keys_by_purpose", {}).get(purpose)
         if not target_id:
-            target_id = keyring_data.get("active_keyid")
+            candidate_id = keyring_data.get("active_keyid")
+            if candidate_id and candidate_id in keyring_data.get("keys", {}):
+                cand_purposes = keyring_data["keys"][candidate_id].get("key_purpose") or ["attestation", "snapshot"]
+                if not purpose or purpose in cand_purposes:
+                    target_id = candidate_id
 
         if target_id and target_id in self._kms_signers:
             meta = keyring_data["keys"].get(target_id, {})
@@ -995,7 +999,11 @@ class Keyring:
         if not target_id and purpose:
             target_id = data.get("active_keys_by_purpose", {}).get(purpose)
         if not target_id:
-            target_id = data.get("active_keyid")
+            candidate_id = data.get("active_keyid")
+            if candidate_id and candidate_id in data.get("keys", {}):
+                cand_purposes = data["keys"][candidate_id].get("key_purpose") or ["attestation", "snapshot"]
+                if not purpose or purpose in cand_purposes:
+                    target_id = candidate_id
         if not target_id or target_id not in data["keys"]:
             meta = self.ensure_active_key(purpose=purpose)
             target_id = meta["keyid"]
@@ -1037,6 +1045,7 @@ class Keyring:
         expected_content_sha256: str | None = None,
         check_expiry: bool = True,
         now: datetime | None = None,
+        expected_purpose: str | None = None,
     ) -> VerificationResult:
         """Verify a DSSE envelope using only the public verification keyring."""
         self.assert_no_private_keys_exposed()
@@ -1047,6 +1056,7 @@ class Keyring:
             expected_content_sha256=expected_content_sha256,
             check_expiry=check_expiry,
             now=now,
+            expected_purpose=expected_purpose,
         )
 
 
@@ -1103,8 +1113,9 @@ def verify_dsse_envelope(
     expected_content_sha256: str | None = None,
     check_expiry: bool = True,
     now: datetime | None = None,
+    expected_purpose: str | None = None,
 ) -> VerificationResult:
-    """Verify DSSE envelope signature, key validity window, in-toto statement schema, and optional content hash."""
+    """Verify DSSE envelope signature, key purpose, key validity window, in-toto statement schema, and optional content hash."""
     try:
         validate_dsse_envelope_structure(envelope)
     except Exception as exc:
@@ -1137,6 +1148,16 @@ def verify_dsse_envelope(
     meta, public_key = keyring.load_public_key(keyid)
     if meta["status"] == "revoked":
         raise SignatureVerificationError(f"Signing key '{keyid}' has been revoked.")
+
+    required_purpose = expected_purpose or (
+        "snapshot" if target_predicate_type == SNAPSHOT_PREDICATE_TYPE else "attestation"
+    )
+    allowed_purposes = meta.get("key_purpose") or ["attestation", "snapshot"]
+    if required_purpose not in allowed_purposes:
+        raise SignatureVerificationError(
+            f"KEY_PURPOSE_MISMATCH: Signing key '{keyid}' has purpose {allowed_purposes}, "
+            f"which is not authorized for '{required_purpose}' verification."
+        )
 
     algorithm = meta["algorithm"]
     try:
@@ -1222,9 +1243,12 @@ def build_attestation_statement(
     chunk_hashes: list[str] | None = None,
     chunk_tree_root: str | None = None,
     chunk_tree: dict[str, Any] | None = None,
-    confidence: float = 0.95,
+    confidence: float = 0.85,
     sensitive_categories: list[dict[str, Any]] | None = None,
     classifier_engine: str = "presidio",
+    extraction_quality: str = "COMPLETE",
+    extracted_char_count: int | None = None,
+    parse_error: str | None = None,
     policy: dict[str, str] | None = None,
     allow_rag_indexing: bool | None = None,
     allow_model_training: bool = False,
@@ -1315,12 +1339,18 @@ def build_attestation_statement(
             "fingerprint_method": fingerprint_method,
             "extracted_text_sha256": extracted_text_sha256.lower() if extracted_text_sha256 else None,
             "chunk_hashes": [h.lower() for h in (chunk_hashes or [])],
+            "extraction_quality": (extraction_quality or "COMPLETE").upper(),
+            "extracted_char_count": extracted_char_count,
+            "parse_error": parse_error,
         },
         "classification": {
             "tier": tier,
             "confidence": round(float(confidence), 4),
             "sensitive_categories": cats,
             "classifier_engine": classifier_engine,
+            "extraction_quality": (extraction_quality or "COMPLETE").upper(),
+            "extracted_char_count": extracted_char_count,
+            "parse_error": parse_error,
         },
         "handling": {
             "policy": effective_policy,
@@ -1359,4 +1389,43 @@ def build_attestation_statement(
         "predicate": predicate,
     }
     validate_intoto_statement(statement, expected_predicate_type=ATTESTATION_PREDICATE_TYPE)
+    return statement
+
+
+def build_snapshot_statement(
+    *,
+    entries: dict[str, Any],
+    sequence_number: int = 1,
+    ttl_seconds: int = 3600,
+    publisher_id: str = "pod-snapshot-publisher-v0.1",
+    snapshot_id: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Build a schema-valid in-toto Statement v1 carrying a POD Signed Snapshot Predicate."""
+    now_dt = now or datetime.now(timezone.utc)
+    exp_dt = now_dt + timedelta(seconds=ttl_seconds)
+    snap_id = snapshot_id or f"pod-snap-{uuid.uuid4().hex[:16]}"
+    predicate = {
+        "schema_version": "0.1.0",
+        "snapshot_id": snap_id,
+        "sequence_number": int(sequence_number),
+        "issued_at": format_iso8601(now_dt),
+        "expires_at": format_iso8601(exp_dt),
+        "publisher_id": publisher_id,
+        "entries": entries,
+    }
+    entries_bytes = json.dumps(entries, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    entries_sha256 = hashlib.sha256(entries_bytes).hexdigest()
+    statement = {
+        "_type": INTOTO_STATEMENT_TYPE,
+        "subject": [
+            {
+                "name": f"pod://snapshots/{snap_id}",
+                "digest": {"sha256": entries_sha256},
+            }
+        ],
+        "predicateType": SNAPSHOT_PREDICATE_TYPE,
+        "predicate": predicate,
+    }
+    validate_intoto_statement(statement, expected_predicate_type=SNAPSHOT_PREDICATE_TYPE)
     return statement

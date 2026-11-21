@@ -44,11 +44,19 @@ class WatermarkPayload:
     caller_key: str
     signature: str
     signature_valid: bool
+    owner: str = "developer"
+    agent_id: str = "developer-agent"
+    tier: str = "Internal"
 
     @property
     def timestamp_iso(self) -> str:
         """Return ISO-8601 formatted UTC timestamp."""
         return datetime.fromtimestamp(self.timestamp_epoch, tz=timezone.utc).isoformat()
+
+    @property
+    def timestamp(self) -> str:
+        """Alias for timestamp_iso used by CLI watermark-inspect."""
+        return self.timestamp_iso
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation."""
@@ -57,7 +65,11 @@ class WatermarkPayload:
             "snapshot_sequence": self.snapshot_sequence,
             "timestamp_epoch": self.timestamp_epoch,
             "timestamp_iso": self.timestamp_iso,
+            "timestamp": self.timestamp_iso,
             "caller_key": self.caller_key,
+            "owner": self.owner,
+            "agent_id": self.agent_id,
+            "tier": self.tier,
             "signature": self.signature,
             "signature_valid": self.signature_valid,
         }
@@ -110,11 +122,23 @@ def decode_watermark_bytes(
         return None
 
     key_bytes = raw_bytes[10 : 10 + key_len]
-    caller_key = key_bytes.decode("utf-8", errors="replace")
+    raw_caller_key = key_bytes.decode("utf-8", errors="replace")
     embedded_sig = raw_bytes[10 + key_len : 10 + key_len + 8]
 
-    computed_sig = _compute_watermark_sig(version, seq, ts, caller_key, secret_key)
+    computed_sig = _compute_watermark_sig(version, seq, ts, raw_caller_key, secret_key)
     is_valid = hmac.compare_digest(embedded_sig, computed_sig)
+
+    caller_key = raw_caller_key
+    owner = raw_caller_key
+    agent_id = "developer-agent"
+    tier = "Internal"
+    if "|" in raw_caller_key:
+        parts = raw_caller_key.split("|")
+        if len(parts) == 4:
+            caller_key, owner, agent_id, tier = parts[0], parts[1], parts[2], parts[3]
+        elif len(parts) == 3:
+            owner, agent_id, tier = parts[0], parts[1], parts[2]
+            caller_key = owner
 
     return WatermarkPayload(
         version=version,
@@ -123,20 +147,36 @@ def decode_watermark_bytes(
         caller_key=caller_key,
         signature=embedded_sig.hex(),
         signature_valid=is_valid,
+        owner=owner,
+        agent_id=agent_id,
+        tier=tier,
     )
 
 
 def embed_invisible_watermark(
     text: str,
-    snapshot_sequence: int,
-    caller_key: str,
+    snapshot_sequence: int = 1,
+    caller_key: str | None = None,
     timestamp_epoch: int | None = None,
     secret_key: bytes = DEFAULT_WATERMARK_SECRET,
+    *,
+    owner: str | None = None,
+    agent_id: str | None = None,
+    tier: str | None = None,
 ) -> str:
     """Embed an invisible zero-width Unicode cryptographic watermark into text."""
+    if owner is not None or agent_id is not None or tier is not None:
+        eff_owner = owner or caller_key or "developer"
+        eff_agent = agent_id or "developer-agent"
+        eff_tier = tier or "Internal"
+        eff_caller = caller_key or eff_owner
+        packed_caller = f"{eff_caller}|{eff_owner}|{eff_agent}|{eff_tier}"
+    else:
+        packed_caller = caller_key or "pod-key-public"
+
     payload_bytes = encode_watermark_bytes(
         snapshot_sequence=snapshot_sequence,
-        caller_key=caller_key,
+        caller_key=packed_caller,
         timestamp_epoch=timestamp_epoch,
         secret_key=secret_key,
     )

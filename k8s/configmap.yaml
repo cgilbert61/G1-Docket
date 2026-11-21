@@ -7,7 +7,11 @@ metadata:
     app.kubernetes.io/name: g1-docket-config
     app.kubernetes.io/part-of: g1-docket
 data:
-  POD_ENFORCE_MODE: "enforce"
+  POD_PREVALIDATOR_MODE: "enforce"
+  POD_GOVERNANCE_URL: "http://g1-docket-governance.g1-docket-system.svc.cluster.local:8084"
+  POD_ENGINE_SERVICE_URL: "http://g1-docket-engine.g1-docket-system.svc.cluster.local:8083"
+  POD_SNAPSHOT_PUBLISHER_URL: "http://g1-docket-publisher.g1-docket-system.svc.cluster.local:8081"
+  POD_UPSTREAM_GATEWAY_URL: "http://g1-docket-litellm.g1-docket-system.svc.cluster.local:4000"
   GOVERNANCE_HOST: "0.0.0.0"
   GOVERNANCE_PORT: "8084"
   ENGINE_HOST: "0.0.0.0"

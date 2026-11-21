@@ -145,13 +145,62 @@ class EnforcementOutcome:
     decision_latency_us: float = 0.0
 
 
+class SnapshotRollbackError(ValueError):
+    """Raised when an incoming snapshot has a lower sequence number than the highest accepted sequence."""
+
+
 class InMemorySnapshotStore:
     """Holds the latest verified DSSE snapshot in memory, enforcing monotonic sequence numbers and TTL fail-closed."""
 
-    def __init__(self, keyring: Keyring) -> None:
+    def __init__(self, keyring: Keyring, state_path: str | Path | None = None) -> None:
         self.keyring = keyring
         self._snapshot_predicate: dict[str, Any] | None = None
         self._highest_sequence: int = 0
+        self._highest_snapshot_id: str | None = None
+        self._highest_payload_sha256: str | None = None
+
+        env_state = os.environ.get("POD_SNAPSHOT_STATE_FILE", "").strip()
+        if state_path is not None:
+            self.state_path: Path | None = Path(state_path)
+        elif env_state:
+            self.state_path = Path(env_state)
+        elif getattr(keyring, "public_key_dir", None) and Path(keyring.public_key_dir) != Path("./.pod_keys"):
+            self.state_path = Path(keyring.public_key_dir) / "snapshot_high_water_mark.json"
+        else:
+            self.state_path = None
+
+        self._load_persisted_state()
+
+    def _load_persisted_state(self) -> None:
+        if self.state_path is None or not self.state_path.exists():
+            return
+        try:
+            data = json.loads(self.state_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                self._highest_sequence = int(data.get("highest_sequence", 0))
+                self._highest_snapshot_id = data.get("highest_snapshot_id")
+                self._highest_payload_sha256 = data.get("highest_payload_sha256")
+        except Exception as exc:
+            raise SnapshotRollbackError(
+                f"SNAPSHOT_STATE_CORRUPTED: Failed to load snapshot high-water mark from '{self.state_path}': {exc}"
+            ) from exc
+
+    def _persist_state(self) -> None:
+        if self.state_path is None:
+            return
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "highest_sequence": self._highest_sequence,
+            "highest_snapshot_id": self._highest_snapshot_id,
+            "highest_payload_sha256": self._highest_payload_sha256,
+            "updated_at": format_iso8601(datetime.now(timezone.utc)),
+        }
+        tmp_path = self.state_path.with_name(f"{self.state_path.name}.tmp.{os.getpid()}")
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, sort_keys=True)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, self.state_path)
 
     def load_from_envelope(self, envelope: dict[str, Any], now: datetime | None = None) -> dict[str, Any]:
         """Verify DSSE signature and sequence number before atomically updating the in-memory snapshot."""
@@ -163,12 +212,25 @@ class InMemorySnapshotStore:
         )
         pred = ver.statement["predicate"]
         seq = int(pred["sequence_number"])
+        snap_id = str(pred.get("snapshot_id", ""))
+        payload_sha256 = hashlib.sha256(str(envelope.get("payload", "")).encode("utf-8")).hexdigest()
+
         if seq < self._highest_sequence:
-            raise ValueError(
-                f"Snapshot rollback rejected: incoming sequence_number ({seq}) < current ({self._highest_sequence})."
+            raise SnapshotRollbackError(
+                f"SNAPSHOT_ROLLBACK_REJECTED: Snapshot rollback rejected: incoming sequence_number ({seq}) < current ({self._highest_sequence})."
             )
+        if seq == self._highest_sequence and self._highest_sequence > 0:
+            if (self._highest_snapshot_id and snap_id != self._highest_snapshot_id) or (
+                self._highest_payload_sha256 and payload_sha256 != self._highest_payload_sha256
+            ):
+                raise SnapshotRollbackError(
+                    f"SNAPSHOT_ROLLBACK_REJECTED: Conflicting snapshot digest for sequence_number ({seq})."
+                )
         self._highest_sequence = seq
+        self._highest_snapshot_id = snap_id
+        self._highest_payload_sha256 = payload_sha256
         self._snapshot_predicate = pred
+        self._persist_state()
         return pred
 
     def load_from_file(self, path: str | Path, now: datetime | None = None) -> dict[str, Any]:
@@ -294,6 +356,8 @@ class PrevalidatorEnforcer:
             self.register_policy_hook(create_departmental_isolation_hook())
         self.audit_log: list[AuditLogEntry] = []
         self.latency_samples_ms: list[float] = []
+        self.allow_latency_samples_ms: list[float] = []
+        self.denial_latency_samples_ms: list[float] = []
         self.total_evaluations: int = 0
         self.last_directory_scan_metrics: dict[str, Any] = {
             "total_files": 0,
@@ -303,18 +367,37 @@ class PrevalidatorEnforcer:
             "files_per_sec": 0.0,
         }
 
-    def _record_latency_ns(self, elapsed_ns: int) -> tuple[float, float]:
+    def _record_latency_ns(self, elapsed_ns: int, *, is_denial: bool = False) -> tuple[float, float]:
         ms = round(max(elapsed_ns, 100) / 1_000_000.0, 4)
         us = round(max(elapsed_ns, 100) / 1_000.0, 2)
         self.total_evaluations += 1
         self.latency_samples_ms.append(ms)
         if len(self.latency_samples_ms) > 500:
             self.latency_samples_ms = self.latency_samples_ms[-500:]
+        if is_denial:
+            self.denial_latency_samples_ms.append(ms)
+            if len(self.denial_latency_samples_ms) > 500:
+                self.denial_latency_samples_ms = self.denial_latency_samples_ms[-500:]
+        else:
+            self.allow_latency_samples_ms.append(ms)
+            if len(self.allow_latency_samples_ms) > 500:
+                self.allow_latency_samples_ms = self.allow_latency_samples_ms[-500:]
         return ms, us
 
     def get_latency_telemetry(self) -> dict[str, Any]:
         """Return real-time sub-millisecond latency clock metrics for the Prevalidator."""
         samples = list(self.latency_samples_ms)
+        allow_samples = list(self.allow_latency_samples_ms)
+        denial_samples = list(self.denial_latency_samples_ms)
+
+        def _pct_for(seq: list[float], p: float) -> float | None:
+            if not seq:
+                return None
+            sorted_seq = sorted(seq)
+            m = len(sorted_seq)
+            idx = min(m - 1, max(0, int(round((p / 100.0) * (m - 1)))))
+            return round(sorted_seq[idx], 4)
+
         if not samples:
             return {
                 "last_decision_ms": 0.0,
@@ -326,6 +409,14 @@ class PrevalidatorEnforcer:
                 "min_ms": 0.0,
                 "max_ms": 0.0,
                 "total_evaluations": self.total_evaluations,
+                "allow_sample_count": 0,
+                "allow_p50_ms": None,
+                "allow_p95_ms": None,
+                "allow_p99_ms": None,
+                "denial_sample_count": 0,
+                "denial_p50_ms": None,
+                "denial_p95_ms": None,
+                "denial_p99_ms": None,
                 "sla_budget_ms": 5.0,
                 "sla_compliant_pct": 100.0,
                 "recent_samples_ms": [],
@@ -350,6 +441,14 @@ class PrevalidatorEnforcer:
             "min_ms": round(sorted_s[0], 4),
             "max_ms": round(sorted_s[-1], 4),
             "total_evaluations": self.total_evaluations,
+            "allow_sample_count": len(allow_samples),
+            "allow_p50_ms": _pct_for(allow_samples, 50.0),
+            "allow_p95_ms": _pct_for(allow_samples, 95.0),
+            "allow_p99_ms": _pct_for(allow_samples, 99.0),
+            "denial_sample_count": len(denial_samples),
+            "denial_p50_ms": _pct_for(denial_samples, 50.0),
+            "denial_p95_ms": _pct_for(denial_samples, 95.0),
+            "denial_p99_ms": _pct_for(denial_samples, 99.0),
             "sla_budget_ms": 5.0,
             "sla_compliant_pct": round((compliant / n) * 100.0, 2),
             "recent_samples_ms": [round(x, 4) for x in samples[-24:]],
@@ -799,7 +898,7 @@ class PrevalidatorEnforcer:
         caller_context = self.resolve_caller_context(hdrs, payload, caller_clearance or "Public", target_egress)
 
         if caller_clearance is None:
-            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns)
+            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns, is_denial=True)
             audit = AuditLogEntry(
                 timestamp=now_str,
                 mode=self.mode,
@@ -827,7 +926,7 @@ class PrevalidatorEnforcer:
         snapshot = self.snapshot_store.get_active_snapshot(now=now_dt)
         if snapshot is None:
             # Staleness or missing snapshot MUST fail closed
-            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns)
+            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns, is_denial=True)
             audit = AuditLogEntry(
                 timestamp=now_str,
                 mode=self.mode,
@@ -1188,7 +1287,7 @@ class PrevalidatorEnforcer:
         unique_reasons = list(dict.fromkeys(reason_codes))
 
         if unique_reasons:
-            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns)
+            lat_ms, lat_us = self._record_latency_ns(time.perf_counter_ns() - t0_ns, is_denial=True)
             if self.mode == "observe":
                 audit = AuditLogEntry(
                     timestamp=now_str,

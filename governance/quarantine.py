@@ -166,8 +166,9 @@ class QuarantineStore:
         notes: str,
         emergency_ticket: Dict[str, Any],
         replay_response: Optional[Dict[str, Any]] = None,
+        perform_replay: bool = True,
     ) -> Dict[str, Any]:
-        """Sign Step 2 approval, release quarantine, and record emergency ticket."""
+        """Sign Step 2 approval, record granular approval/replay lifecycle state, and store emergency ticket."""
         now_iso = datetime.now(timezone.utc).isoformat()
         second_key_data = {
             "operator": operator.strip(),
@@ -175,13 +176,33 @@ class QuarantineStore:
             "signed_at": now_iso,
         }
 
-        replay_status = "SUCCESS" if replay_response and "error" not in replay_response else "FAILED"
+        lifecycle_history: List[str] = ["APPROVED"]
+        if not perform_replay or replay_response is None:
+            final_status = "APPROVED"
+            replay_status = "APPROVED"
+        else:
+            lifecycle_history.append("DISPATCHED")
+            status_code = int(replay_response.get("status_code") or 0)
+            has_error = "error" in replay_response
+            if 200 <= status_code < 300 and not has_error:
+                lifecycle_history.extend(["UPSTREAM_ACCEPTED", "DELIVERED"])
+                final_status = "DELIVERED"
+                replay_status = "UPSTREAM_ACCEPTED"
+            else:
+                lifecycle_history.append("DISPATCH_REJECTED")
+                final_status = "DISPATCH_REJECTED"
+                replay_status = "DISPATCH_REJECTED"
+
+        enriched_replay = dict(replay_response or {})
+        enriched_replay["lifecycle_state"] = final_status
+        enriched_replay["replay_status"] = replay_status
+        enriched_replay["lifecycle_history"] = lifecycle_history
 
         with self._lock, self._get_connection() as conn:
             conn.execute(
                 """
                 UPDATE quarantine_items
-                SET status = 'RELEASED',
+                SET status = ?,
                     second_key_json = ?,
                     emergency_ticket_json = ?,
                     replay_status = ?,
@@ -190,16 +211,20 @@ class QuarantineStore:
                 WHERE quarantine_id = ?
                 """,
                 (
+                    final_status,
                     json.dumps(second_key_data),
                     json.dumps(emergency_ticket),
                     replay_status,
-                    json.dumps(replay_response or {}),
+                    json.dumps(enriched_replay),
                     now_iso,
                     quarantine_id,
                 ),
             )
             conn.commit()
 
+        second_key_data["status"] = final_status
+        second_key_data["replay_status"] = replay_status
+        second_key_data["lifecycle_history"] = lifecycle_history
         return second_key_data
 
     def reject_item(self, quarantine_id: str, operator: str, reason: str) -> None:
@@ -222,7 +247,17 @@ class QuarantineStore:
             rows = conn.execute(
                 "SELECT status, COUNT(*) as cnt FROM quarantine_items GROUP BY status"
             ).fetchall()
-            counts = {"QUARANTINED": 0, "AWAITING_SECOND_KEY": 0, "RELEASED": 0, "REJECTED": 0}
+            counts = {
+                "QUARANTINED": 0,
+                "AWAITING_SECOND_KEY": 0,
+                "APPROVED": 0,
+                "DISPATCHED": 0,
+                "UPSTREAM_ACCEPTED": 0,
+                "DELIVERED": 0,
+                "DISPATCH_REJECTED": 0,
+                "RELEASED": 0,
+                "REJECTED": 0,
+            }
             for r in rows:
                 counts[r["status"]] = r["cnt"]
             return counts

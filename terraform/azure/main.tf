@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.80"
+      version = "~> 3.117.0"
     }
   }
 }
@@ -124,8 +124,8 @@ resource "azurerm_storage_container" "worm_ledger_container" {
 resource "azurerm_storage_container_immutability_policy" "worm_policy" {
   storage_container_resource_manager_id = azurerm_storage_container.worm_ledger_container.resource_manager_id
   immutability_period_in_days           = var.retention_days
-  protected_append_blobs_enabled        = true # Allows incremental line appending for JSONL WORM ledger
-  state                                 = var.immutability_policy_state
+  protected_append_writes_enabled       = true # Allows incremental line appending for JSONL WORM ledger
+  locked                                = var.immutability_policy_locked
 }
 
 # 5. User-Assigned Managed Identity for AKS Workload Identity
