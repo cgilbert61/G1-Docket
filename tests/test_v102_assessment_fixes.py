@@ -515,6 +515,13 @@ def test_tier2_item6_docket_cli_commands_and_watermark_roundtrip(tmp_path: Path,
 
     repo_root = Path(__file__).resolve().parent.parent
     wheel_path = repo_root / "dist" / "g1_docket_sdk-1.0.2-py3-none-any.whl"
+    if not wheel_path.exists():
+        (repo_root / "dist").mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "wheel", str(repo_root), "-w", str(repo_root / "dist"), "--no-deps"],
+            check=True,
+            capture_output=True,
+        )
     assert wheel_path.exists(), f"Expected built v1.0.2 wheel at {wheel_path}"
 
     isolated_site = tmp_path / "isolated_wheel_site"
