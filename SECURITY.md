@@ -24,7 +24,7 @@ To report a vulnerability responsibly:
 
 1. **Email Coordinated Disclosure**:
    Send details of the vulnerability to:
-   - **`security@g1163rt.com`**
+   - **`ops@g1163rt.ai`**
    - Subject: `[SECURITY] G1 Docket Vulnerability Report - <Brief Summary>`
 
 2. **GitHub Private Security Advisory**:
