@@ -177,11 +177,11 @@ pip install -r requirements.txt
 > - **What you need**: A running G1 Docket Prevalidator gateway (e.g. at `http://localhost:18082` or your enterprise endpoint). To host the server components, deploy via Docker Compose (`docker compose up`) or Kubernetes (`deploy/helm/`).
 
 ```bash
-# Install the client SDK from wheel or PyPI
-pip install G1-Docket-SDK
+# Install directly from the GitHub Release wheel (.whl)
+pip install https://github.com/cgilbert61/G1-Docket/releases/download/v1.0.2/g1_docket_sdk-1.0.2-py3-none-any.whl
 
-# Or install directly from GitHub Releases asset (.whl)
-pip install dist/g1_docket_sdk-1.0.2-py3-none-any.whl
+# Or install directly from GitHub source
+pip install "git+https://github.com/cgilbert61/G1-Docket.git"
 
 # Verify client CLI
 docket --help
