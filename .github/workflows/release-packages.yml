@@ -52,7 +52,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             TAG="${{ github.ref_name }}"
           else
-            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0")
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.2")
           fi
         fi
         echo "Target release tag: $TAG"
@@ -89,8 +89,7 @@ jobs:
         twine upload --skip-existing dist/*
 
     - name: Publish to PyPI (Trusted Publishing OIDC)
-      if: env.PYPI_API_TOKEN == '' && (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/'))
+      if: env.PYPI_API_TOKEN == '' && (github.event_name == 'release' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
       uses: pypa/gh-action-pypi-publish@release/v1
-      continue-on-error: true
       with:
         skip-existing: true
