@@ -4,6 +4,7 @@
 
 # G1 Docket — by G1163RT Security Labs
 
+[![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)](https://github.com/cgilbert61/G1-Docket/releases/tag/v1.0.2)
 [![CI](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml/badge.svg)](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational.svg)](pyproject.toml)
@@ -11,17 +12,19 @@
 [![RFC-009](https://img.shields.io/badge/RFC--009-Merkle%20Chunk%20Trees-blueviolet.svg)](docs/rfc-009-merkle-chunk-trees.md)
 [![GovReady-Q](https://img.shields.io/badge/NIST%20SP%20800--53-12%2F12%20PASS-success.svg)](docs/govready_compliance_assessment_report.md)
 [![Federal DevSecOps](https://img.shields.io/badge/Federal%20DevSecOps-100%25%20PASS-success.svg)](docs/federal_devsecops_compliance_report.md)
+[![Section 508](https://img.shields.io/badge/Section%20508-WCAG%202.1%20AA%20PASS-success.svg)](reports/axe-accessibility.json)
 [![Community Profile](https://img.shields.io/badge/community%20standards-100%25%20green-success.svg)](CONTRIBUTING.md)
 
-**Cryptographic Data Attestation Framework & Zero-DB-Call AI Gateway Prevalidator (`v0.1`) — G1163RT Security Labs.**
+**Cryptographic Data Attestation Framework & Zero-DB-Call AI Gateway Prevalidator (`v1.0.2`) — G1163RT Security Labs.**
 
-AI gateways govern requests. Nothing attests the data those requests touch. **G1 Docket** closes that gap with three components and one open contract:
+AI gateways govern requests. Nothing attests the data those requests touch. **G1 Docket** closes that gap with five integrated subsystems and one open cryptographic contract:
 
 1. **The Attestation Engine (`engine/`)** — Discovers data where it lives (files, spreadsheets, databases via Apache Tika, OpenMetadata, and the **3-Stage Microsoft Purview & Multi-Cloud DLP Connector**), classifies it with Microsoft Presidio and embedded sensitivity labels (recording sensitive entity types and counts, never raw values), provides real-time ETL intake webhooks (`/v1/events/etl`) for dbt Cloud and Apache Airflow, and issues a DSSE-signed in-toto v1 attestation record per object.
-2. **The Registry (`registry/`)** — The authoritative catalog of signed records on PostgreSQL/SQLAlchemy, enforcing tier-based expiry (`Restricted`: 30d, `Confidential`: 90d, `Internal`: 180d, `Public`: 365d), human-review queues for `Restricted` and low-confidence findings, immediate tier elevation, dual-approval tier lowering, and re-classification on content hash drift.
+2. **The Authoritative Registry (`registry/`)** — The authoritative catalog of signed records on PostgreSQL/SQLAlchemy, enforcing tier-based expiry (`Restricted`: 30d, `Confidential`: 90d, `Internal`: 180d, `Public`: 365d), human-review queues for `Restricted` and low-confidence findings, immediate tier elevation, dual-approval tier lowering, and re-classification on content hash drift.
 3. **The Signed Snapshot Publisher (`snapshot/`) & Consumer Conformance Suite (`conformance/`)** — Publishes short-TTL, DSSE-signed snapshots with monotonic sequence numbers and active + `expired`/`revoked` tombstones so downstream consumers enforce policy in memory with zero Registry calls in the request path.
-4. **The Prevalidator (`prevalidator/`)** — A fast proxy placed in front of any AI gateway speaking standard OpenAI (`/v1/chat/completions`), Anthropic (`/v1/messages`), or Google Gemini (`/v1beta/models/...:generateContent` & `:streamGenerateContent`) formats (including SSE streaming). It evaluates `<pod:object>` blocks and request headers against the in-memory snapshot to forward, strip, or refuse requests before the gateway sees them.
-5. **Governance Subsystem (`governance/`)** — Downstream compliance and triage stack featuring an immutable cryptographic WORM audit ledger, a 7-target enterprise SIEM forwarder engine with persistent SQLite buffering, and a Four-Eyes Dual-Key Human-in-the-Loop (HITL) triage interface minting Ed25519 DSSE emergency admission tickets.
+4. **The Zero-DB Prevalidator Gateway (`prevalidator/`)** — A sub-millisecond reverse proxy placed in front of any AI gateway speaking standard OpenAI (`/v1/chat/completions`), Anthropic (`/v1/messages`), or Google Gemini (`/v1beta/models/...:generateContent` & `:streamGenerateContent`) formats (including SSE streaming). Evaluates `<pod:object>` blocks, cryptographically signed multi-agent delegation chains (`<pod:delegate>`), and Enterprise OIDC caller tokens via JWKS against the in-memory snapshot to forward, strip, or refuse requests with uniform responses and `< 0.5 ms` p95 overhead.
+5. **The Governance Subsystem & WORM Ledger (`governance/`)** — Downstream enterprise compliance and triage stack featuring an immutable cryptographic WORM audit ledger, a 7-target enterprise SIEM forwarder engine with persistent SQLite buffering, a Four-Eyes Dual-Key Human-in-the-Loop (HITL) triage interface minting Ed25519 DSSE emergency admission tickets, and a Section 508 / WCAG 2.1 AA accessible console.
+6. **The Developer Client SDK & Forensic Watermarking (`docket/`)** — Standalone Python client SDK (`G1-Docket-SDK`) providing `DocketClient` / `AsyncDocketClient`, CLI utilities (`docket status`, `docket lookup`, `docket wrap`, `docket watermark-embed`, `docket watermark-inspect`, `docket check-mode`), RFC-009 Merkle Chunk Trees with Octopus batch compression, and zero-trust adapters for leading AI frameworks (LangChain, LlamaIndex, CrewAI, AutoGen, LangGraph).
 
 ---
 
@@ -183,8 +186,27 @@ pip install dist/g1_docket_sdk-1.0.2-py3-none-any.whl
 # Verify client CLI
 docket --help
 
-# Test connection to your G1 Docket gateway
+# Test connection and fetch gateway snapshot status
 docket status --url http://localhost:18082
+
+# Query signed attestation record by canonical locator
+docket lookup "file://estate/fileshare/product_overview_public.md"
+
+# Wrap local file into a canonical <pod:object> tag with SHA-256 digest
+docket wrap "file://finance/revenue.xlsx" --file ./revenue.xlsx
+
+# Embed forensic zero-width Unicode steganographic watermark into text or file
+docket watermark-embed "Confidential executive briefing" \
+  --owner secops@enterprise.org \
+  --agent-id agent-007 \
+  --tier Confidential \
+  --output ./briefing_watermarked.txt
+
+# Inspect and extract forensic provenance from watermarked content
+docket watermark-inspect ./briefing_watermarked.txt
+
+# Assess system readiness and fail-closed security configuration
+docket check-mode
 
 # Use in your Python AI agent
 python -c "import docket; print('G1-Docket-SDK version:', docket.__version__)"
@@ -205,7 +227,25 @@ This executes:
 pytest -v
 ```
 
-### 3. Exercise the `pod` CLI
+### 3. Run the Federal DevSecOps & Compliance Pipeline
+Execute the full local-first compliance pipeline matching NIST SP 800-53, DISA STIG, EO 14028, and Section 508 / WCAG 2.1 AA:
+```bash
+make compliance-check
+```
+Or run individual verification gates:
+```bash
+make sast            # SonarQube & Semgrep SAST / CWE scanning
+make secrets         # Gitleaks repository secret detection
+make iac             # Checkov IaC security scanning (Terraform, K8s, Dockerfile)
+make sbom            # Syft CycloneDX SBOM generation (sbom.cdx.json)
+make container-scan  # Trivy container hardening & CVE vulnerability scan
+make dast            # OWASP ZAP baseline dynamic application security scan
+make a11y            # Section 508 & WCAG 2.1 AA automated axe-core check
+make load-test       # k6 SLA performance & load testing
+make govready        # GovReady-Q NIST SP 800-53 automated assessment
+```
+
+### 4. Exercise the `pod` CLI
 ```bash
 # Generate or rotate local operator keys
 python -m registry.cli keygen
@@ -220,7 +260,7 @@ python -m registry.cli lookup "file://estate/fileshare/product_overview_public.m
 python -m registry.cli publish-snapshot --output ./pod_snapshot.dsse.json
 ```
 
-### 4. Interactive Operator & Auditor Control Menu
+### 5. Interactive Operator & Auditor Control Menu
 Launch the interactive terminal console to run any of the enterprise verification demos, benchmarks, or cluster diagnostics with a single keystroke:
 ```bash
 python scripts/interactive_menu.py
@@ -336,14 +376,14 @@ Unauthenticated browser traffic is strictly redirected to `/login` when `DOCKET_
 ### Making the System Your Own
 - **Change Passwords**: Override any password by setting `DOCKET_ADMIN_PASSWORD`, `DOCKET_OPERATOR_PASSWORD`, `DOCKET_APPROVER_PASSWORD`, etc. in your `.env` file.
 - **Custom Corporate Accounts**: Supply your company's directory accounts via the `DOCKET_AUTH_USERS_JSON` environment variable.
-- **Enterprise SSO / OIDC**: Connect Microsoft Entra ID (Azure AD), Okta, Google Workspace, or Ping Identity via reverse-proxy headers (`X-Forwarded-Email`, `X-Forwarded-Roles`) or OIDC Bearer tokens (`DOCKET_OIDC_ISSUER`, `DOCKET_OIDC_AUDIENCE`).
+- **Enterprise SSO / OIDC Federation (Method C)**: Connect enterprise IdPs (Microsoft Entra ID / Azure AD, Okta, Google Workspace, Ping Identity) natively via `DOCKET_OIDC_ISSUER` and `DOCKET_OIDC_AUDIENCE` (or reverse-proxy headers `X-Forwarded-Email`, `X-Forwarded-Roles`). Both the Governance Door and the Prevalidator Caller Door verify IdP cryptographic signatures via JWKS (`jwt.PyJWKClient` cached discovery) supporting RS256/ES256 with fail-closed production guards.
 - **Full Guide**: See **[docs/authentication-and-access-control.md](docs/authentication-and-access-control.md)** for complete step-by-step instructions.
 
 ---
 
 ### Attestation Engine Service (`:18083/docs`)
 
-The **Attestation Engine Service** (OpenAPI 3.1, `v1.0.1`) provides programmatic APIs to discover, inspect, and attest assets across local disks, network shares, and enterprise cloud data lakes:
+The **Attestation Engine Service** (OpenAPI 3.1, `v1.0.2`) provides programmatic APIs to discover, inspect, and attest assets across local disks, network shares, and enterprise cloud data lakes:
 
 ```
 default
@@ -435,6 +475,45 @@ G1 Docket provides turnkey zero-trust admission control adapters for all leading
 | **AutoGen** | `DocketAutoGenHook` | Inter-agent message hook validating and tagging conversational exchanges between conversable agents |
 | **Snowflake Data Warehouse** | `@attested_tool("snowflake://...")` | Binds SQL queries and Snowpark results to verifiable table-level and column-level attestation contracts |
 | **Google BigQuery** | `@attested_tool("bigquery://...")` | Validates data residency and departmental isolation on BigQuery enterprise datasets |
+| **Multi-Agent Swarms & Delegation Chains** | `<pod:delegate>` / `process_delegates` | Cryptographically signed provenance, clearance narrowing, and tamper-resistant multi-hop agent delegation |
+
+### Cryptographically Signed Multi-Agent Delegation Chains (`<pod:delegate>`)
+
+In multi-agent architectures (e.g. LangGraph, CrewAI, AutoGen), context travels across multiple autonomous hops before reaching a final LLM call. G1 Docket provides cryptographically signed delegation envelopes (`<pod:delegate>`) to protect multi-agent workflows against data poisoning, context smuggling, and clearance escalation:
+
+```xml
+<pod:delegate hop="1" signer="agent-researcher-01" parent_tier="Confidential" signature="Base64Ed25519...">
+  <pod:object locator="file://research/earnings_q3.pdf" sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855">
+    Summarized Q3 earnings report data...
+  </pod:object>
+</pod:delegate>
+```
+
+- **Per-Agent Ed25519 Signatures**: Each delegation hop verifies the signature of the intermediate agent over the canonical inner payload, ensuring provenance cannot be forged.
+- **Monotonic Clearance Narrowing**: Intermediate agents may only narrow clearance (e.g., from `Restricted` to `Confidential`), never widen it (`CLEARANCE_ESCALATION_BLOCKED`).
+- **Context Tamper Prevention**: Any alteration to inner tags or attributes breaks the delegation chain (`DELEGATION_CHAIN_BROKEN` / `DELEGATION_SIGNATURE_INVALID`).
+- **Sub-Millisecond Verification**: Multi-hop verification executes entirely in memory with `< 0.5 ms` added p95 hot-path latency.
+
+---
+
+### Local-First Federal DevSecOps & NIST SP 800-53 Compliance
+
+G1 Docket embeds a comprehensive, local-first federal compliance testing pipeline matching NIST SP 800-53 Rev. 5, DISA STIG, EO 14028 (SBOM), and Section 508 / WCAG 2.1 AA standards:
+
+- **Static Analysis (SAST)**: SonarQube (`sonar-project.properties`) and Semgrep rulesets (`p/owasp-top-ten`, `p/security-audit`) detect CWE vulnerabilities and security regressions.
+- **Secrets & Infrastructure-as-Code (IaC)**: Gitleaks detects committed credentials across git history; Checkov scans Terraform, Helm charts, and Dockerfiles against CIS benchmarks.
+- **Supply Chain & Container Hardening (SCA)**: Syft generates an Executive Order 14028 CycloneDX SBOM (`reports/sbom.cdx.json`); Trivy scans container images for CVEs and non-root execution.
+- **Dynamic Application Security Testing (DAST)**: OWASP ZAP baseline scan targets local running endpoints.
+- **Section 508 & WCAG 2.1 AA Accessibility**: Automated axe-core / Playwright test harness (`scripts/test_accessibility.py`) asserts zero accessibility violations across all HITL operator consoles.
+- **SLA & Concurrency Load Testing**: Automated k6 performance runner asserts `< 5.0 ms` p99 latency SLA under high concurrent load.
+- **GovReady-Q Automated Assessment**: Generates machine-readable NIST SP 800-53 assessments (`reports/govready_assessment_summary.json`) and OSCAL component definitions (`reports/govready_oscal_component.json`).
+
+Run all compliance gates locally in one command:
+```bash
+make compliance-check
+```
+
+---
 
 ---
 
@@ -503,7 +582,7 @@ G1 Docket follows enterprise open-source and institutional security standards:
 
 * **[Contributing Guidelines](CONTRIBUTING.md)**: Development environment setup, architectural invariants, latency budgets, and PR submission guidelines.
 * **[Code of Conduct](CODE_OF_CONDUCT.md)**: Contributor Covenant v2.1 community engagement pledge and enforcement standards.
-* **[Security Policy](SECURITY.md)**: Vulnerability disclosure program, supported versions, coordinated triage process, and reporting via `security@g1163rt.ai
+* **[Security Policy](SECURITY.md)**: Vulnerability disclosure program, supported versions, coordinated triage process, and reporting via `security@g1163rt.ai`.
 * **[Issue Templates](.github/ISSUE_TEMPLATE/)**: Structured issue templates for [Bug Reports](.github/ISSUE_TEMPLATE/bug_report.md) and [Feature Proposals](.github/ISSUE_TEMPLATE/feature_request.md).
 * **[Pull Request Template](.github/pull_request_template.md)**: Standardized checklist verifying zero-database hot-paths, sub-millisecond evaluation latency, and cryptographic compliance.
 
