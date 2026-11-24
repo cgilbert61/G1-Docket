@@ -5,6 +5,7 @@
 # G1 Docket — by G1163RT Security Labs
 
 [![Release](https://img.shields.io/badge/release-v1.0.2-blue.svg)](https://github.com/cgilbert61/G1-Docket/releases/tag/v1.0.2)
+[![PyPI](https://img.shields.io/pypi/v/G1-Docket-SDK.svg)](https://pypi.org/project/G1-Docket-SDK/)
 [![CI](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml/badge.svg)](https://github.com/cgilbert61/G1-Docket/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-informational.svg)](pyproject.toml)
@@ -177,8 +178,8 @@ pip install -r requirements.txt
 > - **What you need**: A running G1 Docket Prevalidator gateway (e.g. at `http://localhost:18082` or your enterprise endpoint). To host the server components, deploy via Docker Compose (`docker compose up`) or Kubernetes (`deploy/helm/`).
 
 ```bash
-# Install directly from the GitHub Release wheel (.whl)
-pip install https://github.com/cgilbert61/G1-Docket/releases/download/v1.0.2/g1_docket_sdk-1.0.2-py3-none-any.whl
+# Install the official client SDK from PyPI
+pip install G1-Docket-SDK
 
 # Or install directly from GitHub source
 pip install "git+https://github.com/cgilbert61/G1-Docket.git"
