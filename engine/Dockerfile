@@ -44,4 +44,7 @@ EXPOSE 8083
 
 USER docket:docket
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8083/healthz')" || exit 1
+
 CMD ["uvicorn", "engine.service:create_engine_app", "--factory", "--host", "0.0.0.0", "--port", "8083"]

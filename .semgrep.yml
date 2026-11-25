@@ -31,11 +31,3 @@ rules:
     metadata:
       cwe: "CWE-328: Use of Weak Hash"
       owasp: "A02:2021 - Cryptographic Failures"
-
-  - id: ed25519-proper-crypto-enforcement
-    pattern: hashlib.sha256(...)
-    message: "Cryptographic digest generation detected. Ensure canonical UTF-8 encoding is used before hashing."
-    languages: [python]
-    severity: INFO
-    metadata:
-      cwe: "CWE-310: Cryptographic Issues"

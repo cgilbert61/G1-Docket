@@ -13,13 +13,17 @@ commonLabels:
   app.kubernetes.io/part-of: g1-docket
   security.g1.io/tier: institutional
 
+# Zero-Trust Network Policy Enforcement
+networkPolicy:
+  enabled: true
+
 # Prevalidator Admission Gateway
 prevalidator:
   replicaCount: 3
   image:
     repository: ghcr.io/cgilbert61/g1-docket-prevalidator
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18082
@@ -52,8 +56,8 @@ governance:
   replicaCount: 1
   image:
     repository: ghcr.io/cgilbert61/g1-docket-governance
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18084
@@ -77,8 +81,8 @@ snapshotPublisher:
   replicaCount: 1
   image:
     repository: ghcr.io/cgilbert61/g1-docket-publisher
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18081
@@ -89,8 +93,8 @@ engine:
   replicaCount: 2
   image:
     repository: ghcr.io/cgilbert61/g1-docket-engine
-    pullPolicy: IfNotPresent
-    tag: "latest"
+    pullPolicy: Always
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18083

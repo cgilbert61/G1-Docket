@@ -7,12 +7,31 @@ metadata:
   name: ai-agent-with-docket-sidecar
   namespace: g1-docket
   labels:
+    app.kubernetes.io/name: agent-with-docket-sidecar
     app: secure-ai-agent
 spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
   containers:
     # 1. Main Application / AI Agent Container
     - name: ai-agent
-      image: python:3.11-slim
+      image: python:3.11.8-slim
+      imagePullPolicy: Always
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop:
+            - ALL
       command: ["/bin/sh", "-c"]
       args:
         - |
@@ -28,11 +47,26 @@ spec:
         requests:
           cpu: "500m"
           memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "1Gi"
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
 
     # 2. G1 Docket Sub-Millisecond Prevalidator Sidecar
     - name: docket-prevalidator-sidecar
-      image: ghcr.io/cgilbert61/g1-docket-prevalidator:latest
-      imagePullPolicy: IfNotPresent
+      image: ghcr.io/cgilbert61/g1-docket-prevalidator:1.0.2
+      imagePullPolicy: Always
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        capabilities:
+          drop:
+            - ALL
       ports:
         - containerPort: 18082
           name: local-proxy
@@ -55,14 +89,24 @@ spec:
       volumeMounts:
         - name: dshm
           mountPath: /dev/shm
+        - name: tmp
+          mountPath: /tmp
       livenessProbe:
         httpGet:
           path: /healthz
           port: 18082
         initialDelaySeconds: 2
         periodSeconds: 10
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: 18082
+        initialDelaySeconds: 2
+        periodSeconds: 5
 
   volumes:
+    - name: tmp
+      emptyDir: {}
     - name: dshm
       emptyDir:
         medium: Memory

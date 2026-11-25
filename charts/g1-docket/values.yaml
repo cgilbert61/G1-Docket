@@ -3,7 +3,7 @@
 
 global:
   imageRegistry: ghcr.io/cgilbert61
-  imagePullPolicy: IfNotPresent
+  imagePullPolicy: Always
 
 gateway:
   mode: "enforce" # "enforce" (inline blocking) or "observe" (audit-only pass-through)
@@ -22,7 +22,7 @@ prevalidator:
   replicaCount: 3
   image:
     repository: g1-docket-prevalidator
-    tag: "latest"
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18082
@@ -43,7 +43,7 @@ governance:
   replicaCount: 2
   image:
     repository: g1-docket-governance
-    tag: "latest"
+    tag: "1.0.2"
   service:
     type: ClusterIP
     port: 18084

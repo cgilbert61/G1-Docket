@@ -21,10 +21,27 @@ spec:
         {{- include "g1-docket.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: governance
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: governance
           image: "{{ .Values.governance.image.repository }}:{{ .Values.governance.image.tag }}"
           imagePullPolicy: {{ .Values.governance.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: http
               containerPort: {{ .Values.governance.service.targetPort }}
@@ -51,6 +68,11 @@ spec:
           volumeMounts:
             - name: worm-audit-storage
               mountPath: /var/lib/pod/state
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       volumes:
         - name: worm-audit-storage
           {{- if .Values.governance.persistence.enabled }}

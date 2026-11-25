@@ -17,10 +17,27 @@ spec:
         {{- include "g1-docket.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: prevalidator
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: prevalidator
           image: "{{ .Values.global.imageRegistry }}/{{ .Values.prevalidator.image.repository }}:{{ .Values.prevalidator.image.tag }}"
           imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: {{ .Values.prevalidator.service.port }}
               name: http
@@ -32,6 +49,8 @@ spec:
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /healthz
@@ -47,6 +66,8 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 1
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: dshm
           emptyDir:
             medium: Memory

@@ -16,10 +16,27 @@ spec:
       labels:
         app.kubernetes.io/name: governance-triage
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: governance
-          image: ghcr.io/cgilbert61/g1-docket-governance:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/cgilbert61/g1-docket-governance:1.0.2
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 18084
               name: triage-ui
@@ -36,13 +53,23 @@ spec:
           volumeMounts:
             - name: worm-storage
               mountPath: /var/lib/pod/governance
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /healthz
               port: 18084
             initialDelaySeconds: 3
             periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 18084
+            initialDelaySeconds: 2
+            periodSeconds: 5
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: worm-storage
           persistentVolumeClaim:
             claimName: g1-docket-worm-pvc

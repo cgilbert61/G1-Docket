@@ -17,10 +17,27 @@ spec:
         {{- include "g1-docket.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: publisher
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: publisher
           image: "{{ .Values.snapshotPublisher.image.repository }}:{{ .Values.snapshotPublisher.image.tag }}"
           imagePullPolicy: {{ .Values.snapshotPublisher.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: http
               containerPort: {{ .Values.snapshotPublisher.service.targetPort }}
@@ -42,6 +59,9 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             limits:
               cpu: 1000m
@@ -49,3 +69,6 @@ spec:
             requests:
               cpu: 250m
               memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}

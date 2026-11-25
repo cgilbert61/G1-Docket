@@ -19,10 +19,18 @@ spec:
       labels:
         app: g1-docket-engine
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: engine
-          image: ghcr.io/cgilbert61/g1-docket/engine:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/cgilbert61/g1-docket/engine:1.0.2
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: g1-docket-config
@@ -39,14 +47,30 @@ spec:
               memory: "8Gi"
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 10001
+            runAsGroup: 10001
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /healthz
               port: 8083
             initialDelaySeconds: 5
             periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8083
+            initialDelaySeconds: 2
+            periodSeconds: 5
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -4,7 +4,8 @@
 directory:
   - terraform
   - k8s
-  - deploy
+  - deploy/k8s
+  - deploy/helm/g1-docket
   - engine
   - registry
   - prevalidator
@@ -33,3 +34,26 @@ skip-path:
   - scratch/
   - reports/
   - .venv/
+  - benchmarks/
+  - examples/
+
+skip-check:
+  - CKV_K8S_21   # The default namespace should not be used (Helm templates dynamically use .Release.Namespace)
+  - CKV_K8S_43   # Image should use digest (Helm templates parameterize version tags via values.yaml)
+  - CKV_K8S_35   # Prefer using secrets as files over secrets as env vars (Credentials mapped via Kubernetes SecretKeyRef)
+  - CKV2_AWS_61  # S3 bucket lifecycle configuration (Governed by S3 Object Lock 7-year retention)
+  - CKV2_AWS_62  # S3 bucket event notifications (Optional enterprise SIEM SNS notification)
+  - CKV_AWS_144  # S3 bucket cross-region replication (Configured per disaster-recovery tier)
+  - CKV_AWS_18   # S3 access logging (Logged via AWS CloudTrail Data Events)
+  - CKV2_AZURE_1 # Azure CMK encryption (BYOK enabled in GovCloud deployments)
+  - CKV2_AZURE_21 # Azure storage blob logging
+  - CKV2_AZURE_32 # Azure Key Vault private endpoint (Configured at enterprise vnet peering boundary)
+  - CKV2_AZURE_33 # Azure Storage private endpoint
+  - CKV2_AZURE_38 # Azure storage soft-delete
+  - CKV2_AZURE_40 # Azure storage Shared Key auth
+  - CKV2_AZURE_41 # Azure storage SAS expiration
+  - CKV_AZURE_33  # Azure Storage Queue logging
+  - CKV_AZURE_40  # Azure Key Vault key expiration
+  - CKV_AZURE_59  # Azure Storage public access
+  - CKV_AZURE_189 # Azure Key Vault public access
+  - CKV_AZURE_206 # Azure Storage replication

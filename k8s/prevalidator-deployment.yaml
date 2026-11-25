@@ -26,6 +26,14 @@ spec:
         prometheus.io/port: "8082"
         prometheus.io/path: "/healthz"
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -39,8 +47,8 @@ spec:
                 topologyKey: "topology.kubernetes.io/zone"
       containers:
         - name: prevalidator
-          image: ghcr.io/cgilbert61/g1-docket/prevalidator:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/cgilbert61/g1-docket/prevalidator:1.0.2
+          imagePullPolicy: Always
           envFrom:
             - configMapRef:
                 name: g1-docket-config
@@ -63,11 +71,15 @@ spec:
               memory: "8Gi"
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 10001
+            runAsGroup: 10001
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           livenessProbe:
             httpGet:
               path: /healthz
@@ -80,6 +92,9 @@ spec:
               port: 8082
             initialDelaySeconds: 2
             periodSeconds: 5
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
