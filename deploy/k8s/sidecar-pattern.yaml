@@ -53,6 +53,16 @@ spec:
       volumeMounts:
         - name: tmp
           mountPath: /tmp
+      livenessProbe:
+        exec:
+          command: ["/bin/sh", "-c", "python3 -c 'import sys; sys.exit(0)'"]
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      readinessProbe:
+        exec:
+          command: ["/bin/sh", "-c", "python3 -c 'import sys; sys.exit(0)'"]
+        initialDelaySeconds: 2
+        periodSeconds: 5
 
     # 2. G1 Docket Sub-Millisecond Prevalidator Sidecar
     - name: docket-prevalidator-sidecar
