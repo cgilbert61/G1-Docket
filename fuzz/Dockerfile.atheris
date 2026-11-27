@@ -1,0 +1,17 @@
+# Coverage-guided Python fuzzing container for G1-Docket (Google Atheris / libFuzzer)
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+WORKDIR /app
+
+COPY schemas ./schemas
+COPY registry ./registry
+COPY engine ./engine
+COPY fuzz ./fuzz
+
+RUN pip install --no-cache-dir cryptography jsonschema pytest hypothesis atheris
+
+CMD ["sh", "-c", "pytest -v fuzz/ && python fuzz/run_atheris.py --runs 2000"]

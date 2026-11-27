@@ -1,0 +1,30 @@
+{
+  "project": "G1-Docket",
+  "generated_at": "2026-11-27T15:10:51Z",
+  "runtime": "python:3.11-slim (Docker g1-docket-fuzz:latest)",
+  "fuzzers": {
+    "hypothesis": {
+      "status": "EXECUTED",
+      "version": "6.170.20",
+      "suite": "fuzz/test_hypothesis_fuzz.py",
+      "targets_total": 6,
+      "targets_passed": 6,
+      "targets_failed": 0,
+      "total_passing_examples": 720
+    },
+    "atheris": {
+      "status": "EXECUTED",
+      "version": "3.0.0",
+      "harnesses_total": 2,
+      "harnesses_passed": 2,
+      "harnesses_failed": 0,
+      "runs_per_harness": 2000,
+      "total_runs": 4000,
+      "crashes": 0,
+      "harnesses": [
+        "fuzz/atheris_harnesses/fuzz_dsse_verify.py",
+        "fuzz/atheris_harnesses/fuzz_text_and_classifier.py"
+      ]
+    }
+  }
+}
