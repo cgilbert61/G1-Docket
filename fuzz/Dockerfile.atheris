@@ -12,6 +12,14 @@ COPY registry ./registry
 COPY engine ./engine
 COPY fuzz ./fuzz
 
-RUN pip install --no-cache-dir cryptography jsonschema pytest hypothesis atheris
+RUN pip install --no-cache-dir cryptography jsonschema pytest hypothesis atheris \
+    && groupadd --system fuzzer \
+    && useradd --system --gid fuzzer --home-dir /app --no-create-home fuzzer \
+    && chown -R fuzzer:fuzzer /app
+
+USER fuzzer
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -c "import atheris, hypothesis" || exit 1
 
 CMD ["sh", "-c", "pytest -v fuzz/ && python fuzz/run_atheris.py --runs 2000"]
